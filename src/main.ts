@@ -27,4 +27,5 @@ new Phaser.Game({
 });
 
 // 离线功能：第一次打开后把游戏存到手机/电脑里，之后没网也能玩
-registerSW({ immediate: true });
+// （嵌在别的网页里预览时不注册，因为那里不支持）
+if (window.top === window.self) registerSW({ immediate: true });
