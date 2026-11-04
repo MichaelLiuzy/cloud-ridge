@@ -1,34 +1,64 @@
 /**
- * 全局游戏状态：时钟、钱、体力、手上拿的工具。
- * 以后的存档（背包、田地、好感度）也会放在这里，存成带版本号的 JSON。
- * 开局数值来自 src/data/start.json，体力上限来自 src/data/housing.json。
+ * 全局游戏状态：时钟、钱、体力、工具、背包、好感度……
+ * 存档就是把这里的东西（加上地图和主角位置）存成 JSON，见 src/systems/save/。
+ * 开局数值来自 src/data/start.ts，体力上限来自 src/data/housing.ts。
  */
-import startData from '../data/start.json';
-import itemsData from '../data/items.json';
-import housingData from '../data/housing.json';
+import { START as startData } from '../data/start';
+import { ITEMS as itemsData } from '../data/items';
+import { HOUSING as housingData } from '../data/housing';
 import type { Clock } from './Clock';
+import type { SaveData } from './save/saveFormat';
 
-/** 开局背包里的工具（按 start.json 里写的顺序排进工具栏） */
-const startTools = Object.keys(startData.inventory).filter(
-  (id) => itemsData.items.find((it) => it.id === id)?.type === 'tool',
-);
+function freshState() {
+  const inventory: Record<string, number> = { ...startData.inventory };
+  // 工具放进工具栏（按 start.ts 里写的顺序）
+  const tools = Object.keys(inventory).filter((id) => itemsData.items.find((it) => it.id === id)?.type === 'tool');
+  const house = housingData.levels.find((h) => h.id === startData.house)!;
+  return {
+    clock: null as Clock | null,
+    /** 现在用的是第几个存档位（1~3） */
+    slot: 1,
+    cash: startData.cash as number,
+    house: startData.house as string,
+    maxStamina: house.maxStamina as number,
+    stamina: house.maxStamina as number,
+    tools,
+    toolIndex: 0,
+    inventory,
+    affection: { ...startData.affection } as Record<string, number>,
+    flags: {} as Record<string, boolean | number | string>,
+    quests: {} as Record<string, string>,
+    clues: [] as string[],
+    /** 界面正忙（对话框或小菜单开着），这时主角不能走、时间暂停 */
+    uiBusy: false,
+    /** 进农场时要读进来的存档（新游戏为 null） */
+    pendingLoad: null as SaveData | null,
+    /** 由农场场景提供：把现在的样子打包成存档 */
+    snapshot: null as (() => SaveData) | null,
+  };
+}
 
-const house = housingData.levels.find((h) => h.id === startData.house)!;
+export const gameState = freshState();
 
-export const gameState = {
-  clock: null as Clock | null,
-  /** 身上的钱（单位：文） */
-  cash: startData.cash,
-  /** 现在住的房子（决定体力上限） */
-  house: startData.house,
-  maxStamina: house.maxStamina,
-  stamina: house.maxStamina,
-  /** 工具栏里的工具（物品 id），以及现在拿着第几个 */
-  tools: startTools,
-  toolIndex: 0,
-  /** 界面正忙（对话框或小菜单开着），这时主角不能走、时间暂停 */
-  uiBusy: false,
-};
+/** 开新游戏 / 回标题时，把状态清空回开局 */
+export function resetGameState(slot: number, load: SaveData | null = null) {
+  Object.assign(gameState, freshState(), { slot, pendingLoad: load });
+  if (load) {
+    Object.assign(gameState, {
+      cash: load.cash,
+      house: load.house,
+      maxStamina: load.maxStamina,
+      stamina: load.stamina,
+      tools: [...load.tools],
+      toolIndex: load.toolIndex,
+      inventory: { ...load.inventory },
+      affection: { ...load.npcs.affection },
+      flags: { ...load.flags },
+      quests: { ...load.quests },
+      clues: [...load.clues],
+    });
+  }
+}
 
 /** 有没有这个工具 */
 export function hasTool(id: string) {

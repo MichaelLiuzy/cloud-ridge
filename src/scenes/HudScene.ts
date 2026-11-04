@@ -3,14 +3,17 @@
  * 负责：左上角的日期/时间/钱/体力、底部工具栏、对话框、小菜单、手机按钮。
  * 所有操作（键盘、鼠标、手指）都先到这里：对话框或小菜单开着时由这里处理，
  * 否则再转给地图（FarmScene）。
- * 文字内容在 src/locales/zh.json，颜色在 src/config/settings.ts。
+ * 文字内容在 src/locales/zh.ts，颜色在 src/config/settings.ts。
  */
 import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
 import { font, localName, t } from '../locales/i18n';
 import { INPUT_EVENTS, PointerControls, makeRoundButton } from '../input/Controls';
 import { gameState } from '../systems/GameState';
-import itemsData from '../data/items.json';
+import { ListMenu, type MenuOption } from '../ui/ListMenu';
+import { downloadText } from '../ui/fileTransfer';
+import { exportText } from '../systems/save/saveManager';
+import { ITEMS as itemsData } from '../data/items';
 
 /** 界面和地图之间互相传的消息 */
 export const UI_EVENTS = {
@@ -25,11 +28,6 @@ export const UI_EVENTS = {
   worldTap: 'ui:worldTap',
 } as const;
 
-/** 小菜单里的一项 */
-export interface MenuOption {
-  label: string;
-  run: () => void;
-}
 
 export class HudScene extends Phaser.Scene {
   private dateText!: Phaser.GameObjects.Text;
@@ -42,10 +40,7 @@ export class HudScene extends Phaser.Scene {
   private dialogBg!: Phaser.GameObjects.Rectangle;
   private dialogText!: Phaser.GameObjects.Text;
 
-  private menu?: Phaser.GameObjects.Container;
-  private menuOptions: MenuOption[] = [];
-  private menuRows: Phaser.GameObjects.Rectangle[] = [];
-  private menuIndex = 0;
+  private menu?: ListMenu;
 
   private toolbar!: Phaser.GameObjects.Container;
   private toolSlots: Phaser.GameObjects.Rectangle[] = [];
@@ -103,9 +98,9 @@ export class HudScene extends Phaser.Scene {
       [INPUT_EVENTS.useTool, () => !this.busy() && ev.emit(UI_EVENTS.worldUseTool)],
       [INPUT_EVENTS.cancel, () => (this.menu ? this.closeMenu() : this.closeDialog())],
       [INPUT_EVENTS.bag, () => !this.busy() && this.say('msg.bagNotReady')],
-      [INPUT_EVENTS.menu, () => !this.busy() && this.say('msg.menuNotReady')],
+      [INPUT_EVENTS.menu, () => !this.busy() && this.gameMenu()],
       [INPUT_EVENTS.toolSlot, (i: number) => !this.busy() && this.selectTool(i)],
-      [INPUT_EVENTS.nav, (dir: 'up' | 'down') => this.menu && this.moveMenu(dir === 'up' ? -1 : 1)],
+      [INPUT_EVENTS.nav, (dir: 'up' | 'down') => this.menu?.move(dir === 'up' ? -1 : 1)],
       [INPUT_EVENTS.tap, (x: number, y: number) => this.onTap(x, y)],
       [UI_EVENTS.say, (key: string, params?: Record<string, string | number>) => this.say(key, params)],
       [UI_EVENTS.showMenu, (opts: MenuOption[]) => this.openMenu(opts)],
@@ -113,6 +108,7 @@ export class HudScene extends Phaser.Scene {
     for (const [name, fn] of handlers) ev.on(name, fn);
     this.events.once('shutdown', () => {
       for (const [name, fn] of handlers) ev.off(name, fn);
+      this.closeMenu();
       this.scale.off('resize', this.layout, this);
     });
   }
@@ -138,7 +134,7 @@ export class HudScene extends Phaser.Scene {
 
   /** 回车 / 「使用」键 */
   private onAction(mode?: string) {
-    if (this.menu) return this.chooseMenu(this.menuIndex);
+    if (this.menu) return this.menu.choose();
     if (this.dialog.visible) return this.closeDialog();
     this.game.events.emit(mode === 'smart' ? UI_EVENTS.worldSmart : UI_EVENTS.worldAction);
   }
@@ -167,55 +163,54 @@ export class HudScene extends Phaser.Scene {
   // ---------------- 小菜单 ----------------
 
   /** 弹出小菜单：方向键上下选、回车确认；手机直接点；点外面或 Esc 取消 */
-  openMenu(options: MenuOption[]) {
+  openMenu(options: MenuOption[], title?: string) {
     this.closeMenu();
-    const res = window.devicePixelRatio || 1;
-    const all = [...options, { label: t('action.cancel'), run: () => {} }];
-    const rowH = this.touch ? 44 : 36;
-    const w = 168;
-    const items: Phaser.GameObjects.GameObject[] = [];
-    this.menuRows = [];
-    all.forEach((opt, i) => {
-      const row = this.add.rectangle(0, i * rowH, w, rowH, SETTINGS.colors.dialogBg, 0.95).setOrigin(0).setStrokeStyle(1, 0xc9a86a, 0.5);
-      row.setInteractive().on('pointerdown', () => this.chooseMenu(i));
-      row.on('pointerover', () => this.highlight(i));
-      const label = this.add
-        .text(16, i * rowH + rowH / 2, opt.label, { fontFamily: font(), fontSize: '18px', color: SETTINGS.colors.dialogText })
-        .setOrigin(0, 0.5)
-        .setResolution(res);
-      items.push(row, label);
-      this.menuRows.push(row);
-    });
-    this.menuOptions = all;
+    // 每个选项选中后先关菜单，再做事；最后自动加一项「算了」
+    const all = [...options, { label: t('action.cancel'), run: () => {} }].map((o) => ({
+      ...o,
+      run: () => {
+        this.closeMenu();
+        o.run();
+      },
+    }));
+    this.menu = new ListMenu(this, all, { title, width: 220 });
     const { width, height } = this.scale;
-    const h = all.length * rowH;
-    this.menu = this.add.container(width / 2 - w / 2, Math.max(16, height / 2 - h - 24), items).setDepth(60);
-    this.highlight(0);
+    this.menu.centerAt(width / 2, Math.max(this.menu.container.height / 2 + 16, height / 2 - this.menu.container.height / 2 - 24));
     this.syncBusy();
-  }
-
-  private moveMenu(step: number) {
-    const n = this.menuOptions.length;
-    this.highlight((this.menuIndex + step + n) % n);
-  }
-
-  private highlight(i: number) {
-    this.menuIndex = i;
-    this.menuRows.forEach((r, j) => r.setFillStyle(j === i ? SETTINGS.colors.menuHighlight : SETTINGS.colors.dialogBg, 0.95));
-  }
-
-  private chooseMenu(i: number) {
-    const opt = this.menuOptions[i];
-    this.closeMenu();
-    opt?.run();
   }
 
   closeMenu() {
     this.menu?.destroy();
     this.menu = undefined;
-    this.menuOptions = [];
-    this.menuRows = [];
     this.syncBusy();
+  }
+
+  /** 菜单键（M / 手机右上「菜单」）：导出存档、回标题 */
+  private gameMenu() {
+    this.openMenu(
+      [
+        {
+          label: t('menu.export'),
+          run: () => {
+            const snap = gameState.snapshot?.();
+            if (!snap) return;
+            const { filename, text } = exportText(snap);
+            downloadText(filename, text);
+            this.say('msg.exported');
+          },
+        },
+        {
+          label: t('menu.backToTitle'),
+          run: () => this.openMenu([{ label: t('menu.yes'), run: () => this.backToTitle() }], t('menu.backConfirm')),
+        },
+      ],
+      t('menu.title'),
+    );
+  }
+
+  private backToTitle() {
+    this.scene.stop('Farm');
+    this.scene.start('Title');
   }
 
   private syncBusy() {

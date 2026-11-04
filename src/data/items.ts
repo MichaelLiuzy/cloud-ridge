@@ -1,0 +1,512 @@
+/**
+ * 物品、店铺、货币
+ * ================================================================
+ *  数值来自设计主管窗口（daily-systems）。可以直接改数字，保存后刷新游戏就生效。
+ *  只改冒号右边的值。
+ *  常改的：买卖价格（buyPrice / sellPrice）、在哪个店卖（soldAt）、食物回多少体力（stamina）。每个字段的说明见 types.ts 里的 Item。
+ *  每个字段第一次出现时后面有中文说明；完整格式见 types.ts。
+ *  改错了 npm run build 会报错，看报错信息或者告诉编程窗口。
+ */
+
+import type { ItemsTable } from './types';
+
+export const ITEMS: ItemsTable = {
+  schemaVersion: 1,  // 数据格式版本号（程序用，不用改）
+  // 货币
+  currency: {
+    unit: "wen",  // 单位
+    name: { zh: "文", en: "wen" },  // 名字：zh 中文，en 英文（英文以后再填）
+    // 大单位
+    bigUnit: {
+      name: { zh: "两", en: "tael" },
+      value: 1000,  // 等于多少小单位
+    },
+  },
+  // 店铺
+  shops: [
+    {
+      id: "general_store",  // 程序用的英文名字，其他表靠它互相引用，不要改
+      name: { zh: "杂货铺", en: "General store" },
+      buysCrops: true,  // 收不收农产品
+    },
+    {
+      id: "carpenter",
+      name: { zh: "木匠铺", en: "Carpenter" },
+    },
+    {
+      id: "blacksmith",
+      name: { zh: "铁匠铺", en: "Blacksmith" },
+    },
+    {
+      id: "kiln",
+      name: { zh: "窑场", en: "Kiln" },
+    },
+    {
+      id: "teahouse",
+      name: { zh: "茶馆", en: "Teahouse" },
+    },
+    {
+      id: "market",
+      name: { zh: "集市（赶集日）", en: "Market (market days)" },
+      buysCrops: true,
+    },
+  ],
+  // 物品列表
+  items: [
+    {
+      id: "bok_choy_seed",
+      name: { zh: "小白菜种子", en: "Bok choy seeds" },
+      type: "seed",  // 类型
+      buyPrice: 20,  // 买入价格（文，null = 买不到）
+      sellPrice: 10,  // 卖出价格（文）
+      soldAt: ["general_store"],  // 在哪些店有卖
+      plants: "bok_choy",  // 种下去长成什么作物
+    },
+    {
+      id: "bok_choy",
+      name: { zh: "小白菜", en: "Bok choy" },
+      type: "crop",
+      buyPrice: null,
+      sellPrice: 35,
+      soldAt: [],
+    },
+    {
+      id: "radish_seed",
+      name: { zh: "萝卜种子", en: "Radish seeds" },
+      type: "seed",
+      buyPrice: 30,
+      sellPrice: 15,
+      soldAt: ["general_store"],
+      plants: "radish",
+    },
+    {
+      id: "radish",
+      name: { zh: "萝卜", en: "Radish" },
+      type: "crop",
+      buyPrice: null,
+      sellPrice: 60,
+      soldAt: [],
+    },
+    {
+      id: "potato_seed",
+      name: { zh: "土豆种子", en: "Potato seeds" },
+      type: "seed",
+      buyPrice: 50,
+      sellPrice: 25,
+      soldAt: ["general_store"],
+      plants: "potato",
+    },
+    {
+      id: "potato",
+      name: { zh: "土豆", en: "Potato" },
+      type: "crop",
+      buyPrice: null,
+      sellPrice: 80,
+      soldAt: [],
+    },
+    {
+      id: "pea_seed",
+      name: { zh: "豌豆种子", en: "Pea seeds" },
+      type: "seed",
+      buyPrice: 60,
+      sellPrice: 30,
+      soldAt: ["general_store"],
+      plants: "pea",
+    },
+    {
+      id: "pea",
+      name: { zh: "豌豆", en: "Pea" },
+      type: "crop",
+      buyPrice: null,
+      sellPrice: 30,
+      soldAt: [],
+    },
+    {
+      id: "chive_seed",
+      name: { zh: "韭菜种子", en: "Chinese chive seeds" },
+      type: "seed",
+      buyPrice: 80,
+      sellPrice: 40,
+      soldAt: ["market"],
+      plants: "chive",
+    },
+    {
+      id: "chive",
+      name: { zh: "韭菜", en: "Chinese chive" },
+      type: "crop",
+      buyPrice: null,
+      sellPrice: 45,
+      soldAt: [],
+    },
+    {
+      id: "cucumber_seed",
+      name: { zh: "黄瓜种子", en: "Cucumber seeds" },
+      type: "seed",
+      buyPrice: 40,
+      sellPrice: 20,
+      soldAt: ["general_store"],
+      plants: "cucumber",
+    },
+    {
+      id: "cucumber",
+      name: { zh: "黄瓜", en: "Cucumber" },
+      type: "crop",
+      buyPrice: null,
+      sellPrice: 35,
+      soldAt: [],
+    },
+    {
+      id: "eggplant_seed",
+      name: { zh: "茄子种子", en: "Eggplant seeds" },
+      type: "seed",
+      buyPrice: 50,
+      sellPrice: 25,
+      soldAt: ["general_store"],
+      plants: "eggplant",
+    },
+    {
+      id: "eggplant",
+      name: { zh: "茄子", en: "Eggplant" },
+      type: "crop",
+      buyPrice: null,
+      sellPrice: 50,
+      soldAt: [],
+    },
+    {
+      id: "cowpea_seed",
+      name: { zh: "豇豆种子", en: "Long bean seeds" },
+      type: "seed",
+      buyPrice: 60,
+      sellPrice: 30,
+      soldAt: ["general_store"],
+      plants: "cowpea",
+    },
+    {
+      id: "cowpea",
+      name: { zh: "豇豆", en: "Long bean" },
+      type: "crop",
+      buyPrice: null,
+      sellPrice: 40,
+      soldAt: [],
+    },
+    {
+      id: "chili_seed",
+      name: { zh: "辣椒种子", en: "Chili seeds" },
+      type: "seed",
+      buyPrice: 40,
+      sellPrice: 20,
+      soldAt: ["general_store"],
+      plants: "chili",
+    },
+    {
+      id: "chili",
+      name: { zh: "辣椒", en: "Chili" },
+      type: "crop",
+      buyPrice: null,
+      sellPrice: 25,
+      soldAt: [],
+    },
+    {
+      id: "watermelon_seed",
+      name: { zh: "西瓜种子", en: "Watermelon seeds" },
+      type: "seed",
+      buyPrice: 120,
+      sellPrice: 60,
+      soldAt: ["market"],
+      plants: "watermelon",
+    },
+    {
+      id: "watermelon",
+      name: { zh: "西瓜", en: "Watermelon" },
+      type: "crop",
+      buyPrice: null,
+      sellPrice: 300,
+      soldAt: [],
+    },
+    {
+      id: "napa_cabbage_seed",
+      name: { zh: "大白菜种子", en: "Napa cabbage seeds" },
+      type: "seed",
+      buyPrice: 50,
+      sellPrice: 25,
+      soldAt: ["general_store"],
+      plants: "napa_cabbage",
+    },
+    {
+      id: "napa_cabbage",
+      name: { zh: "大白菜", en: "Napa cabbage" },
+      type: "crop",
+      buyPrice: null,
+      sellPrice: 110,
+      soldAt: [],
+    },
+    {
+      id: "taro_seed",
+      name: { zh: "芋头种子", en: "Taro seeds" },
+      type: "seed",
+      buyPrice: 60,
+      sellPrice: 30,
+      soldAt: ["general_store"],
+      plants: "taro",
+    },
+    {
+      id: "taro",
+      name: { zh: "芋头", en: "Taro" },
+      type: "crop",
+      buyPrice: null,
+      sellPrice: 120,
+      soldAt: [],
+    },
+    {
+      id: "sweet_potato_seed",
+      name: { zh: "红薯种子", en: "Sweet potato seeds" },
+      type: "seed",
+      buyPrice: 70,
+      sellPrice: 35,
+      soldAt: ["general_store"],
+      plants: "sweet_potato",
+    },
+    {
+      id: "sweet_potato",
+      name: { zh: "红薯", en: "Sweet potato" },
+      type: "crop",
+      buyPrice: null,
+      sellPrice: 150,
+      soldAt: [],
+    },
+    {
+      id: "pumpkin_seed",
+      name: { zh: "南瓜种子", en: "Pumpkin seeds" },
+      type: "seed",
+      buyPrice: 100,
+      sellPrice: 50,
+      soldAt: ["market"],
+      plants: "pumpkin",
+    },
+    {
+      id: "pumpkin",
+      name: { zh: "南瓜", en: "Pumpkin" },
+      type: "crop",
+      buyPrice: null,
+      sellPrice: 320,
+      soldAt: [],
+    },
+    {
+      id: "spinach_seed",
+      name: { zh: "菠菜种子", en: "Spinach seeds" },
+      type: "seed",
+      buyPrice: 30,
+      sellPrice: 15,
+      soldAt: ["general_store"],
+      plants: "spinach",
+    },
+    {
+      id: "spinach",
+      name: { zh: "菠菜", en: "Spinach" },
+      type: "crop",
+      buyPrice: null,
+      sellPrice: 55,
+      soldAt: [],
+    },
+    {
+      id: "garlic_seed",
+      name: { zh: "大蒜种子", en: "Garlic seeds" },
+      type: "seed",
+      buyPrice: 40,
+      sellPrice: 20,
+      soldAt: ["general_store"],
+      plants: "garlic",
+    },
+    {
+      id: "garlic",
+      name: { zh: "大蒜", en: "Garlic" },
+      type: "crop",
+      buyPrice: null,
+      sellPrice: 90,
+      soldAt: [],
+    },
+    {
+      id: "wood",
+      name: { zh: "木料", en: "Wood" },
+      type: "material",
+      buyPrice: 10,
+      sellPrice: 5,
+      soldAt: ["carpenter"],
+      gather: {
+        action: "chop_tree",  // 这个工具做什么动作
+        amount: [3, 5],  // 数量
+      },
+    },
+    {
+      id: "thatch",
+      name: { zh: "茅草", en: "Thatch" },
+      type: "material",
+      buyPrice: 5,
+      sellPrice: 2,
+      soldAt: ["general_store"],
+      gather: {
+        action: "cut_grass",
+        amount: [1, 1],
+      },
+    },
+    {
+      id: "stone",
+      name: { zh: "石料", en: "Stone" },
+      type: "material",
+      buyPrice: 15,
+      sellPrice: 7,
+      soldAt: ["carpenter"],
+      gather: {
+        action: "mine_rock",
+        amount: [1, 2],
+      },
+    },
+    {
+      id: "roof_tile",
+      name: { zh: "青瓦", en: "Roof tile" },
+      type: "material",
+      buyPrice: 25,
+      sellPrice: 12,
+      soldAt: ["kiln"],
+    },
+    {
+      id: "brick",
+      name: { zh: "青砖", en: "Brick" },
+      type: "material",
+      buyPrice: 30,
+      sellPrice: 15,
+      soldAt: ["kiln"],
+    },
+    {
+      id: "firewood",
+      name: { zh: "柴火", en: "Firewood" },
+      type: "material",
+      buyPrice: 8,
+      sellPrice: 4,
+      soldAt: ["general_store"],
+      gather: {
+        action: "chop_tree",
+        amount: [1, 2],
+      },
+    },
+    {
+      id: "plant_ash",
+      name: { zh: "草木灰", en: "Plant ash" },
+      type: "fertilizer",
+      buyPrice: null,
+      sellPrice: 2,
+      soldAt: [],
+      // 制作方法
+      craft: {
+        station: "stove",  // 在哪做
+        inputs: { firewood: 1 },  // 需要的材料
+        output: 2,  // 做出来的东西
+      },
+    },
+    {
+      id: "mantou",
+      name: { zh: "馒头", en: "Steamed bun" },
+      type: "food",
+      buyPrice: 15,
+      sellPrice: 7,
+      soldAt: ["general_store"],
+      stamina: 20,  // 体力
+    },
+    {
+      id: "tea",
+      name: { zh: "一壶茶", en: "Pot of tea" },
+      type: "food",
+      buyPrice: 20,
+      sellPrice: 10,
+      soldAt: ["teahouse"],
+      stamina: 15,
+    },
+    {
+      id: "veg_porridge",
+      name: { zh: "菜粥", en: "Vegetable porridge" },
+      type: "food",
+      buyPrice: null,
+      sellPrice: 10,
+      soldAt: [],
+      stamina: 25,
+      craft: {
+        station: "stove",
+        inputs: { bok_choy: 1 },
+        output: 1,
+      },
+    },
+    {
+      id: "radish_soup",
+      name: { zh: "萝卜汤", en: "Radish soup" },
+      type: "food",
+      buyPrice: null,
+      sellPrice: 10,
+      soldAt: [],
+      stamina: 30,
+      craft: {
+        station: "stove",
+        inputs: { radish: 1 },
+        output: 1,
+      },
+    },
+    {
+      id: "roast_sweet_potato",
+      name: { zh: "烤红薯", en: "Roast sweet potato" },
+      type: "food",
+      buyPrice: null,
+      sellPrice: 10,
+      soldAt: [],
+      stamina: 40,
+      craft: {
+        station: "stove",
+        inputs: { sweet_potato: 1 },
+        output: 1,
+      },
+    },
+    {
+      id: "hoe",
+      name: { zh: "锄头", en: "Hoe" },
+      type: "tool",
+      buyPrice: null,
+      sellPrice: null,
+      soldAt: [],
+      action: "hoe",
+    },
+    {
+      id: "bucket",
+      name: { zh: "水桶", en: "Water bucket" },
+      type: "tool",
+      buyPrice: null,
+      sellPrice: null,
+      soldAt: [],
+      action: "water",
+    },
+    {
+      id: "sickle",
+      name: { zh: "镰刀", en: "Sickle" },
+      type: "tool",
+      buyPrice: null,
+      sellPrice: null,
+      soldAt: [],
+      action: "cut_grass",
+    },
+    {
+      id: "axe",
+      name: { zh: "斧头", en: "Axe" },
+      type: "tool",
+      buyPrice: null,
+      sellPrice: null,
+      soldAt: [],
+      action: "chop_tree",
+    },
+    {
+      id: "pickaxe",
+      name: { zh: "铁镐", en: "Pickaxe" },
+      type: "tool",
+      buyPrice: 800,
+      sellPrice: null,
+      soldAt: ["blacksmith"],
+      action: "mine_rock",
+    },
+  ],
+};

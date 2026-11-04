@@ -11,11 +11,14 @@ import { PLAIN_ACTIONS, TOOL_ACTIONS, type ToolAction } from '../world/actions';
 import { KeyboardControls } from '../input/Controls';
 import { Clock } from '../systems/Clock';
 import { currentTool, gameState, hasTool } from '../systems/GameState';
+import { SAVE_VERSION, type SaveData } from '../systems/save/saveFormat';
+import { clearTemp, saveTemp, saveToSlot } from '../systems/save/saveManager';
 import { findPath, type Cell } from '../systems/pathfind';
 import { localName, t } from '../locales/i18n';
-import { UI_EVENTS, type MenuOption } from './HudScene';
-import timeData from '../data/time.json';
-import itemsData from '../data/items.json';
+import { UI_EVENTS } from './HudScene';
+import type { MenuOption } from '../ui/ListMenu';
+import { TIME as timeData } from '../data/time';
+import { ITEMS as itemsData } from '../data/items';
 
 type Facing = 'down' | 'up' | 'left' | 'right';
 
@@ -48,7 +51,10 @@ export class FarmScene extends Phaser.Scene {
 
   create() {
     const s = SETTINGS.tileSize;
-    this.grid = FARM_MAP.map((row) => [...row]);
+    // 读档时用存档里的地图（开垦、浇水情况都在里面），新游戏用 farmMap.ts 里的
+    const load = gameState.pendingLoad;
+    gameState.pendingLoad = null;
+    this.grid = (load ? load.farm : FARM_MAP).map((row) => [...row]);
     const rows = this.grid.length;
     const cols = Math.max(...this.grid.map((r) => r.length));
     this.solids = this.physics.add.staticGroup();
@@ -74,6 +80,11 @@ export class FarmScene extends Phaser.Scene {
     this.player.body!.setSize(s * 0.5, s * 0.3).setOffset(s * 0.25, s * 0.65);
     this.player.setCollideWorldBounds(true);
     this.physics.add.collider(this.player, this.solids);
+    if (load) {
+      this.player.setPosition(load.player.x, load.player.y);
+      this.facing = (load.player.facing as Facing) ?? 'down';
+      this.player.setTexture(`player-${this.facing}`);
+    }
 
     // ---- 镜头 ----
     this.physics.world.setBounds(0, 0, cols * s, rows * s);
@@ -98,6 +109,18 @@ export class FarmScene extends Phaser.Scene {
     // ---- 时间 ----
     gameState.clock = new Clock();
     gameState.clock.onLateNight = () => this.faint('late');
+    if (load) Object.assign(gameState.clock, load.clock);
+
+    // ---- 存档 ----
+    gameState.snapshot = () => this.snapshot();
+    // 切到后台（切 app、锁屏、关网页）时，自动存一份临时进度
+    const onHide = () => {
+      if (document.visibilityState === 'hidden') void saveTemp(this.snapshot());
+    };
+    document.addEventListener('visibilitychange', onHide);
+    window.addEventListener('pagehide', onHide);
+    // 新游戏：马上存一次，这样存档位里就是这局新游戏了
+    if (!load) void saveToSlot(this.snapshot());
 
     this.events.once('shutdown', () => {
       ev.off(UI_EVENTS.worldAction, this.interactFacing, this);
@@ -105,6 +128,10 @@ export class FarmScene extends Phaser.Scene {
       ev.off(UI_EVENTS.worldSmart, this.smartFacing, this);
       ev.off(UI_EVENTS.worldTap, this.tapScreen, this);
       this.scale.off('resize', fitZoom);
+      document.removeEventListener('visibilitychange', onHide);
+      window.removeEventListener('pagehide', onHide);
+      gameState.snapshot = null;
+      this.input.keyboard?.removeAllKeys(true);
     });
   }
 
@@ -113,7 +140,7 @@ export class FarmScene extends Phaser.Scene {
     if (gameState.clock) gameState.clock.paused = paused;
     gameState.clock?.update(delta);
 
-    // 体力很低时走得慢（数值见 time.json 的 stamina）
+    // 体力很低时走得慢（数值见 time.ts 的 stamina）
     const slow = gameState.stamina <= timeData.stamina.lowThreshold ? timeData.stamina.lowSpeedMultiplier : 1;
     let { x, y } = paused ? { x: 0, y: 0 } : this.controls.moveVector();
 
@@ -229,6 +256,46 @@ export class FarmScene extends Phaser.Scene {
 
   private doPlainAction(id: string) {
     if (id === 'sleep') this.sleep();
+    if (id === 'saveOnly') void this.saveNow('msg.saved');
+  }
+
+  // =================================================================
+  //  存档
+  // =================================================================
+
+  /** 把现在的样子打包成存档 */
+  private snapshot(): SaveData {
+    const c = gameState.clock!;
+    return {
+      saveVersion: SAVE_VERSION,
+      savedAt: new Date().toISOString(),
+      slot: gameState.slot,
+      clock: { seasonIndex: c.seasonIndex, day: c.day, minutes: c.minutes },
+      player: { x: Math.round(this.player.x), y: Math.round(this.player.y), facing: this.facing },
+      cash: gameState.cash,
+      stamina: gameState.stamina,
+      maxStamina: gameState.maxStamina,
+      house: gameState.house,
+      tools: [...gameState.tools],
+      toolIndex: gameState.toolIndex,
+      inventory: { ...gameState.inventory },
+      farm: this.grid.map((row) => row.join('')),
+      npcs: { affection: { ...gameState.affection } },
+      flags: { ...gameState.flags },
+      quests: { ...gameState.quests },
+      clues: [...gameState.clues],
+    };
+  }
+
+  /** 存进当前存档位，然后显示一句话 */
+  private async saveNow(msgKey: string) {
+    try {
+      await saveToSlot(this.snapshot());
+      await clearTemp(); // 正式存过了，临时进度就不需要了
+      this.say(msgKey, { slot: gameState.slot });
+    } catch {
+      this.say('msg.saveFailed');
+    }
   }
 
   // =================================================================
@@ -237,10 +304,10 @@ export class FarmScene extends Phaser.Scene {
 
   private sleep() {
     const clock = gameState.clock!;
-    // 半夜前睡觉体力全满，过了半夜只恢复一部分（time.json 的 sleep）
+    // 半夜前睡觉体力全满，过了半夜只恢复一部分（time.ts 的 sleep）
     const ratio = clock.minutes < 24 * 60 ? timeData.sleep.beforeMidnightRestore : timeData.sleep.afterMidnightRestore;
     this.startNewDay(ratio);
-    this.say('msg.sleep');
+    void this.saveNow('msg.sleep'); // 睡觉 = 自动存档
   }
 
   private spendStamina(cost: number) {
@@ -248,7 +315,7 @@ export class FarmScene extends Phaser.Scene {
     if (gameState.stamina <= 0) this.faint('exhausted');
   }
 
-  /** 昏倒：late = 熬到凌晨两点，exhausted = 体力用完（数值见 time.json 的 faint） */
+  /** 昏倒：late = 熬到凌晨两点，exhausted = 体力用完（数值见 time.ts 的 faint） */
   private faint(reason: 'late' | 'exhausted') {
     if (reason === 'late') {
       this.startNewDay(timeData.faint.lateNight.nextDayStamina);

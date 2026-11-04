@@ -1,25 +1,43 @@
 /**
- * 标题画面：显示游戏名，按回车或点屏幕开始。
- * 游戏名在 src/locales/zh.json 的 game.title 里改。
+ * 标题画面：游戏名 + 「继续游戏 / 新游戏 / 导入存档」。
+ *  - 如果上次没存档就离开了（切到后台时自动存了临时进度），会先问要不要接着玩。
+ *  - 游戏名在 src/locales/zh.ts 的 game.title 里改。
  */
 import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
 import { font, t } from '../locales/i18n';
 import { isTouchDevice } from '../input/Controls';
+import { ListMenu, type MenuOption } from '../ui/ListMenu';
+import { pickTextFile } from '../ui/fileTransfer';
+import { describeClock } from '../systems/Clock';
+import { resetGameState } from '../systems/GameState';
+import type { SaveData } from '../systems/save/saveFormat';
+import { clearTemp, listSlots, loadTemp, parseImport, saveToSlot } from '../systems/save/saveManager';
 
 export class TitleScene extends Phaser.Scene {
+  private menu?: ListMenu;
+  private status!: Phaser.GameObjects.Text;
+  private title!: Phaser.GameObjects.Text;
+  private sub!: Phaser.GameObjects.Text;
+  private homeTip?: Phaser.GameObjects.Text;
+
   constructor() {
     super('Title');
   }
 
   create() {
     const res = window.devicePixelRatio || 1;
-    const title = this.add
-      .text(0, 0, t('game.title'), { fontFamily: font(), fontSize: '72px', color: SETTINGS.colors.hudText })
+    this.menu = undefined;
+    this.title = this.add
+      .text(0, 0, t('game.title'), { fontFamily: font(), fontSize: '64px', color: SETTINGS.colors.hudText })
       .setOrigin(0.5)
       .setResolution(res);
-    const sub = this.add
-      .text(0, 0, t('game.subtitle'), { fontFamily: 'Georgia, serif', fontSize: '22px', color: '#c9bfa8' })
+    this.sub = this.add
+      .text(0, 0, t('game.subtitle'), { fontFamily: 'Georgia, serif', fontSize: '20px', color: '#c9bfa8' })
+      .setOrigin(0.5)
+      .setResolution(res);
+    this.status = this.add
+      .text(0, 0, '', { fontFamily: font(), fontSize: '16px', color: '#e8c872', align: 'center' })
       .setOrigin(0.5)
       .setResolution(res);
     const press = this.add
@@ -28,25 +46,148 @@ export class TitleScene extends Phaser.Scene {
       .setResolution(res);
     this.tweens.add({ targets: press, alpha: 0.3, duration: 900, yoyo: true, repeat: -1 });
 
-    const layout = () => {
-      const { width, height } = this.scale;
-      title.setPosition(width / 2, height * 0.38);
-      sub.setPosition(width / 2, height * 0.38 + 60);
-      press.setPosition(width / 2, height * 0.75);
-    };
-    layout();
-    this.scale.on('resize', layout);
+    // iPhone / iPad 的 Safari、还没添加到主屏幕：提示添加（离线能玩、存档不容易被系统清掉）
+    this.homeTip = needsAddToHomeTip()
+      ? this.add
+          .text(0, 0, `${t('game.addToHomeTip')}\n${t('game.addToHomeHow')}`, {
+            fontFamily: font(), fontSize: '14px', color: '#c9bfa8', align: 'center', lineSpacing: 4,
+          })
+          .setOrigin(0.5, 1)
+          .setResolution(res)
+      : undefined;
 
+    this.layout(press);
+    const onResize = () => this.layout(press);
+    this.scale.on('resize', onResize);
+    this.events.once('shutdown', () => {
+      this.scale.off('resize', onResize);
+      this.menu?.destroy();
+    });
+
+    // 先「按任意键/点一下」，再出菜单（浏览器要先有一次操作，键盘和声音才能用）
     let started = false;
-    const start = () => {
+    const begin = () => {
       if (started) return;
       started = true;
-      this.scale.off('resize', layout);
-      this.scene.start('Farm');
-      this.scene.launch('Hud', { touch: isTouchDevice() });
+      press.destroy();
+      void this.firstMenu();
     };
-    // 按「确认」键开始（是哪个键见 settings.ts 的 keys.action）
-    for (const k of SETTINGS.keys.action) this.input.keyboard?.addKey(k).once('down', start);
-    this.input.once('pointerdown', start);
+    this.input.keyboard?.once('keydown', begin);
+    this.input.once('pointerdown', begin);
   }
+
+  private layout(press?: Phaser.GameObjects.Text) {
+    const { width, height } = this.scale;
+    this.title.setPosition(width / 2, height * 0.2);
+    this.sub.setPosition(width / 2, height * 0.2 + 52);
+    this.status.setPosition(width / 2, height * 0.2 + 90);
+    if (press?.active) press.setPosition(width / 2, height * 0.7);
+    this.menu?.centerAt(width / 2, height * 0.62);
+    this.homeTip?.setPosition(width / 2, height - 12).setWordWrapWidth(width - 32);
+  }
+
+  /** 换一个菜单显示 */
+  private show(options: MenuOption[], title?: string, onCancel?: () => void) {
+    this.menu?.destroy();
+    this.menu = new ListMenu(this, options, { title, width: 280, ownKeys: true, onCancel });
+    this.layout();
+  }
+
+  private say(text: string) {
+    this.status.setText(text);
+  }
+
+  // ---------------- 各个菜单 ----------------
+
+  /** 一打开：有没有没存就离开的临时进度？ */
+  private async firstMenu() {
+    const temp = await loadTemp();
+    if (!temp) return this.mainMenu();
+    const { date, time } = describeClock(temp.clock);
+    this.show(
+      [
+        { label: t('title.resume'), run: () => this.startGame(temp.slot, temp) },
+        { label: t('title.discard'), run: async () => { await clearTemp(); void this.mainMenu(); } },
+      ],
+      t('title.resumePrompt', { date, time }),
+    );
+  }
+
+  private async mainMenu() {
+    const slots = await listSlots();
+    const any = slots.some(Boolean);
+    this.show([
+      { label: t('title.continue'), run: () => this.slotMenu('continue'), disabled: !any },
+      { label: t('title.newGame'), run: () => this.slotMenu('new') },
+      { label: t('title.importSave'), run: () => this.importFlow() },
+    ]);
+  }
+
+  /** 选存档位：继续 / 新游戏 / 放导入的存档 */
+  private async slotMenu(mode: 'continue' | 'new' | 'import', imported?: SaveData) {
+    const slots = await listSlots();
+    const options: MenuOption[] = slots.map((save, i) => {
+      const n = i + 1;
+      const label = save
+        ? t('title.slotFull', { n, ...describeClock(save.clock), cash: save.cash })
+        : t('title.slotEmpty', { n });
+      return {
+        label,
+        disabled: mode === 'continue' && !save,
+        run: () => {
+          if (mode === 'continue') return this.startGame(n, save);
+          const go = () => (mode === 'new' ? this.startGame(n, null) : this.finishImport(n, imported!));
+          if (save) this.confirmOverwrite(n, go, () => this.slotMenu(mode, imported));
+          else go();
+        },
+      };
+    });
+    options.push({ label: t('title.back'), run: () => this.mainMenu() });
+    const titleKey = mode === 'continue' ? 'title.pickSlotContinue' : mode === 'new' ? 'title.pickSlotNew' : 'title.pickSlotImport';
+    this.show(options, t(titleKey), () => this.mainMenu());
+  }
+
+  private confirmOverwrite(n: number, yes: () => void, no: () => void) {
+    this.show(
+      [
+        { label: t('title.overwriteNo'), run: no },
+        { label: t('title.overwriteYes'), run: yes },
+      ],
+      t('title.overwrite', { n }),
+      no,
+    );
+  }
+
+  private async importFlow() {
+    this.say('');
+    const text = await pickTextFile();
+    if (!text) return;
+    const data = parseImport(text);
+    if (!data) return this.say(t('title.importBad'));
+    void this.slotMenu('import', data);
+  }
+
+  private async finishImport(n: number, data: SaveData) {
+    await saveToSlot({ ...data, slot: n });
+    this.say(t('title.importDone', { n }));
+    void this.mainMenu();
+  }
+
+  /** 进游戏。save = null 是新游戏 */
+  private startGame(slot: number, save: SaveData | null) {
+    resetGameState(slot, save);
+    this.scene.start('Farm');
+    this.scene.launch('Hud', { touch: isTouchDevice() });
+  }
+}
+
+/** 是不是 iPhone / iPad 上的 Safari，而且不是从主屏幕图标打开的 */
+function needsAddToHomeTip() {
+  const ua = navigator.userAgent;
+  const iOS = /iPhone|iPad|iPod/.test(ua) || (ua.includes('Macintosh') && navigator.maxTouchPoints > 1); // 新 iPad 会假装是 Mac
+  const standalone =
+    (navigator as Navigator & { standalone?: boolean }).standalone === true ||
+    window.matchMedia('(display-mode: standalone)').matches ||
+    window.matchMedia('(display-mode: fullscreen)').matches;
+  return iOS && !standalone;
 }

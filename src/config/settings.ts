@@ -6,8 +6,8 @@
  *  每一项后面都有中文说明。数字改大改小都可以试试，改坏了就改回原来的数。
  *
  *  其他好找的地方：
- *   - 游戏里显示的所有中文字：src/locales/zh.json
- *   - 作物、物品、打工、时间等数值：src/data/*.json
+ *   - 游戏里显示的所有中文字：src/locales/zh.ts
+ *   - 作物、物品、打工、时间等数值：src/data/*.ts
  *   - 农场地图长什么样：src/world/farmMap.ts
  */
 

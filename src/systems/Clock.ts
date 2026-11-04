@@ -1,9 +1,9 @@
 /**
  * 游戏时钟：管「现在是哪个季节、第几天、几点」。
- * 所有数值来自 src/data/time.json（比如现实多少秒 = 游戏一小时）。
- * 想让一天过得快一点或慢一点，改 time.json 里的 realSecondsPerGameHour。
+ * 所有数值来自 src/data/time.ts（比如现实多少秒 = 游戏一小时）。
+ * 想让一天过得快一点或慢一点，改 time.ts 里的 realSecondsPerGameHour。
  */
-import timeData from '../data/time.json';
+import { TIME as timeData } from '../data/time';
 import { localName, t } from '../locales/i18n';
 
 export class Clock {
@@ -75,4 +75,11 @@ export class Clock {
     const minute = String(this.minutes % 60).padStart(2, '0');
     return t('hud.time', { shichen: this.shichen, hour: this.hour, minute });
   }
+}
+
+/** 不用开游戏，直接把存档里的时间变成「春 · 第3天」「午时（11:20）」这样的字 */
+export function describeClock(c: { seasonIndex: number; day: number; minutes: number }) {
+  const clock = new Clock();
+  Object.assign(clock, c);
+  return { date: clock.dateText(), time: clock.timeText() };
 }

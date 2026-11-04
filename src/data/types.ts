@@ -1,0 +1,260 @@
+/**
+ * 数值表的「格式说明书」（TypeScript 类型）
+ * ================================================================
+ *  这个文件规定 src/data/ 里每张表长什么样：每个字段叫什么、填数字还是文字、单位是什么。
+ *  作用：你手改数值表时如果打错了（数字写成了文字、物品 id 拼错、漏了一项），
+ *  运行 npm run build 会直接报错，告诉你哪个文件第几行不对。
+ *
+ *  单位约定：
+ *    钱 = 文（1 两 = 1000 文）   时间 = 游戏小时 / 游戏天   体力 = 点
+ *    比例 = 0~1 的小数（0.2 = 20%）
+ *
+ *  加新物品 / 新作物 / 新店铺时：除了在表里加一条，还要把它的 id 加到下面对应的列表
+ *  （ItemId、CropId、ShopId……）里，不然别的表引用它时会报「拼错」。
+ */
+
+// ---------------- 通用 ----------------
+
+/** 名字：zh 中文，en 英文（英文版以后再填，可以先空着 ""） */
+export interface LocalName {
+  zh: string;
+  en: string;
+}
+
+export type SeasonId = 'spring' | 'summer' | 'autumn' | 'winter';
+
+/** 所有物品的 id。在 items.ts 加新物品时，也要加到这里。 */
+export type ItemId =
+  | 'bok_choy_seed' | 'bok_choy' | 'radish_seed' | 'radish' | 'potato_seed' | 'potato'
+  | 'pea_seed' | 'pea' | 'chive_seed' | 'chive' | 'cucumber_seed' | 'cucumber'
+  | 'eggplant_seed' | 'eggplant' | 'cowpea_seed' | 'cowpea' | 'chili_seed' | 'chili'
+  | 'watermelon_seed' | 'watermelon' | 'napa_cabbage_seed' | 'napa_cabbage' | 'taro_seed' | 'taro'
+  | 'sweet_potato_seed' | 'sweet_potato' | 'pumpkin_seed' | 'pumpkin' | 'spinach_seed' | 'spinach'
+  | 'garlic_seed' | 'garlic'
+  | 'wood' | 'thatch' | 'stone' | 'roof_tile' | 'brick' | 'firewood' | 'plant_ash'
+  | 'mantou' | 'tea' | 'veg_porridge' | 'radish_soup' | 'roast_sweet_potato'
+  | 'hoe' | 'bucket' | 'sickle' | 'axe' | 'pickaxe';
+
+/** 所有作物的 id。在 crops.ts 加新作物时，也要加到这里。 */
+export type CropId =
+  | 'bok_choy' | 'radish' | 'potato' | 'pea' | 'chive' | 'cucumber' | 'eggplant' | 'cowpea'
+  | 'chili' | 'watermelon' | 'napa_cabbage' | 'taro' | 'sweet_potato' | 'pumpkin' | 'spinach' | 'garlic';
+
+/** 店铺 id */
+export type ShopId = 'general_store' | 'carpenter' | 'blacksmith' | 'kiln' | 'teahouse' | 'market';
+
+/** 营业的地方（店铺 + 医馆） */
+export type PlaceId = 'general_store' | 'carpenter' | 'blacksmith' | 'kiln' | 'teahouse' | 'clinic';
+
+/** 镇上的人（先用职位当 id，等剧情窗口起了名字再换） */
+export type NpcId =
+  | 'clinic_doctor' | 'village_head' | 'store_keeper' | 'teahouse_keeper' | 'restaurant_owner'
+  | 'dock_manager' | 'tutor' | 'carpenter' | 'blacksmith' | 'night_watchman';
+
+/** 会花体力的动作 */
+export type StaminaAction = 'hoe' | 'water' | 'plant' | 'harvest' | 'cut_grass' | 'chop_tree' | 'mine_rock';
+
+/** 房子 id */
+export type HouseId = 'straw_hut' | 'thatched_cottage' | 'tiled_house' | 'courtyard';
+
+type Weather = 'sunny' | 'cloudy' | 'rain' | 'snow';
+
+// ---------------- time.ts：时间、体力、昏倒、天气 ----------------
+
+export interface TimeTable {
+  schemaVersion: number;
+  clock: {
+    /** 每天几点醒（游戏小时） */
+    dayStartHour: number;
+    /** 几点强制昏倒（26 = 第二天凌晨 2 点） */
+    dayEndHour: number;
+    /** 现实几秒 = 游戏一小时 */
+    realSecondsPerGameHour: number;
+    /** 时钟每次跳几分钟 */
+    tickMinutes: number;
+    pauseDuringDialogue: boolean;
+  };
+  shichenDisplay: { from: number; name: string }[];
+  calendar: {
+    seasons: { id: SeasonId; name: LocalName }[];
+    /** 每季几天 */
+    daysPerSeason: number;
+    /** 每季哪几天赶集 */
+    marketDays: number[];
+    /** 赶集日卖东西多赚的比例 */
+    marketSellBonus: number;
+  };
+  /** 营业时间 [开门, 关门]（游戏小时） */
+  openingHours: Record<PlaceId, [number, number]>;
+  stamina: {
+    base: number;
+    lowThreshold: number;
+    lowSpeedMultiplier: number;
+    /** 每个动作花几点体力 */
+    costs: Record<StaminaAction, number>;
+    /** 水桶装满能浇几格 */
+    wateringCanCapacity: number;
+  };
+  sleep: { beforeMidnightRestore: number; afterMidnightRestore: number };
+  faint: {
+    lateNight: { hour: number; nextDayStamina: number; fee: number; wakeAt: string; event: string };
+    exhausted: { nextDayStamina: number; fee: number; feeMaxFractionOfCash: number; wakeAt: string };
+  };
+  weather: {
+    firstDayOfSeason: Weather;
+    rainWatersCrops: boolean;
+    /** 各季节天气概率（加起来是 1） */
+    chances: Record<SeasonId, Record<Weather, number>>;
+  };
+}
+
+// ---------------- crops.ts：作物 ----------------
+
+export interface Crop {
+  id: CropId;
+  name: LocalName;
+  /** 哪些季节能种 */
+  seasons: SeasonId[];
+  /** 种子是哪个物品 */
+  seedItem: ItemId;
+  /** 种子价格（文） */
+  seedPrice: number;
+  /** 几天成熟 */
+  growDays: number;
+  /** 收完后几天再长（null = 收一次就没了） */
+  regrowDays: number | null;
+  /** 收获得到的物品 */
+  harvestItem: ItemId;
+  /** 一次收几个 */
+  yield: number;
+  /** 卖出价格（文） */
+  sellPrice: number;
+  /** 种子在哪买 */
+  seedSoldAt: ShopId;
+  /** 有几率多收：chance 几率（0~1），amount 多收几个 */
+  extraYield?: { chance: number; amount: number };
+}
+
+export interface CropsTable {
+  schemaVersion: number;
+  rules: {
+    needsWaterToGrow: boolean;
+    unwateredDies: boolean;
+    outOfSeasonWithers: boolean;
+    fertilizer: { item: ItemId; growDaysReduction: number; minReductionDays: number };
+  };
+  crops: Crop[];
+}
+
+// ---------------- items.ts：物品、店铺、货币 ----------------
+
+export interface Item {
+  id: ItemId;
+  name: LocalName;
+  /** 种类：种子 / 农产品 / 材料 / 食物 / 肥料 / 工具 */
+  type: 'seed' | 'crop' | 'material' | 'food' | 'fertilizer' | 'tool';
+  /** 买入价格（文，null = 店里买不到） */
+  buyPrice: number | null;
+  /** 卖出价格（文，null = 卖不掉） */
+  sellPrice: number | null;
+  /** 哪些店有卖 */
+  soldAt: ShopId[];
+  /** （种子）种下去长成什么 */
+  plants?: CropId;
+  /** （材料）怎么采集：用什么动作，一次得几个 [最少, 最多] */
+  gather?: { action: StaminaAction; amount: [number, number] };
+  /** （食物、肥料）怎么做：在哪做、要什么材料、做出几个 */
+  craft?: { station: string; inputs: Partial<Record<ItemId, number>>; output: number };
+  /** （食物）吃了回几点体力 */
+  stamina?: number;
+  /** （工具）做什么动作 */
+  action?: StaminaAction;
+}
+
+export interface ItemsTable {
+  schemaVersion: number;
+  currency: { unit: string; name: LocalName; bigUnit: { name: LocalName; value: number } };
+  shops: { id: ShopId; name: LocalName; buysCrops?: boolean }[];
+  items: Item[];
+}
+
+// ---------------- housing.ts：房子 ----------------
+
+export interface HouseLevel {
+  level: number;
+  id: HouseId;
+  name: LocalName;
+  /** 要什么材料、各多少个 */
+  materials: Partial<Record<ItemId, number>>;
+  /** 要花多少文 */
+  cost: number;
+  /** 体力上限 */
+  maxStamina: number;
+  /** 储物箱格数 */
+  storageSlots: number;
+  /** 解锁的家具或功能 */
+  unlocks: string[];
+}
+
+export interface HousingTable {
+  schemaVersion: number;
+  /** 盖房要几天 */
+  buildDays: number;
+  builder: NpcId;
+  levels: HouseLevel[];
+}
+
+// ---------------- jobs.ts：打工 ----------------
+
+export interface Job {
+  id: string;
+  name: LocalName;
+  /** 种类：送货 / 采集 / 体力活 / 坐班 / 手艺 / 主线线索 */
+  type: 'delivery' | 'gather' | 'heavy' | 'shift' | 'skill' | 'clue';
+  /** 谁给的活 */
+  giver: NpcId;
+  /** 在哪接活：告示栏 / 和人说话 */
+  source: 'notice_board' | 'talk';
+  /** 要花几个游戏小时 */
+  timeCostHours: number;
+  /** 花几点体力 */
+  staminaCost: number;
+  /** 报酬（文，null = 按别的规则算） */
+  reward: number | null;
+  /** 做完后好感度变化 */
+  affection: Partial<Record<NpcId, number>>;
+  repeatable: boolean;
+  /** 什么时候解锁（null = 一开始就有） */
+  unlock: { affection?: Partial<Record<NpcId, number>>; storyChapter?: number } | null;
+  /** 和主线线索的关联（等剧情窗口填） */
+  clueHook: string | null;
+  note: LocalName;
+  /** 几天内做完（0 = 当天） */
+  deadlineDays?: number;
+  /** 要交的东西 */
+  requires?: Partial<Record<ItemId, number>>;
+  /** 报酬倍数 */
+  rewardMultiplier?: number;
+}
+
+export interface JobsTable {
+  schemaVersion: number;
+  noticeBoard: { refreshHour: number; postsPerDay: [number, number] };
+  npcRoles: NpcId[];
+  jobs: Job[];
+}
+
+// ---------------- start.ts：开局 ----------------
+
+export interface StartTable {
+  schemaVersion: number;
+  startDay: { season: SeasonId; day: number };
+  /** 开局的钱（文） */
+  cash: number;
+  house: HouseId;
+  /** 开局背包：物品 → 数量 */
+  inventory: Partial<Record<ItemId, number>>;
+  farm: { width: number; height: number; preTilledTiles: number; debris: string[] };
+  /** 开局好感度 */
+  affection: Record<NpcId, number>;
+}

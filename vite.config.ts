@@ -1,9 +1,9 @@
 // 打包设置。一般不用动。
-// BASE：网站放在哪个路径下。GitHub Pages 上是 /cloud-ridge/，本地是 ./
+// BASE：网站放在哪个路径下。Cloudflare Pages 挂在根路径，所以默认是 /
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-const base = process.env.BASE ?? './';
+const base = process.env.BASE ?? '/';
 
 export default defineConfig({
   base,
