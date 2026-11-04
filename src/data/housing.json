@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "buildDays": 2,
+  "builder": "carpenter",
+  "levels": [
+    {
+      "level": 0,
+      "id": "straw_hut",
+      "name": {
+        "zh": "草棚",
+        "en": "Straw hut"
+      },
+      "materials": {},
+      "cost": 0,
+      "maxStamina": 100,
+      "storageSlots": 12,
+      "unlocks": [
+        "bed",
+        "small_chest"
+      ]
+    },
+    {
+      "level": 1,
+      "id": "thatched_cottage",
+      "name": {
+        "zh": "茅屋",
+        "en": "Thatched cottage"
+      },
+      "materials": {
+        "wood": 40,
+        "thatch": 30
+      },
+      "cost": 400,
+      "maxStamina": 110,
+      "storageSlots": 24,
+      "unlocks": [
+        "stove"
+      ]
+    },
+    {
+      "level": 2,
+      "id": "tiled_house",
+      "name": {
+        "zh": "瓦房",
+        "en": "Tiled house"
+      },
+      "materials": {
+        "wood": 100,
+        "stone": 40,
+        "roof_tile": 60
+      },
+      "cost": 3000,
+      "maxStamina": 130,
+      "storageSlots": 36,
+      "unlocks": [
+        "cabinet",
+        "indoor_visits"
+      ]
+    },
+    {
+      "level": 3,
+      "id": "courtyard",
+      "name": {
+        "zh": "小院",
+        "en": "Courtyard home"
+      },
+      "materials": {
+        "wood": 150,
+        "stone": 100,
+        "brick": 80
+      },
+      "cost": 8000,
+      "maxStamina": 160,
+      "storageSlots": 36,
+      "unlocks": [
+        "courtyard_wall",
+        "well",
+        "cellar"
+      ]
+    }
+  ]
+}

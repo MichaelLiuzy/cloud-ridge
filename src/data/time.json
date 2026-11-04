@@ -1,0 +1,190 @@
+{
+  "schemaVersion": 1,
+  "clock": {
+    "dayStartHour": 6,
+    "dayEndHour": 26,
+    "realSecondsPerGameHour": 45,
+    "tickMinutes": 10,
+    "pauseDuringDialogue": true
+  },
+  "shichenDisplay": [
+    {
+      "from": 23,
+      "name": "子时"
+    },
+    {
+      "from": 1,
+      "name": "丑时"
+    },
+    {
+      "from": 3,
+      "name": "寅时"
+    },
+    {
+      "from": 5,
+      "name": "卯时"
+    },
+    {
+      "from": 7,
+      "name": "辰时"
+    },
+    {
+      "from": 9,
+      "name": "巳时"
+    },
+    {
+      "from": 11,
+      "name": "午时"
+    },
+    {
+      "from": 13,
+      "name": "未时"
+    },
+    {
+      "from": 15,
+      "name": "申时"
+    },
+    {
+      "from": 17,
+      "name": "酉时"
+    },
+    {
+      "from": 19,
+      "name": "戌时"
+    },
+    {
+      "from": 21,
+      "name": "亥时"
+    }
+  ],
+  "calendar": {
+    "seasons": [
+      {
+        "id": "spring",
+        "name": {
+          "zh": "春",
+          "en": "Spring"
+        }
+      },
+      {
+        "id": "summer",
+        "name": {
+          "zh": "夏",
+          "en": "Summer"
+        }
+      },
+      {
+        "id": "autumn",
+        "name": {
+          "zh": "秋",
+          "en": "Autumn"
+        }
+      },
+      {
+        "id": "winter",
+        "name": {
+          "zh": "冬",
+          "en": "Winter"
+        }
+      }
+    ],
+    "daysPerSeason": 28,
+    "marketDays": [
+      5,
+      12,
+      19,
+      26
+    ],
+    "marketSellBonus": 0.2
+  },
+  "openingHours": {
+    "general_store": [
+      9,
+      17
+    ],
+    "carpenter": [
+      9,
+      17
+    ],
+    "blacksmith": [
+      9,
+      17
+    ],
+    "kiln": [
+      9,
+      17
+    ],
+    "teahouse": [
+      10,
+      22
+    ],
+    "clinic": [
+      8,
+      18
+    ]
+  },
+  "stamina": {
+    "base": 100,
+    "lowThreshold": 15,
+    "lowSpeedMultiplier": 0.7,
+    "costs": {
+      "hoe": 2,
+      "water": 1,
+      "plant": 0,
+      "harvest": 0,
+      "cut_grass": 1,
+      "chop_tree": 6,
+      "mine_rock": 4
+    },
+    "wateringCanCapacity": 20
+  },
+  "sleep": {
+    "beforeMidnightRestore": 1.0,
+    "afterMidnightRestore": 0.9
+  },
+  "faint": {
+    "lateNight": {
+      "hour": 26,
+      "nextDayStamina": 0.7,
+      "fee": 0,
+      "wakeAt": "home",
+      "event": "night_watchman_escort"
+    },
+    "exhausted": {
+      "nextDayStamina": 0.5,
+      "fee": 50,
+      "feeMaxFractionOfCash": 0.1,
+      "wakeAt": "clinic"
+    }
+  },
+  "weather": {
+    "firstDayOfSeason": "sunny",
+    "rainWatersCrops": true,
+    "chances": {
+      "spring": {
+        "sunny": 0.5,
+        "cloudy": 0.25,
+        "rain": 0.25,
+        "snow": 0
+      },
+      "summer": {
+        "sunny": 0.55,
+        "cloudy": 0.15,
+        "rain": 0.3,
+        "snow": 0
+      },
+      "autumn": {
+        "sunny": 0.6,
+        "cloudy": 0.25,
+        "rain": 0.15,
+        "snow": 0
+      },
+      "winter": {
+        "sunny": 0.45,
+        "cloudy": 0.3,
+        "rain": 0.05,
+        "snow": 0.2
+      }
+    }
+  }
+}

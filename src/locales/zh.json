@@ -1,0 +1,39 @@
+{
+  "_说明": "游戏里显示的所有中文字都在这里。只改冒号右边引号里的字，左边的英文名字不要动。{xxx} 是会被自动替换的内容，比如 {day} 会变成第几天。",
+  "game": {
+    "title": "云岭",
+    "subtitle": "Cloud Ridge",
+    "pressToStart": "按回车键或点一下屏幕开始",
+    "rotateDevice": "请把手机横过来玩"
+  },
+  "hud": {
+    "date": "{season} · 第{day}天",
+    "time": "{shichen}（{hour}:{minute}）",
+    "money": "{amount} {unit}"
+  },
+  "buttons": {
+    "action": "使用",
+    "bag": "背包",
+    "menu": "菜单"
+  },
+  "hint": {
+    "nothing": "这里什么也没有。",
+    "tilled": "一块开垦好的田地，可以种东西了。",
+    "grass": "一片野草地。开垦之后就能种菜。",
+    "weed": "杂草长得乱七八糟，得用镰刀割掉。",
+    "rock": "一块石头，挡在地里。",
+    "stump": "一截老树桩，要用斧头才砍得动。",
+    "fireDebris": "烧焦的木头和瓦片……是那场火留下的。",
+    "water": "一口小池塘，水很清。",
+    "tree": "一棵大树。",
+    "fence": "旧篱笆。",
+    "hut": "镇上的人帮忙搭的草棚。今晚可以在这里过夜。",
+    "path": "通往镇上的小路。"
+  },
+  "msg": {
+    "bagNotReady": "背包还在做，下一版就有。",
+    "menuNotReady": "菜单还在做，下一版就有。",
+    "lateNightFaint": "已经凌晨两点了……你眼前一黑，倒了下去。",
+    "newDay": "新的一天开始了。"
+  }
+}
