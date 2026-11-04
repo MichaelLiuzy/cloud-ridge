@@ -115,6 +115,6 @@ public/icons/          主屏幕图标
 
 - Phaser 3 + TypeScript + Vite，PWA（vite-plugin-pwa）离线。
 - 本地运行：`npm install`，然后 `npm run dev`；打包：`npm run build`（会先做类型检查）。
-- 发布：Cloudflare Pages 连接本仓库，构建命令 `npm run build`，输出目录 `dist`，Node 版本见 `.node-version`。推到 `main` 自动发布。
+- 发布：Cloudflare（Workers & Pages）连接本仓库，构建命令 `npm run build`，部署命令 `npx wrangler deploy`（设置在 `wrangler.jsonc`），Node 版本见 `.node-version`。推到 `main` 自动发布。
 - 存档：带 `saveVersion` 的 JSON，存在 IndexedDB（`src/systems/save/storage.ts`，转 app 时只换这一层）。改存档格式时把 `SAVE_VERSION` 加 1，并在 `saveFormat.ts` 的 `MIGRATIONS` 里写升级步骤。
 - 以后转 app：iOS 用 Capacitor，Mac 用 Tauri 套壳，不用重写。

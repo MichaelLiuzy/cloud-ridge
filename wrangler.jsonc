@@ -1,0 +1,11 @@
+// Cloudflare 发布设置（Workers 静态网站）。一般不用动。
+// Cloudflare 会先运行 npm run build 打包，再把 dist 文件夹发布出去。
+{
+  "name": "cloud-ridge",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  },
+  "workers_dev": true
+}
