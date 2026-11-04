@@ -103,6 +103,7 @@ src/
     fileTransfer.ts    导出 / 导入存档文件
   input/Controls.ts    键盘、鼠标、手机摇杆和点击，统一成同一套指令
 public/icons/          主屏幕图标
+art_raw/               ★ ChatGPT 生成的美术原图放这里（命名规则见 art_raw/README.md）
 ```
 
 带 ★ 的是你最可能想改的。
