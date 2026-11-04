@@ -41,6 +41,11 @@ export class BootScene extends Phaser.Scene {
       g.fillStyle(0x000000, 0.18);
       for (let y = 4; y < s; y += 8) g.fillRect(2, y, s - 4, 2);
     });
+    bake('watered', s, s, () => {
+      g.fillStyle(c.watered).fillRect(0, 0, s, s);
+      g.fillStyle(0x000000, 0.2);
+      for (let y = 4; y < s; y += 8) g.fillRect(2, y, s - 4, 2);
+    });
     bake('water', s, s, () => {
       g.fillStyle(c.water).fillRect(0, 0, s, s);
       g.fillStyle(0xffffff, 0.25).fillRect(s * 0.2, s * 0.35, s * 0.3, 2).fillRect(s * 0.55, s * 0.7, s * 0.25, 2);

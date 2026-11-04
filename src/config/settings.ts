@@ -23,6 +23,8 @@ export const SETTINGS = {
   // ---------------- 主角 ----------------
   /** 主角走路速度（每秒走多少像素）。32 像素 = 一格。 */
   playerSpeed: 110,
+  /** 点了远处的东西时，自动走过去的速度（一般和走路一样） */
+  autoWalkSpeed: 110,
   /** 斜着走时是否和直走一样快（true = 一样快，更自然）。 */
   normalizeDiagonal: true,
 
@@ -36,13 +38,20 @@ export const SETTINGS = {
     down: ['S', 'DOWN'],
     left: ['A', 'LEFT'],
     right: ['D', 'RIGHT'],
-    /** 确认 / 交互（和人说话、使用工具、翻对话） */
+    /** 交互 / 确认：和人说话、查看东西、翻对话、在小菜单里选中 */
     action: ['ENTER'],
+    /** 用手上拿着的工具（锄地、浇水、割草……），对着面前那一格 */
+    useTool: ['SPACE'],
+    /** 关掉小菜单或对话框 */
+    cancel: ['ESC'],
     /** 打开背包 */
     bag: ['Q'],
-    /** 打开菜单 */
-    menu: ['ESC'],
-    /** 切换工具：按 1~9 选工具栏第几格 */
+    /** 打开菜单（先没做） */
+    menu: ['M'],
+    /**
+     * 切换工具：按 1~9 选工具栏第几格。
+     * 小菜单打开时，上面的 up/down（W S 或方向键上下）用来移动选项，action（回车）确认。
+     */
     toolSlots: ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE'],
   },
 
@@ -52,7 +61,9 @@ export const SETTINGS = {
     joystickRadius: 60,
     /** 手指只是轻轻碰一下、没超过这个距离时不走路（防误触）。 */
     joystickDeadZone: 8,
-    /** 右下角「使用」大按钮的半径 */
+    /** 手指按下又很快抬起、几乎没移动，算作「点一下」而不是摇杆（毫秒） */
+    tapMaxMs: 280,
+    /** 右下角「使用」大按钮的半径（按一下 = 对面前那一格做最合适的事） */
     actionButtonRadius: 46,
     /** 背包、菜单小按钮的半径 */
     smallButtonRadius: 28,
@@ -70,6 +81,8 @@ export const SETTINGS = {
     grassDark: 0x5f8a42,
     path: 0xc8a97a,
     tilled: 0x7a5534,
+    /** 浇过水的田（颜色深一点） */
+    watered: 0x4f3622,
     water: 0x4a7fa8,
     tree: 0x2f5a35,
     treeTrunk: 0x5a3d24,
@@ -87,6 +100,10 @@ export const SETTINGS = {
     /** 对话框底色和文字颜色 */
     dialogBg: 0x1d2b24,
     dialogText: '#f3ead7',
+    /** 小菜单里当前选中那一项的底色 */
+    menuHighlight: 0x6a5a30,
+    /** 工具栏里当前拿着的工具的边框颜色 */
+    toolSelected: 0xe8c872,
     hudText: '#f3ead7',
   },
 

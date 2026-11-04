@@ -15,7 +15,7 @@ document.title = t('game.title');
 const rotate = document.getElementById('rotate');
 if (rotate) rotate.textContent = t('game.rotateDevice');
 
-new Phaser.Game({
+const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',
   backgroundColor: SETTINGS.backgroundColor,
@@ -25,6 +25,9 @@ new Phaser.Game({
   input: { activePointers: 3 },
   scene: [BootScene, TitleScene, FarmScene, HudScene],
 });
+
+// 方便调试：在浏览器控制台里可以用 __game 看游戏状态
+(window as unknown as { __game: Phaser.Game }).__game = game;
 
 // 离线功能：第一次打开后把游戏存到手机/电脑里，之后没网也能玩
 // （嵌在别的网页里预览时不注册，因为那里不支持）

@@ -7,6 +7,7 @@
  *  字符对照表：
  *    .  草地（能走）        ,  深色草地（能走，只是装饰）
  *    =  小路（能走）        o  开垦好的田地（能走）
+ *    O  浇过水的田（能走，第二天会变回 o）
  *    P  主角出生的位置（那一格是草地）
  *    D  草棚门口（能走）
  *    T  树（挡路）          ~  水塘（挡路）
@@ -51,6 +52,7 @@ export const TILE_TYPES: Record<string, { kind: string; solid: boolean; hint: st
   '=': { kind: 'path', solid: false, hint: 'hint.path' },
   'D': { kind: 'path', solid: false, hint: 'hint.hut' },
   'o': { kind: 'tilled', solid: false, hint: 'hint.tilled' },
+  'O': { kind: 'watered', solid: false, hint: 'hint.tilled' },
   'T': { kind: 'tree', solid: true, hint: 'hint.tree' },
   '~': { kind: 'water', solid: true, hint: 'hint.water' },
   '#': { kind: 'fence', solid: true, hint: 'hint.fence' },
