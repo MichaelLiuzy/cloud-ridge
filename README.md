@@ -67,6 +67,9 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
 | 想改的东西 | 打开这个文件 | 找哪一项 |
 |---|---|---|
 | 走路速度 | `src/config/settings.ts` | `playerSpeed` |
+| 开场过场不操作时，等几秒自动翻页 | `src/config/settings.ts` | `cutscene.autoAdvanceMs` |
+| 过场某一格单独停久一点或短一点 | `src/data/cutscenes.ts` | 那一格的 `autoMs` |
+| 过场时最上方「按任意键翻页」的提示：文字 / 颜色、透明度、闪烁快慢 | `src/locales/zh.ts`、`src/config/settings.ts` | `cutscene.hintKey`、`cutscene.hintTap`；`cutscene.hintColor`、`hintAlpha`、`hintBlinkMs` |
 | 被墙角、门框卡住时自动往通道挪多少（贴边滑入） | `src/config/settings.ts` | `cornerSlidePixels`（0 = 关掉） |
 | 按键（比如把背包改成 B） | `src/config/settings.ts` | `keys` 里的 `bag: ['Q']` 改成 `['B']` |
 | 手机摇杆、按钮大小和透明度 | `src/config/settings.ts` | `touch` |

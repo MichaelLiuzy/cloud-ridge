@@ -1,7 +1,9 @@
 /**
  * 剧情场景：开场的漫画式过场 + 医馆对话。
- *  - 过场一次放一格（数据在 src/data/cutscenes.ts）。点屏幕、按回车或空格只翻一格：
+ *  - 过场一次放一格（数据在 src/data/cutscenes.ts）。按任意键、点屏幕只翻一格：
  *    这一格的出场效果还没播完，就先直接播完；播完了才翻到下一格。没有「一键跳过整段」。
+ *  - 不操作的话，出场效果播完后等几秒自动翻（settings.ts 的 cutscene.autoAdvanceMs，每格可单独设 autoMs）。
+ *  - 过场时屏幕最上方有一行淡淡的「按任意键翻页」，进入对话就消失。
  *  - 过场最后一格的图留着当医馆对话的背景，对话剧本在 src/story/zh/prologue.ink。
  *  - 对话播完 → 黑屏淡出 → 进农场。
  */
@@ -23,8 +25,12 @@ export class StoryScene extends Phaser.Scene {
   private index = -1;
   /** 这一格的出场效果（播完前点一下会直接播完） */
   private effects: Phaser.Tweens.Tween[] = [];
-  /** 这一格什么时候出现的（停留时间没到时点了也不翻） */
+  /** 这一格什么时候出现的（没到 minShowMs 时点了也不翻） */
   private shownAt = 0;
+  /** 这一格的出场效果什么时候播完的（自动翻页从这时开始计时；还没播完是 null） */
+  private settledAt: number | null = null;
+  /** 最上方「按任意键翻页」的提示 */
+  private hint?: Phaser.GameObjects.Text;
   private layer!: Phaser.GameObjects.Container;
   private dialogue?: DialogueBox;
   private leaving = false;
@@ -41,12 +47,18 @@ export class StoryScene extends Phaser.Scene {
     this.index = -1;
     this.effects = [];
     this.leaving = false;
+    this.settledAt = null;
     this.dialogue = new DialogueBox(this);
+    this.showHint();
 
-    // 点一下 / 回车 / 空格：只前进一步。按住不放不会连着翻（忽略按键的自动重复）
+    // 过场：任意键 / 点一下只前进一格；医馆对话：回车、空格、点一下。
+    // 按住不放不会连着翻（忽略按键的自动重复）；输入名字时打的字不算
     const onKey = (e: KeyboardEvent) => {
-      if (e.repeat) return;
-      if (['Enter', ' ', 'Spacebar'].includes(e.key)) this.step();
+      if (e.repeat || e.isComposing) return;
+      if ((e.target as HTMLElement | null)?.tagName === 'INPUT') return;
+      if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab'].includes(e.key)) return;
+      if (this.dialogue?.active && !['Enter', ' ', 'Spacebar'].includes(e.key)) return;
+      this.step();
     };
     this.input.keyboard?.on('keydown', onKey);
     this.input.on('pointerdown', () => this.step());
@@ -73,13 +85,40 @@ export class StoryScene extends Phaser.Scene {
       for (const tw of running) tw.complete();
       return;
     }
-    const hold = this.frames[this.index]?.holdMs ?? 0;
-    if (this.time.now - this.shownAt < hold) return;
+    if (this.time.now - this.shownAt < SETTINGS.cutscene.minShowMs) return;
     this.next();
+  }
+
+  /** 自动翻页：出场效果播完后开始计时，到时间没操作就翻下一格（对话里、最后一格不翻） */
+  update() {
+    if (this.leaving || this.dialogue?.active || this.index < 0 || this.index >= this.frames.length - 1) return;
+    if (this.effects.some((tw) => tw.isPlaying())) return;
+    const now = this.time.now;
+    if (this.settledAt === null) this.settledAt = now;
+    const wait = this.frames[this.index].autoMs ?? SETTINGS.cutscene.autoAdvanceMs;
+    if (now - this.settledAt >= wait) this.next();
+  }
+
+  /** 屏幕最上方居中的一行淡淡的提示，慢慢闪 */
+  private showHint() {
+    const cfg = SETTINGS.cutscene;
+    const text = t(isTouchDevice() ? 'cutscene.hintTap' : 'cutscene.hintKey');
+    this.hint = pixelText(this, SETTINGS.gameWidth / 2, 2, text, { color: cfg.hintColor }).setOrigin(0.5, 0).setAlpha(cfg.hintAlpha).setDepth(100);
+    // 1 像素的深色影子：亮的画面上也看得清
+    this.hint.setShadow(1, 1, PALETTE.ink, 0, false, true);
+    this.tweens.add({ targets: this.hint, alpha: cfg.hintAlpha * 0.35, duration: cfg.hintBlinkMs / 2, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+  }
+
+  private hideHint() {
+    if (!this.hint) return;
+    this.tweens.killTweensOf(this.hint);
+    this.hint.destroy();
+    this.hint = undefined;
   }
 
   private next() {
     this.index += 1;
+    this.settledAt = null;
     if (this.index >= this.frames.length) return;
     const frame = this.frames[this.index];
     this.showFrame(frame);
@@ -164,6 +203,7 @@ export class StoryScene extends Phaser.Scene {
   /** 医馆对话（中途退出的话，下次从这段对话的开头重来） */
   private startClinic() {
     if (this.dialogue?.active) return;
+    this.hideHint();
     gameState.prologue = 'clinic';
     void saveToSlot(currentSave());
     this.dialogue!.play('clinic', () => this.toFarm());
