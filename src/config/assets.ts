@@ -38,6 +38,8 @@ export const ASSETS: Record<string, AssetSpec> = {
 
   /** 周里正站立（序章在农场里教操作） */
   npc_zhou_stand: { w: 16, h: 32, frames: DIRS, color: 'indigo', shape: 'char' },
+  npc_doctor_stand: { w: 16, h: 32, frames: DIRS, color: 'vermilion', shape: 'char' },
+  npc_fan_stand: { w: 16, h: 32, frames: DIRS, color: 'ochre', shape: 'char' },
 
   // ---- 头像 64×64：平常、笑、担忧、惊讶 ----
   portrait_player: { w: 64, h: 64, frames: MOODS, color: 'leaf', shape: 'portrait' },

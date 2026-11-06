@@ -14,6 +14,7 @@ export const zh = {
     title: "云岭",
     subtitle: "Cloud Ridge",
     pressToStart: "按回车键或点一下屏幕",
+    version: "版本 {v}",
     rotateDevice: "请把手机横过来玩",
     // iPhone / iPad 用 Safari 打开、还没「添加到主屏幕」时，标题画面下方显示这两行
     addToHomeTip: "添加到主屏幕后可以离线玩，存档也更安全。",

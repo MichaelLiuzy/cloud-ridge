@@ -11,11 +11,13 @@
     "tile：true 表示是地面纹理：不抠背景，只用品红空隙分格，每格拉满。",
     "full：true 表示是整张画（过场 CG）：不抠背景，从正中裁成目标比例（320×180 = 16:9）再缩小。",
     "skin：true 表示图里有人的皮肤：套色时皮肤只用调色板里的 5 个肤色（见 tools/art.mjs 的 TUNING.skin），脸不会发橙。",
+    "uniformScale：true 表示整张图只用一个缩放比例：按最大的那一格算，所有格子用同一个比例缩小，再贴着格子底部居中。不写的话每一格会各自放大到撑满格子（种子会被放得和成熟的菜一样大）。作物、人物各个朝向、头像都要开。",
     "上面的规则从上往下找，用第一条匹配上的。"
   ],
   "rules": [
     {
       "name": "player_stand",
+      "uniformScale": true,
       "skin": true,
       "rows": 1, "cols": 4, "cell": [16, 32],
       "frames": ["down", "left", "right", "up"],
@@ -23,6 +25,7 @@
     },
     {
       "name": "player_walk",
+      "uniformScale": true,
       "skin": true,
       "rows": 4, "cols": 5, "cell": [16, 32],
       "frames": [
@@ -35,6 +38,7 @@
     },
     {
       "name": "npc_{id}_stand",
+      "uniformScale": true,
       "skin": true,
       "rows": 1, "cols": 4, "cell": [16, 32],
       "frames": ["down", "left", "right", "up"],
@@ -42,6 +46,7 @@
     },
     {
       "name": "npc_{id}_walk",
+      "uniformScale": true,
       "skin": true,
       "rows": 4, "cols": 5, "cell": [16, 32],
       "frames": [
@@ -98,6 +103,7 @@
     },
     {
       "name": "crop_{id}",
+      "uniformScale": true,
       "rows": 1, "cols": 5, "cell": [16, 32],
       "frames": ["seed", "sprout", "half", "ripe", "withered"],
       "out": "crops/crop_{id}.png"
@@ -116,6 +122,7 @@
     },
     {
       "name": "portrait_{id}",
+      "uniformScale": true,
       "skin": true,
       "rows": 1, "cols": 4, "cell": [64, 64],
       "frames": ["normal", "smile", "worried", "surprised"],

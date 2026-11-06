@@ -102,9 +102,25 @@ function main() {
   }
 
   fs.writeFileSync(path.join(OUT_DIR, 'manifest.json'), JSON.stringify(manifest, null, 2));
+  warnUnregistered(Object.keys(manifest.textures));
   writePreview(report);
   console.log(`\n整理完：${Object.keys(manifest.textures).length} 张图 → ${path.relative(ROOT, OUT_DIR)}/`);
   console.log(`预览页：${path.relative(ROOT, path.join(PREVIEW_DIR, 'index.html'))}`);
+}
+
+/**
+ * 整理出来的图，如果 src/config/assets.ts 里没有登记，游戏里大多用不上（比如人物图、头像）。
+ * 打一行警告，免得「图传了却看不到」。作物图按 src/data/crops.ts 自动登记，不用管。
+ */
+function warnUnregistered(keys) {
+  const assetsFile = path.join(ROOT, 'src', 'config', 'assets.ts');
+  if (!fs.existsSync(assetsFile)) return;
+  const text = fs.readFileSync(assetsFile, 'utf8');
+  for (const key of keys) {
+    if (key.startsWith('crop_')) continue;
+    if (new RegExp(`\\b${key}\\s*:`).test(text)) continue;
+    console.log(`⚠ ${key} 整理好了，但 src/config/assets.ts 里没有登记，游戏里可能用不上。请在 ASSETS 里加一行。`);
+  }
 }
 
 /** 按文件名找规则，{id} 匹配英文小写、数字和下划线 */
@@ -139,8 +155,13 @@ function processFile(file, rule, id) {
   const { cells, split } = splitCells(bg, img.w, img.h, rule.rows, rule.cols);
 
   // 4~5. 每格：裁边 → 缩小 → 硬边 → 套色
-  const frames = cells.map((c) => {
-    const box = contentBox(bg, img.w, c);
+  const boxes = cells.map((c) => contentBox(bg, img.w, c));
+  // uniformScale：整张图只用一个缩放比例（按最大的那一格算），种子和成熟的菜、各个朝向之间原有的大小差别保留下来
+  const shared = rule.uniformScale
+    ? Math.min(...boxes.filter(Boolean).map((b) => Math.min(cw / b.w, ch / b.h)))
+    : null;
+  const frames = cells.map((c, ci) => {
+    const box = boxes[ci];
     if (!box) return blank(cw, ch);
     if (isFull) {
       const scale = Math.min(box.w / cw, box.h / ch);
@@ -154,7 +175,7 @@ function processFile(file, rule, id) {
       const inner = { x: box.x + ix, y: box.y + iy, w: Math.max(1, box.w - 2 * ix), h: Math.max(1, box.h - 2 * iy) };
       return quantize(hardEdge(resize(img, inner, cw, ch, false), true), rule.skin);
     }
-    const scale = Math.min(cw / box.w, ch / box.h);
+    const scale = shared ?? Math.min(cw / box.w, ch / box.h);
     const w = Math.max(1, Math.min(cw, Math.round(box.w * scale)));
     const h = Math.max(1, Math.min(ch, Math.round(box.h * scale)));
     const small = quantize(hardEdge(resize(img, box, w, h, true), false), rule.skin);

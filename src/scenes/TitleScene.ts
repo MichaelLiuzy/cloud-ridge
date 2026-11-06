@@ -38,6 +38,8 @@ export class TitleScene extends Phaser.Scene {
     this.status = pixelText(this, W / 2, 76, '', { color: SETTINGS.ui.toolSelected, align: 'center' }).setOrigin(0.5);
     const press = pixelText(this, W / 2, needsAddToHomeTip() ? 104 : 124, t('game.pressToStart'), { color: ui.titleSubText }).setOrigin(0.5);
     this.tweens.add({ targets: press, alpha: 0.3, duration: 900, yoyo: true, repeat: -1 });
+    // 右上角淡淡的版本号：和汇报里的提交编号对得上，就说明手机/电脑上已经是最新版
+    pixelText(this, W - 4, 3, t('game.version', { v: __BUILD_VERSION__ }), { color: ui.titleSubText }).setOrigin(1, 0).setAlpha(0.5);
 
     // iPhone / iPad 的 Safari、还没添加到主屏幕：提示添加（离线能玩、存档不容易被系统清掉）
     this.homeTip = needsAddToHomeTip()
