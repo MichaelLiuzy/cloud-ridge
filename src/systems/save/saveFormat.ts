@@ -6,7 +6,10 @@
  *  读档时会一步一步升级，所以很早以前的存档也能继续玩。
  */
 
-export const SAVE_VERSION = 4;
+import { FARM_MAP } from '../../world/farmMap';
+import type { PlantedCrop } from '../farming/crops';
+
+export const SAVE_VERSION = 5;
 
 /** 存档里存了什么 */
 export interface SaveData {
@@ -23,7 +26,20 @@ export interface SaveData {
   cash: number;
   stamina: number;
   maxStamina: number;
-  house: string;
+  /** 重建老宅到第几阶段（0 = 住草棚、废墟没清完；1 = 废墟清完；2~4 = 木匠修好的阶段） */
+  houseStage: number;
+  /** 废墟清了几格 */
+  ruinsCleared: number;
+  /** 木匠正在修第几阶段、还剩几天（没在修是 null） */
+  build: { stage: number; daysLeft: number } | null;
+  /** 找到了哪几片日记（按修房阶段记） */
+  diaryFound: number[];
+  /** 杂货铺上门收货开通了没有 */
+  pickup: { unlocked: boolean };
+  /** 收货筐里放的东西 */
+  basket: Record<string, number>;
+  /** 地里种的东西：「x,y」→ 作物 */
+  crops: Record<string, PlantedCrop>;
   tools: string[];
   toolIndex: number;
   /** 背包：物品 id → 数量 */
@@ -81,6 +97,31 @@ const MIGRATIONS: Record<number, (old: any) => any> = {
     inventory: { ...old.inventory, notebook: 1 },
     notebook: { controls: ['move', 'tools', 'interact', 'save', 'menu'], learned: [] },
   }),
+  // 4 → 5：重建老宅、种菜、收货服务。
+  // 旧的住所等级换成修房阶段（草棚 = 废墟还没清）；地图上补上老宅废墟；开局物资当作已经给过。
+  4: (old) => {
+    const stage = ({ straw_hut: 0, thatched_cottage: 2, tiled_house: 3, courtyard: 4 } as Record<string, number>)[old.house] ?? 0;
+    const farm: string[] = old.farm.map((row: string, y: number) =>
+      [...row].map((ch, x) => (FARM_MAP[y]?.[x] === 'R' ? (stage === 0 ? 'R' : '_') : ch)).join(''),
+    );
+    const ruins = FARM_MAP.join('').split('R').length - 1;
+    const { house: _house, ...rest } = old;
+    return {
+      ...rest,
+      saveVersion: 5,
+      farm,
+      houseStage: stage,
+      ruinsCleared: stage >= 1 ? ruins : 0,
+      build: null,
+      // 已经修好的阶段，日记碎片当作捡到了（还是烧焦的纸片，等章节开始再变成线索）
+      diaryFound: stage >= 1 ? [1, 2, 3, 4].filter((n) => n <= stage) : [],
+      inventory: stage >= 1 ? { ...old.inventory, burnt_paper: (old.inventory.burnt_paper ?? 0) + stage } : old.inventory,
+      pickup: { unlocked: false },
+      basket: {},
+      crops: {},
+      flags: { ...old.flags, startKitGiven: true },
+    };
+  },
 };
 
 /** 把任意版本的存档升级到最新。认不出来的返回 null。 */
