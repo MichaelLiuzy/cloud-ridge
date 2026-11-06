@@ -11,8 +11,8 @@
 import type { StartTable } from './types';
 
 export const START: StartTable = {
-  schemaVersion: 1,  // 数据格式版本号（程序用，不用改）
-  startDay: { season: "spring", day: 1 },  // 开局日期
+  schemaVersion: 2,  // 数据格式版本号（程序用，不用改）
+  startDay: { month: 1, day: 16 },  // 开局日期：正月十六（month 1 = 正月）
   cash: 500,  // 开局的钱（火灾抚恤，单位：文）
   house: "straw_hut",  // 开局住的房子
   // 开局背包：物品 → 数量

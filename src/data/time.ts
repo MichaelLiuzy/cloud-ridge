@@ -11,7 +11,7 @@
 import type { TimeTable } from './types';
 
 export const TIME: TimeTable = {
-  schemaVersion: 1,  // 数据格式版本号（程序用，不用改）
+  schemaVersion: 2,  // 数据格式版本号（程序用，不用改）
   // 时钟
   clock: {
     dayStartHour: 6,  // 每天几点醒（6 = 早上 6 点）
@@ -35,30 +35,94 @@ export const TIME: TimeTable = {
     { from: 19, name: "戌时" },
     { from: 21, name: "亥时" },
   ],
-  // 日历
+  // 日历：一年 12 个月，每月 28 天（4 周），24 节气，每月 2 个节日（11 月 5 日新版）
   calendar: {
-    // 季节
-    seasons: [
-      {
-        id: "spring",  // 程序用的英文名字，其他表靠它互相引用，不要改
-        name: { zh: "春", en: "Spring" },  // 名字：zh 中文，en 英文（英文以后再填）
-      },
-      {
-        id: "summer",
-        name: { zh: "夏", en: "Summer" },
-      },
-      {
-        id: "autumn",
-        name: { zh: "秋", en: "Autumn" },
-      },
-      {
-        id: "winter",
-        name: { zh: "冬", en: "Winter" },
-      },
+    // 月份（按顺序，第 1 个是正月）
+    months: [
+      { id: "month_1", name: { zh: "正月", en: "First Month" } },  // 程序用的英文名字，其他表靠它互相引用，不要改
+      { id: "month_2", name: { zh: "二月", en: "Second Month" } },
+      { id: "month_3", name: { zh: "三月", en: "Third Month" } },
+      { id: "month_4", name: { zh: "四月", en: "Fourth Month" } },
+      { id: "month_5", name: { zh: "五月", en: "Fifth Month" } },
+      { id: "month_6", name: { zh: "六月", en: "Sixth Month" } },
+      { id: "month_7", name: { zh: "七月", en: "Seventh Month" } },
+      { id: "month_8", name: { zh: "八月", en: "Eighth Month" } },
+      { id: "month_9", name: { zh: "九月", en: "Ninth Month" } },
+      { id: "month_10", name: { zh: "十月", en: "Tenth Month" } },
+      { id: "month_11", name: { zh: "十一月", en: "Eleventh Month" } },
+      { id: "month_12", name: { zh: "腊月", en: "Twelfth Month" } },
     ],
-    daysPerSeason: 28,  // 每季几天
-    marketDays: [5, 12, 19, 26],  // 每季哪几天赶集
+    daysPerMonth: 28,  // 每月几天
+    daysPerWeek: 7,  // 每周几天
+    // 季节：包含哪几个月（1 = 正月）。天气概率按季节算
+    seasons: [
+      { id: "spring", name: { zh: "春", en: "Spring" }, months: [1, 2, 3] },
+      { id: "summer", name: { zh: "夏", en: "Summer" }, months: [4, 5, 6] },
+      { id: "autumn", name: { zh: "秋", en: "Autumn" }, months: [7, 8, 9] },
+      { id: "winter", name: { zh: "冬", en: "Winter" }, months: [10, 11, 12] },
+    ],
+    // 24 节气：每月 10 日和 24 日。每个节气从当天算到下一个节气的前一天（14 天）
+    solarTerms: [
+      { id: "lichun", name: { zh: "立春", en: "Start of Spring" }, month: 1, day: 10 },
+      { id: "yushui", name: { zh: "雨水", en: "Rain Water" }, month: 1, day: 24 },
+      { id: "jingzhe", name: { zh: "惊蛰", en: "Awakening of Insects" }, month: 2, day: 10 },
+      { id: "chunfen", name: { zh: "春分", en: "Spring Equinox" }, month: 2, day: 24 },
+      { id: "qingming", name: { zh: "清明", en: "Clear and Bright" }, month: 3, day: 10 },
+      { id: "guyu", name: { zh: "谷雨", en: "Grain Rain" }, month: 3, day: 24 },
+      { id: "lixia", name: { zh: "立夏", en: "Start of Summer" }, month: 4, day: 10 },
+      { id: "xiaoman", name: { zh: "小满", en: "Grain Buds" }, month: 4, day: 24 },
+      { id: "mangzhong", name: { zh: "芒种", en: "Grain in Ear" }, month: 5, day: 10 },
+      { id: "xiazhi", name: { zh: "夏至", en: "Summer Solstice" }, month: 5, day: 24 },
+      { id: "xiaoshu", name: { zh: "小暑", en: "Minor Heat" }, month: 6, day: 10 },
+      { id: "dashu", name: { zh: "大暑", en: "Major Heat" }, month: 6, day: 24 },
+      { id: "liqiu", name: { zh: "立秋", en: "Start of Autumn" }, month: 7, day: 10 },
+      { id: "chushu", name: { zh: "处暑", en: "End of Heat" }, month: 7, day: 24 },
+      { id: "bailu", name: { zh: "白露", en: "White Dew" }, month: 8, day: 10 },
+      { id: "qiufen", name: { zh: "秋分", en: "Autumn Equinox" }, month: 8, day: 24 },
+      { id: "hanlu", name: { zh: "寒露", en: "Cold Dew" }, month: 9, day: 10 },
+      { id: "shuangjiang", name: { zh: "霜降", en: "Frost's Descent" }, month: 9, day: 24 },
+      { id: "lidong", name: { zh: "立冬", en: "Start of Winter" }, month: 10, day: 10 },
+      { id: "xiaoxue", name: { zh: "小雪", en: "Minor Snow" }, month: 10, day: 24 },
+      { id: "daxue", name: { zh: "大雪", en: "Major Snow" }, month: 11, day: 10 },
+      { id: "dongzhi", name: { zh: "冬至", en: "Winter Solstice" }, month: 11, day: 24 },
+      { id: "xiaohan", name: { zh: "小寒", en: "Minor Cold" }, month: 12, day: 10 },
+      { id: "dahan", name: { zh: "大寒", en: "Major Cold" }, month: 12, day: 24 },
+    ],
+    marketDays: [4, 11, 18, 25],  // 每月哪几天赶集
     marketSellBonus: 0.2,  // 赶集日卖东西多赚多少（0.2 = 多 20%）
+    // 节日：每月 2 个，暂用传统节日占日期，活动以后再定（activities 先空着）。
+    // 「空位」= 还没定是什么节（placeholder: true，day: null）。冬至和节气同一天是有意的。
+    festivals: [
+      { id: "spring_festival", name: { zh: "春节", en: "Spring Festival" }, month: 1, day: 1, activities: [] },
+      { id: "lantern_festival", name: { zh: "元宵", en: "Lantern Festival" }, month: 1, day: 15, activities: [] },
+      { id: "longtaitou", name: { zh: "龙抬头", en: "Dragon Raises Its Head" }, month: 2, day: 2, activities: [] },
+      { id: "flower_festival", name: { zh: "花朝节", en: "Flower Festival" }, month: 2, day: 12, activities: [] },
+      { id: "shangsi", name: { zh: "上巳", en: "Shangsi Festival" }, month: 3, day: 3, activities: [] },
+      { id: "cold_food", name: { zh: "寒食", en: "Cold Food Festival" }, month: 3, day: 9, activities: [] },
+      { id: "buddha_bathing", name: { zh: "浴佛节", en: "Buddha Bathing Festival" }, month: 4, day: 8, activities: [] },
+      { id: "slot_4", name: { zh: "空位", en: "Open slot" }, month: 4, day: null, activities: [], placeholder: true },
+      { id: "dragon_boat", name: { zh: "端午", en: "Dragon Boat Festival" }, month: 5, day: 5, activities: [] },
+      { id: "slot_5", name: { zh: "空位", en: "Open slot" }, month: 5, day: null, activities: [], placeholder: true },
+      { id: "sunning_clothes", name: { zh: "晒衣节", en: "Sunning Clothes Day" }, month: 6, day: 6, activities: [] },
+      { id: "slot_6", name: { zh: "空位", en: "Open slot" }, month: 6, day: null, activities: [], placeholder: true },
+      { id: "qixi", name: { zh: "七夕", en: "Qixi Festival" }, month: 7, day: 7, activities: [] },
+      { id: "zhongyuan", name: { zh: "中元", en: "Ghost Festival" }, month: 7, day: 15, activities: [] },
+      { id: "mid_autumn", name: { zh: "中秋", en: "Mid-Autumn Festival" }, month: 8, day: 15, activities: [] },
+      { id: "slot_8", name: { zh: "空位", en: "Open slot" }, month: 8, day: null, activities: [], placeholder: true },
+      { id: "double_ninth", name: { zh: "重阳", en: "Double Ninth Festival" }, month: 9, day: 9, activities: [] },
+      { id: "slot_9", name: { zh: "空位", en: "Open slot" }, month: 9, day: null, activities: [], placeholder: true },
+      { id: "winter_clothes", name: { zh: "寒衣节", en: "Winter Clothes Festival" }, month: 10, day: 1, activities: [] },
+      { id: "xiayuan", name: { zh: "下元", en: "Xiayuan Festival" }, month: 10, day: 15, activities: [] },
+      { id: "dongzhi_festival", name: { zh: "冬至", en: "Winter Solstice" }, month: 11, day: 24, activities: [] },
+      { id: "slot_11", name: { zh: "空位", en: "Open slot" }, month: 11, day: null, activities: [], placeholder: true },
+      { id: "laba", name: { zh: "腊八", en: "Laba Festival" }, month: 12, day: 8, activities: [] },
+      { id: "new_years_eve", name: { zh: "除夕", en: "New Year's Eve" }, month: 12, day: 28, activities: [] },
+    ],
+    // 农事规则
+    farmingRules: {
+      frost: { term: "shuangjiang", killsNonHardy: true },  // 霜降当天，不耐寒的作物枯死（多年生的休眠）
+      frozenGround: { from: "xiaohan", until: "lichun" },  // 小寒到立春前一天是冻土期：作物停止生长，不枯死
+    },
   },
   // 店铺营业时间 [开门, 关门]（24 小时制）
   openingHours: {

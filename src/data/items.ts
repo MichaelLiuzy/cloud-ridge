@@ -11,7 +11,7 @@
 import type { ItemsTable } from './types';
 
 export const ITEMS: ItemsTable = {
-  schemaVersion: 1,  // 数据格式版本号（程序用，不用改）
+  schemaVersion: 2,  // 数据格式版本号（程序用，不用改）
   // 货币
   currency: {
     unit: "wen",  // 单位
@@ -67,7 +67,7 @@ export const ITEMS: ItemsTable = {
       name: { zh: "小白菜", en: "Bok choy" },
       type: "crop",
       buyPrice: null,
-      sellPrice: 35,
+      sellPrice: 50,
       soldAt: [],
     },
     {
@@ -84,7 +84,7 @@ export const ITEMS: ItemsTable = {
       name: { zh: "萝卜", en: "Radish" },
       type: "crop",
       buyPrice: null,
-      sellPrice: 60,
+      sellPrice: 90,
       soldAt: [],
     },
     {
@@ -101,7 +101,7 @@ export const ITEMS: ItemsTable = {
       name: { zh: "土豆", en: "Potato" },
       type: "crop",
       buyPrice: null,
-      sellPrice: 80,
+      sellPrice: 130,
       soldAt: [],
     },
     {
@@ -118,7 +118,7 @@ export const ITEMS: ItemsTable = {
       name: { zh: "豌豆", en: "Pea" },
       type: "crop",
       buyPrice: null,
-      sellPrice: 30,
+      sellPrice: 40,
       soldAt: [],
     },
     {
@@ -135,7 +135,7 @@ export const ITEMS: ItemsTable = {
       name: { zh: "韭菜", en: "Chinese chive" },
       type: "crop",
       buyPrice: null,
-      sellPrice: 45,
+      sellPrice: 60,
       soldAt: [],
     },
     {
@@ -152,7 +152,7 @@ export const ITEMS: ItemsTable = {
       name: { zh: "黄瓜", en: "Cucumber" },
       type: "crop",
       buyPrice: null,
-      sellPrice: 35,
+      sellPrice: 50,
       soldAt: [],
     },
     {
@@ -169,7 +169,7 @@ export const ITEMS: ItemsTable = {
       name: { zh: "茄子", en: "Eggplant" },
       type: "crop",
       buyPrice: null,
-      sellPrice: 50,
+      sellPrice: 75,
       soldAt: [],
     },
     {
@@ -186,7 +186,7 @@ export const ITEMS: ItemsTable = {
       name: { zh: "豇豆", en: "Long bean" },
       type: "crop",
       buyPrice: null,
-      sellPrice: 40,
+      sellPrice: 55,
       soldAt: [],
     },
     {
@@ -203,7 +203,7 @@ export const ITEMS: ItemsTable = {
       name: { zh: "辣椒", en: "Chili" },
       type: "crop",
       buyPrice: null,
-      sellPrice: 25,
+      sellPrice: 35,
       soldAt: [],
     },
     {
@@ -220,7 +220,7 @@ export const ITEMS: ItemsTable = {
       name: { zh: "西瓜", en: "Watermelon" },
       type: "crop",
       buyPrice: null,
-      sellPrice: 300,
+      sellPrice: 450,
       soldAt: [],
     },
     {
@@ -237,7 +237,7 @@ export const ITEMS: ItemsTable = {
       name: { zh: "大白菜", en: "Napa cabbage" },
       type: "crop",
       buyPrice: null,
-      sellPrice: 110,
+      sellPrice: 160,
       soldAt: [],
     },
     {
@@ -254,7 +254,7 @@ export const ITEMS: ItemsTable = {
       name: { zh: "芋头", en: "Taro" },
       type: "crop",
       buyPrice: null,
-      sellPrice: 120,
+      sellPrice: 220,
       soldAt: [],
     },
     {
@@ -271,7 +271,7 @@ export const ITEMS: ItemsTable = {
       name: { zh: "红薯", en: "Sweet potato" },
       type: "crop",
       buyPrice: null,
-      sellPrice: 150,
+      sellPrice: 250,
       soldAt: [],
     },
     {
@@ -288,7 +288,7 @@ export const ITEMS: ItemsTable = {
       name: { zh: "南瓜", en: "Pumpkin" },
       type: "crop",
       buyPrice: null,
-      sellPrice: 320,
+      sellPrice: 520,
       soldAt: [],
     },
     {
@@ -305,7 +305,7 @@ export const ITEMS: ItemsTable = {
       name: { zh: "菠菜", en: "Spinach" },
       type: "crop",
       buyPrice: null,
-      sellPrice: 55,
+      sellPrice: 80,
       soldAt: [],
     },
     {
@@ -322,7 +322,24 @@ export const ITEMS: ItemsTable = {
       name: { zh: "大蒜", en: "Garlic" },
       type: "crop",
       buyPrice: null,
-      sellPrice: 90,
+      sellPrice: 150,
+      soldAt: [],
+    },
+    {
+      id: "mustard_greens_seed",
+      name: { zh: "雪里蕻种子", en: "Mustard green seeds" },
+      type: "seed",
+      buyPrice: 30,
+      sellPrice: 15,
+      soldAt: ["general_store"],
+      plants: "mustard_greens",
+    },
+    {
+      id: "mustard_greens",
+      name: { zh: "雪里蕻", en: "Mustard greens" },
+      type: "crop",
+      buyPrice: null,
+      sellPrice: 45,
       soldAt: [],
     },
     {

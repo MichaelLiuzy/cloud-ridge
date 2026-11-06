@@ -397,7 +397,7 @@ export class FarmScene extends Phaser.Scene {
       saveVersion: SAVE_VERSION,
       savedAt: new Date().toISOString(),
       slot: gameState.slot,
-      clock: { seasonIndex: c.seasonIndex, day: c.day, minutes: c.minutes },
+      clock: { month: c.month, day: c.day, minutes: c.minutes },
       player: { x: Math.round(this.feetPos().x), y: Math.round(this.feetPos().y), facing: this.facing },
       cash: gameState.cash,
       stamina: gameState.stamina,

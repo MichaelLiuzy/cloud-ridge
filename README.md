@@ -83,7 +83,9 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
 | 每件事花多少体力、体力多少算「累」 | `src/data/time.ts` | `stamina` |
 | 一天过多快 | `src/data/time.ts` | `clock.realSecondsPerGameHour`（现实几秒 = 游戏一小时） |
 | 开局有多少钱、带什么种子 | `src/data/start.ts` | `cash`、`inventory` |
-| 作物生长天数、价格 | `src/data/crops.ts` | 每种作物的 `growDays`、`sellPrice` |
+| 作物生长天数、价格、哪几个节气能种 | `src/data/crops.ts` | 每种作物的 `growDays`、`sellPrice`、`sowWindows` |
+| 月份、节气、赶集日、节日、霜降和冻土规则 | `src/data/time.ts` | `calendar` |
+| 开局日期（现在是正月十六） | `src/data/start.ts` | `startDay` |
 | 物品价格 | `src/data/items.ts` | `buyPrice`、`sellPrice` |
 | 打工任务和报酬 | `src/data/jobs.ts` | `reward` 等 |
 | 修房子要什么材料 | `src/data/housing.ts` | `materials`、`cost` |

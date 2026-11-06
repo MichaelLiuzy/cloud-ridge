@@ -6,7 +6,7 @@
  *  读档时会一步一步升级，所以很早以前的存档也能继续玩。
  */
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 /** 存档里存了什么 */
 export interface SaveData {
@@ -16,7 +16,8 @@ export interface SaveData {
   /** 存在第几个存档位（1~3） */
   slot: number;
   /** 游戏里的时间 */
-  clock: { seasonIndex: number; day: number; minutes: number };
+  /** month：1 = 正月 …… 12 = 腊月；day：1 ~ 28 */
+  clock: { month: number; day: number; minutes: number };
   /** 主角站在哪、朝哪 */
   player: { x: number; y: number; facing: string };
   cash: number;
@@ -52,6 +53,15 @@ const MIGRATIONS: Record<number, (old: any) => any> = {
     const farm: string[] = [...old.farm];
     if (farm[4]?.[3] === '.') farm[4] = farm[4].slice(0, 3) + 'L' + farm[4].slice(4);
     return { ...old, saveVersion: 2, farm, player: { ...old.player, x: cx * 16 + 8, y: cy * 16 + 12 } };
+  },
+  // 2 → 3：日历从「4 季 × 28 天」改成「12 个月 × 28 天」，开局从正月十六算。
+  // 旧存档里过了几天，换到新日历上也过几天（旧的春季第 1 天 = 新的正月十六）。
+  2: (old) => {
+    const passed = (old.clock.seasonIndex ?? 0) * 28 + (old.clock.day ?? 1) - 1;
+    const total = 15 + passed; // 正月十六 = 从正月初一起第 15 天
+    const month = (Math.floor(total / 28) % 12) + 1;
+    const day = (total % 28) + 1;
+    return { ...old, saveVersion: 3, clock: { month, day, minutes: old.clock.minutes } };
   },
 };
 

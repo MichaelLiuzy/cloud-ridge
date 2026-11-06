@@ -1,14 +1,17 @@
 /**
- * 游戏时钟：管「现在是哪个季节、第几天、几点」。
+ * 游戏时钟：管「现在是几月几日、几点」。一年 12 个月，每月 28 天（见 src/data/time.ts 的 calendar）。
  * 所有数值来自 src/data/time.ts（比如现实多少秒 = 游戏一小时）。
  * 想让一天过得快一点或慢一点，改 time.ts 里的 realSecondsPerGameHour。
  */
 import { TIME as timeData } from '../data/time';
+import { START as startData } from '../data/start';
 import { localName, t } from '../locales/i18n';
 
 export class Clock {
-  seasonIndex = 0;
-  day = 1;
+  /** 几月：1 = 正月 …… 12 = 腊月 */
+  month = startData.startDay.month;
+  /** 几日：1 ~ 28 */
+  day = startData.startDay.day;
   /** 从当天 0 点算起的分钟数。6:00 = 360。凌晨 2 点记作 26:00 = 1560。 */
   minutes = timeData.clock.dayStartHour * 60;
 
@@ -39,9 +42,10 @@ export class Clock {
   /** 进入新的一天（睡觉或昏迷之后） */
   nextDay() {
     this.day += 1;
-    if (this.day > timeData.calendar.daysPerSeason) {
+    const cal = timeData.calendar;
+    if (this.day > cal.daysPerMonth) {
       this.day = 1;
-      this.seasonIndex = (this.seasonIndex + 1) % timeData.calendar.seasons.length;
+      this.month = (this.month % cal.months.length) + 1;
     }
     this.minutes = timeData.clock.dayStartHour * 60;
     this.carryMs = 0;
@@ -64,10 +68,36 @@ export class Clock {
     return name;
   }
 
-  /** 屏幕上显示的日期：「春 · 第1天」 */
+  /** 现在是哪个季节（春 1–3 月、夏 4–6 月……） */
+  get season() {
+    const list = timeData.calendar.seasons;
+    return list.find((s) => s.months.includes(this.month)) ?? list[0];
+  }
+
+  /** 现在在哪个节气里（每个节气从当天算到下一个节气的前一天） */
+  get solarTerm() {
+    const terms = timeData.calendar.solarTerms;
+    const today = this.month * 100 + this.day;
+    let current = terms[terms.length - 1]; // 正月十日立春之前，还在上一年的大寒里
+    for (const term of terms) if (term.month * 100 + term.day <= today) current = term;
+    return current;
+  }
+
+  /** 今天是不是赶集日 */
+  get isMarketDay() {
+    return timeData.calendar.marketDays.includes(this.day);
+  }
+
+  /** 今天的节日（没有就是 undefined） */
+  get festival() {
+    return timeData.calendar.festivals.find((f) => f.month === this.month && f.day === this.day);
+  }
+
+  /** 屏幕上显示的日期：「正月十六」 */
   dateText() {
-    const season = timeData.calendar.seasons[this.seasonIndex];
-    return t('hud.date', { season: localName(season.name), day: this.day });
+    const month = timeData.calendar.months[this.month - 1];
+    const days = t('calendar.dayNames').split(',');
+    return t('hud.date', { month: localName(month.name), day: days[this.day - 1] ?? String(this.day) });
   }
 
   /** 屏幕上显示的时间：「辰时（7:00）」 */
@@ -77,8 +107,8 @@ export class Clock {
   }
 }
 
-/** 不用开游戏，直接把存档里的时间变成「春 · 第3天」「午时（11:20）」这样的字 */
-export function describeClock(c: { seasonIndex: number; day: number; minutes: number }) {
+/** 不用开游戏，直接把存档里的时间变成「正月十八」「午时（11:20）」这样的字 */
+export function describeClock(c: { month: number; day: number; minutes: number }) {
   const clock = new Clock();
   Object.assign(clock, c);
   return { date: clock.dateText(), time: clock.timeText() };

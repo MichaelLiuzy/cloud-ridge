@@ -23,6 +23,13 @@ export interface LocalName {
 
 export type SeasonId = 'spring' | 'summer' | 'autumn' | 'winter';
 
+/** 24 节气的 id（按一年里的顺序） */
+export type SolarTermId =
+  | 'lichun' | 'yushui' | 'jingzhe' | 'chunfen' | 'qingming' | 'guyu'
+  | 'lixia' | 'xiaoman' | 'mangzhong' | 'xiazhi' | 'xiaoshu' | 'dashu'
+  | 'liqiu' | 'chushu' | 'bailu' | 'qiufen' | 'hanlu' | 'shuangjiang'
+  | 'lidong' | 'xiaoxue' | 'daxue' | 'dongzhi' | 'xiaohan' | 'dahan';
+
 /** 所有物品的 id。在 items.ts 加新物品时，也要加到这里。 */
 export type ItemId =
   | 'bok_choy_seed' | 'bok_choy' | 'radish_seed' | 'radish' | 'potato_seed' | 'potato'
@@ -30,7 +37,7 @@ export type ItemId =
   | 'eggplant_seed' | 'eggplant' | 'cowpea_seed' | 'cowpea' | 'chili_seed' | 'chili'
   | 'watermelon_seed' | 'watermelon' | 'napa_cabbage_seed' | 'napa_cabbage' | 'taro_seed' | 'taro'
   | 'sweet_potato_seed' | 'sweet_potato' | 'pumpkin_seed' | 'pumpkin' | 'spinach_seed' | 'spinach'
-  | 'garlic_seed' | 'garlic'
+  | 'garlic_seed' | 'garlic' | 'mustard_greens_seed' | 'mustard_greens'
   | 'wood' | 'thatch' | 'stone' | 'roof_tile' | 'brick' | 'firewood' | 'plant_ash'
   | 'mantou' | 'tea' | 'veg_porridge' | 'radish_soup' | 'roast_sweet_potato'
   | 'hoe' | 'bucket' | 'sickle' | 'axe' | 'pickaxe';
@@ -38,7 +45,8 @@ export type ItemId =
 /** 所有作物的 id。在 crops.ts 加新作物时，也要加到这里。 */
 export type CropId =
   | 'bok_choy' | 'radish' | 'potato' | 'pea' | 'chive' | 'cucumber' | 'eggplant' | 'cowpea'
-  | 'chili' | 'watermelon' | 'napa_cabbage' | 'taro' | 'sweet_potato' | 'pumpkin' | 'spinach' | 'garlic';
+  | 'chili' | 'watermelon' | 'napa_cabbage' | 'taro' | 'sweet_potato' | 'pumpkin' | 'spinach' | 'garlic'
+  | 'mustard_greens';
 
 /** 店铺 id */
 export type ShopId = 'general_store' | 'carpenter' | 'blacksmith' | 'kiln' | 'teahouse' | 'market';
@@ -76,13 +84,29 @@ export interface TimeTable {
   };
   shichenDisplay: { from: number; name: string }[];
   calendar: {
-    seasons: { id: SeasonId; name: LocalName }[];
-    /** 每季几天 */
-    daysPerSeason: number;
-    /** 每季哪几天赶集 */
+    /** 12 个月（正月……腊月），按顺序 */
+    months: { id: string; name: LocalName }[];
+    /** 每月几天 */
+    daysPerMonth: number;
+    /** 每周几天 */
+    daysPerWeek: number;
+    /** 季节：包含哪几个月（1 = 正月） */
+    seasons: { id: SeasonId; name: LocalName; months: number[] }[];
+    /** 24 节气：在哪个月哪一天。每个节气从当天算到下一个节气的前一天 */
+    solarTerms: { id: SolarTermId; name: LocalName; month: number; day: number }[];
+    /** 每月哪几天赶集 */
     marketDays: number[];
     /** 赶集日卖东西多赚的比例 */
     marketSellBonus: number;
+    /** 节日。placeholder = 空位（还没定是什么节，day 为 null） */
+    festivals: { id: string; name: LocalName; month: number; day: number | null; activities: string[]; placeholder?: boolean }[];
+    /** 农事规则 */
+    farmingRules: {
+      /** 霜降：这个节气当天，不耐寒（frostHardy: false）的作物枯死；多年生的休眠 */
+      frost: { term: SolarTermId; killsNonHardy: boolean };
+      /** 冻土期：从 from 节气到 until 节气的前一天，所有作物停止生长，不枯死 */
+      frozenGround: { from: SolarTermId; until: SolarTermId };
+    };
   };
   /** 营业时间 [开门, 关门]（游戏小时） */
   openingHours: Record<PlaceId, [number, number]>;
@@ -113,8 +137,12 @@ export interface TimeTable {
 export interface Crop {
   id: CropId;
   name: LocalName;
-  /** 哪些季节能种 */
-  seasons: SeasonId[];
+  /** 哪几段时间能播种：[起始节气, 结束节气]，含结束节气整整 14 天。可以有好几段 */
+  sowWindows: [SolarTermId, SolarTermId][];
+  /** 耐不耐寒：false 的作物霜降当天枯死 */
+  frostHardy: boolean;
+  /** 多年生：霜降时不死而是休眠，立春自动重新生长 */
+  perennial?: boolean;
   /** 种子是哪个物品 */
   seedItem: ItemId;
   /** 种子价格（文） */
@@ -140,7 +168,6 @@ export interface CropsTable {
   rules: {
     needsWaterToGrow: boolean;
     unwateredDies: boolean;
-    outOfSeasonWithers: boolean;
     fertilizer: { item: ItemId; growDaysReduction: number; minReductionDays: number };
   };
   crops: Crop[];
@@ -248,7 +275,8 @@ export interface JobsTable {
 
 export interface StartTable {
   schemaVersion: number;
-  startDay: { season: SeasonId; day: number };
+  /** 开局日期：几月（1 = 正月）几日 */
+  startDay: { month: number; day: number };
   /** 开局的钱（文） */
   cash: number;
   house: HouseId;
