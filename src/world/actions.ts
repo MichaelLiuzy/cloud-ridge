@@ -9,6 +9,8 @@
  *  turnsInto 写的是地图字符：'.' 草地，'o' 开垦好的田，'O' 浇过水的田。
  */
 
+import { HOUSING } from '../data/housing';
+
 export interface ToolAction {
   /** 动作名字，对应语言文件 action.xxx */
   id: string;
@@ -30,6 +32,8 @@ export const TOOL_ACTIONS: ToolAction[] = [
   { id: 'cutGrass', tool: 'sickle', on: ['weed'], turnsInto: '.', cost: 'cut_grass' },
   { id: 'chop', tool: 'axe', on: ['stump', 'fireDebris'], turnsInto: '.', cost: 'chop_tree' },
   { id: 'mine', tool: 'pickaxe', on: ['rock'], turnsInto: '.', cost: 'mine_rock' },
+  // 清老宅废墟：能用哪些工具在 src/data/housing.ts 的 ruins.tools 里改
+  ...HOUSING.ruins.tools.map((tool) => ({ id: 'clearRuin', tool, on: ['ruin'], turnsInto: '_', cost: 'clear_ruin' })),
 ];
 
 /**
@@ -38,6 +42,6 @@ export const TOOL_ACTIONS: ToolAction[] = [
  * 现在草棚就当床用，以后有室内地图了会改成对着床。
  */
 export const PLAIN_ACTIONS: { id: string; on: string[] }[] = [
-  { id: 'sleep', on: ['hut'] },
-  { id: 'saveOnly', on: ['hut'] },
+  { id: 'sleep', on: ['hut', 'house'] },
+  { id: 'saveOnly', on: ['hut', 'house'] },
 ];

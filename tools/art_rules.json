@@ -66,16 +66,22 @@
       "out": "objects/debris_{frame}.png"
     },
     {
+      "name": "debris_ruin",
+      "rows": 1, "cols": 1, "cell": [16, 16],
+      "frames": ["main"],
+      "out": "objects/debris_ruin.png"
+    },
+    {
       "name": "prop_{id}",
       "rows": 1, "cols": 1, "cell": [16, 32],
-      "sizes": { "tree": [16, 32], "lantern": [16, 32] },
+      "sizes": { "tree": [16, 32], "lantern": [16, 32], "basket": [16, 16] },
       "frames": ["main"],
       "out": "objects/prop_{id}.png"
     },
     {
       "name": "house_{id}",
       "rows": 1, "cols": 1, "cell": [48, 48],
-      "sizes": { "straw_hut": [48, 48], "old_ruin": [64, 64], "burned_ruins": [64, 64] },
+      "sizes": { "straw_hut": [48, 48], "old_ruin": [64, 64], "burned_ruins": [64, 64], "timber_frame": [64, 64], "tiled_roof": [64, 64], "courtyard": [64, 64] },
       "frames": ["main"],
       "out": "buildings/house_{id}.png"
     },

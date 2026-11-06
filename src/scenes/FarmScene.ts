@@ -12,10 +12,14 @@ import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
 import { GROUND_TILES, WALK_SHEET, frameIndex } from '../config/assets';
 import { PALETTE, toColor } from '../config/palette';
-import { FARM_MAP, TILE_TYPES } from '../world/farmMap';
+import { BASKET_CELL, FARM_MAP, HOUSE_SITE, TILE_TYPES } from '../world/farmMap';
 import { PLAIN_ACTIONS, TOOL_ACTIONS, type ToolAction } from '../world/actions';
 import { KeyboardControls } from '../input/Controls';
-import { currentTool, gameState, hasTool } from '../systems/GameState';
+import { addItem, currentTool, gameState, hasTool } from '../systems/GameState';
+import { CROP_LOOKS, cropFromSeed, cropInfo, cropLook, growOvernight, harvest, inSowWindow, isRipe, plant } from '../systems/farming/crops';
+import { buildOvernight, dwelling, requestBuild, ruinCleared, stageInfo } from '../systems/home/house';
+import { putInBasket, sellableInBag, settleBasket, takeBackAll } from '../systems/economy/pickup';
+import { HOUSING } from '../data/housing';
 import type { SaveData } from '../systems/save/saveFormat';
 import { stateFields } from '../systems/save/snapshot';
 import { clearTemp, saveTemp, saveToSlot } from '../systems/save/saveManager';
@@ -50,7 +54,10 @@ const FEET_W = 10;
 const FEET_H = 6;
 
 /** 这些地块是「地面」，人可以站上去，菜单里会有「走到这里」 */
-const GROUND_KINDS = ['grass', 'grassDark', 'path', 'tilled', 'watered'];
+const GROUND_KINDS = ['grass', 'grassDark', 'path', 'tilled', 'watered', 'site'];
+
+/** 一句要显示的话：语言文件里的名字 + 要替换的内容 */
+type News = [string, Record<string, string | number>?];
 
 export class FarmScene extends Phaser.Scene {
   /** 看不见的「脚」：负责碰撞和移动 */
@@ -75,6 +82,11 @@ export class FarmScene extends Phaser.Scene {
   /** 自动走路：要经过的格子，以及走到后要做的事 */
   private route: Cell[] = [];
   private onArrive?: () => void;
+  /** 地里每格作物的图（「x,y」→ 图） */
+  private cropViews = new Map<string, Phaser.GameObjects.Image>();
+  /** 重建中的老宅的图 */
+  private houseImage?: Phaser.GameObjects.Image;
+  private houseLight?: LightSpot;
 
   constructor() {
     super('Farm');
@@ -87,6 +99,9 @@ export class FarmScene extends Phaser.Scene {
     this.grid = (load ? load.farm : FARM_MAP).map((row) => [...row]);
     this.views = [];
     this.lightSpots = [];
+    this.cropViews = new Map();
+    this.houseImage = undefined;
+    this.houseLight = undefined;
     this.route = [];
     this.onArrive = undefined;
     const rows = this.grid.length;
@@ -107,6 +122,9 @@ export class FarmScene extends Phaser.Scene {
       });
     });
     if (hutTiles.length) this.placeHut(hutTiles);
+    this.refreshHouse();
+    if (gameState.pickup.unlocked) this.placeBasket();
+    for (const key of Object.keys(gameState.crops)) this.refreshCrop(key);
 
     // ---- 主角 ----
     this.feet = this.add.zone(spawn.x, spawn.y - FEET_H / 2, FEET_W, FEET_H);
@@ -126,6 +144,11 @@ export class FarmScene extends Phaser.Scene {
       this.setFeet(door.x, door.y);
       this.facing = 'right';
       this.placeZhou({ x: this.doorTile.x + 1, y: this.doorTile.y });
+    }
+    // 万一站在了挡路的格子上（比如旧存档里这里后来变成了废墟），挪到门口
+    if (this.isSolid(this.playerCell())) {
+      const door = this.cellFeet(this.doorTile);
+      this.setFeet(door.x, door.y);
     }
     this.showStanding();
     this.syncSprite();
@@ -149,6 +172,9 @@ export class FarmScene extends Phaser.Scene {
     ev.on(UI_EVENTS.worldUseTool, this.useToolFacing, this);
     ev.on(UI_EVENTS.worldSmart, this.smartFacing, this);
     ev.on(UI_EVENTS.worldTap, this.tapScreen, this);
+    ev.on(FARM_EVENTS.debugDays, this.debugDays, this);
+    ev.on(FARM_EVENTS.debugBuild, this.debugBuild, this);
+    ev.on(FARM_EVENTS.basketUnlocked, this.placeBasket, this);
 
     // ---- 时间 ----
     // 时钟在开局 / 读档时已经建好（GameState.resetGameState）
@@ -168,6 +194,9 @@ export class FarmScene extends Phaser.Scene {
       ev.off(UI_EVENTS.worldUseTool, this.useToolFacing, this);
       ev.off(UI_EVENTS.worldSmart, this.smartFacing, this);
       ev.off(UI_EVENTS.worldTap, this.tapScreen, this);
+      ev.off(FARM_EVENTS.debugDays, this.debugDays, this);
+      ev.off(FARM_EVENTS.debugBuild, this.debugBuild, this);
+      ev.off(FARM_EVENTS.basketUnlocked, this.placeBasket, this);
       this.zhou = undefined;
       this.events.off('postupdate', this.syncSprite, this);
       this.lightSpots = [];
@@ -340,9 +369,30 @@ export class FarmScene extends Phaser.Scene {
     if (this.zhou && this.zhou.cell.x === cell.x && this.zhou.cell.y === cell.y) {
       return [{ label: t('action.talk'), run: () => this.talkToZhou(), needReach: true }];
     }
+    const key = cellKey(cell);
+    const crop = gameState.crops[key];
+    if (crop) {
+      const name = localName(cropInfo(crop.crop).name);
+      if (isRipe(crop)) list.push({ label: t('action.harvest', { name }), run: () => this.doHarvest(cell), needReach: true });
+      if (crop.dead) list.push({ label: t('action.clearDead'), run: () => this.clearCrop(cell), needReach: true });
+      list.push({ label: t('action.look'), run: () => this.say(this.cropHint(crop), { name }), needReach: true });
+    } else if (kind === 'tilled' || kind === 'watered') {
+      for (const seed of Object.keys(gameState.inventory)) {
+        const c = cropFromSeed(seed);
+        if (!c || !gameState.inventory[seed]) continue;
+        list.push({ label: t('action.sow', { name: localName(c.name), n: gameState.inventory[seed] }), run: () => this.doSow(cell, seed), needReach: true });
+      }
+    }
+    if (kind === 'basket') {
+      list.push({ label: t('action.basketPut'), run: () => this.basketMenu(), needReach: true });
+      if (Object.keys(gameState.basket).length) list.push({ label: t('action.basketTake'), run: () => this.basketTake(), needReach: true });
+    }
+    if (kind === 'site' || kind === 'house') {
+      list.push({ label: t('action.houseStatus'), run: () => this.sayHouseStatus(), needReach: false });
+    }
     if (opts.tools) {
       for (const rule of TOOL_ACTIONS) {
-        if (rule.on.includes(kind) && hasTool(rule.tool)) {
+        if (rule.on.includes(kind) && hasTool(rule.tool) && !list.some((o) => o.label === t(`action.${rule.id}`))) {
           list.push({ label: t(`action.${rule.id}`), run: () => this.doToolAction(rule, cell), needReach: true });
         }
       }
@@ -388,7 +438,156 @@ export class FarmScene extends Phaser.Scene {
     this.swingTool(rule.tool);
     if (rule.turnsInto) this.setTile(cell, rule.turnsInto);
     if (rule.doneHint) this.say(rule.doneHint);
+    if (rule.id === 'clearRuin') this.afterRuinCleared();
     this.spendStamina((timeData.stamina.costs as Record<string, number>)[rule.cost] ?? 0);
+  }
+
+  // =================================================================
+  //  种菜（规则在 src/systems/farming/crops.ts）
+  // =================================================================
+
+  private doSow(cell: Cell, seed: string) {
+    const crop = cropFromSeed(seed)!;
+    if (!inSowWindow(crop, gameState.clock!)) return this.say('msg.notSowTime', { name: localName(crop.name) });
+    plant(cellKey(cell), crop);
+    addItem(seed, -1);
+    this.refreshCrop(cellKey(cell));
+    this.spendStamina(timeData.stamina.costs.plant);
+  }
+
+  private doHarvest(cell: Cell) {
+    const got = harvest(cellKey(cell));
+    this.refreshCrop(cellKey(cell));
+    if (!got) return;
+    addItem(got.item, got.amount);
+    this.say('msg.harvested', { name: this.itemName(got.item), n: got.amount });
+    this.spendStamina(timeData.stamina.costs.harvest);
+  }
+
+  private clearCrop(cell: Cell) {
+    delete gameState.crops[cellKey(cell)];
+    this.refreshCrop(cellKey(cell));
+  }
+
+  private cropHint(c: (typeof gameState.crops)[string]) {
+    if (c.dead) return 'hint.cropDead';
+    if (c.dormant) return 'hint.cropDormant';
+    if (isRipe(c)) return 'hint.cropRipe';
+    return 'hint.cropGrowing';
+  }
+
+  /** 按作物现在的样子重画这一格（没有作物就拿掉图） */
+  private refreshCrop(key: string) {
+    const p = gameState.crops[key];
+    const old = this.cropViews.get(key);
+    if (!p) {
+      old?.destroy();
+      this.cropViews.delete(key);
+      return;
+    }
+    const [x, y] = key.split(',').map(Number);
+    const s = SETTINGS.tileSize;
+    const tex = `crop_${p.crop}`;
+    const frame = CROP_LOOKS.indexOf(cropLook(p));
+    const img = old ?? this.add.image(x * s + s / 2, (y + 1) * s, tex, frame).setOrigin(0.5, 1).setDepth((y + 1) * s - 1);
+    img.setTexture(tex, frame).setAlpha(p.dormant ? 0.6 : 1);
+    this.cropViews.set(key, img);
+  }
+
+  // =================================================================
+  //  重建老宅（规则在 src/systems/home/house.ts）
+  // =================================================================
+
+  private afterRuinCleared() {
+    const done = ruinCleared();
+    if (!done) return;
+    this.say('house.ruinsCleared');
+    if (done.page) this.sayDiary(done.page);
+  }
+
+  private sayDiary(page: { where: string; readable: boolean }) {
+    this.say(page.readable ? 'diary.foundReadable' : 'diary.foundPaper', { where: t(page.where) });
+  }
+
+  private sayHouseStatus() {
+    const b = gameState.build;
+    if (b) return this.say('house.building', { name: localName(stageInfo(b.stage)!.name), days: b.daysLeft });
+    if (gameState.houseStage < 1) return this.say('house.statusRuins', { left: Object.values(this.grid).flat().filter((c) => c === 'R').length });
+    const next = stageInfo(gameState.houseStage + 1);
+    if (!next) return this.say('house.allDone');
+    const mats = Object.entries(next.materials).map(([id, n]) => `${this.itemName(id)}×${n}`).join('、');
+    this.say('house.statusNext', { name: localName(next.name), mats, cost: next.cost });
+  }
+
+  /** 按修房阶段画老宅：第 2 阶段起，地基上盖起房子，并且搬进去住（醒来在老宅门口） */
+  private refreshHouse() {
+    if (gameState.houseStage < 2) return;
+    const s = SETTINGS.tileSize;
+    const { house, door } = HOUSE_SITE;
+    for (let y = house.y; y < house.y + house.h; y++) {
+      for (let x = house.x; x < house.x + house.w; x++) if (this.grid[y][x] !== 'K') this.setTile({ x, y }, 'K');
+    }
+    if (this.grid[door.y][door.x] !== 'E') this.setTile(door, 'E');
+    this.doorTile = { ...door };
+    const key = `house_${stageInfo(gameState.houseStage)!.id}`;
+    const cx = (house.x + house.w / 2) * s;
+    const bottom = (house.y + house.h) * s;
+    this.houseImage?.destroy();
+    this.houseImage = this.add.image(cx, bottom, key, 0).setOrigin(0.5, 1).setDepth(bottom);
+    if (this.houseLight) this.lightSpots = this.lightSpots.filter((l) => l !== this.houseLight);
+    this.houseLight = { x: cx + this.houseImage.width / 2 - 14, y: bottom - this.houseImage.height * 0.45, radius: 22 };
+    this.lightSpots.push(this.houseLight);
+  }
+
+  // =================================================================
+  //  收货筐（规则在 src/systems/economy/pickup.ts）
+  // =================================================================
+
+  private placeBasket() {
+    if (this.grid[BASKET_CELL.y][BASKET_CELL.x] !== 'B') this.setTile(BASKET_CELL, 'B');
+  }
+
+  /** 选一样东西，全部放进筐 */
+  private basketMenu() {
+    const ids = sellableInBag();
+    if (!ids.length) return this.say('msg.nothingToSell');
+    const options: MenuOption[] = ids.map((id) => ({
+      label: `${this.itemName(id)} ×${gameState.inventory[id]}`,
+      run: () => {
+        const n = putInBasket(id);
+        this.say('msg.basketPut', { name: this.itemName(id), n });
+      },
+    }));
+    this.game.events.emit(UI_EVENTS.showMenu, options, t('action.basketPut'));
+  }
+
+  private basketTake() {
+    takeBackAll();
+    this.say('msg.basketTaken');
+  }
+
+  // =================================================================
+  //  测试用（M 菜单）
+  // =================================================================
+
+  /** 直接过 n 天（每天都按睡了一觉算：作物生长、木匠干活、收货筐结算） */
+  private debugDays(n: number) {
+    const news: News[] = [];
+    for (let i = 0; i < n; i++) news.push(...this.startNewDay(1));
+    this.say('msg.debugDays', { n, date: gameState.clock!.dateText() });
+    for (const [k, p] of news) this.say(k, p);
+  }
+
+  /** 给够材料和钱，然后请木匠修下一阶段 */
+  private debugBuild() {
+    const next = stageInfo(gameState.houseStage + 1);
+    if (next?.byCarpenter && !gameState.build) {
+      for (const [id, n] of Object.entries(next.materials)) addItem(id, Math.max(0, (n ?? 0) - (gameState.inventory[id] ?? 0)));
+      gameState.cash = Math.max(gameState.cash, next.cost);
+    }
+    const err = requestBuild();
+    if (err) return this.say(err, { days: gameState.build?.daysLeft ?? 0 });
+    this.say('house.started', { name: localName(next!.name), days: HOUSING.buildDays });
   }
 
   private doPlainAction(id: string) {
@@ -428,8 +627,8 @@ export class FarmScene extends Phaser.Scene {
     const clock = gameState.clock!;
     // 半夜前睡觉体力全满，过了半夜只恢复一部分（time.ts 的 sleep）
     const ratio = clock.minutes < 24 * 60 ? timeData.sleep.beforeMidnightRestore : timeData.sleep.afterMidnightRestore;
-    this.startNewDay(ratio);
-    void this.saveNow('msg.sleep'); // 睡觉 = 自动存档
+    const news = this.startNewDay(ratio);
+    void this.saveNow('msg.sleep').then(() => news.forEach(([k, p]) => this.say(k, p))); // 睡觉 = 自动存档
   }
 
   private spendStamina(cost: number) {
@@ -439,20 +638,46 @@ export class FarmScene extends Phaser.Scene {
 
   /** 昏倒：late = 熬到凌晨两点，exhausted = 体力用完（数值见 time.ts 的 faint） */
   private faint(reason: 'late' | 'exhausted') {
+    let news: News[];
     if (reason === 'late') {
-      this.startNewDay(timeData.faint.lateNight.nextDayStamina);
+      news = this.startNewDay(timeData.faint.lateNight.nextDayStamina);
       this.say('msg.lateNightFaint');
     } else {
       const f = timeData.faint.exhausted;
       const fee = Math.min(f.fee, Math.floor(gameState.cash * f.feeMaxFractionOfCash));
       gameState.cash -= fee;
-      this.startNewDay(f.nextDayStamina);
+      news = this.startNewDay(f.nextDayStamina);
       this.say('msg.exhaustedFaint', { fee });
     }
+    for (const [k, p] of news) this.say(k, p);
   }
 
-  private startNewDay(staminaRatio: number) {
-    gameState.clock!.nextDay();
+  /** 进入新的一天。返回早上要告诉玩家的事（作物冻死、木匠修好了、收货筐结算……） */
+  private startNewDay(staminaRatio: number): News[] {
+    const news: News[] = [];
+    const clock = gameState.clock!;
+    clock.nextDay();
+    // 作物：昨晚浇过水的长一天；霜降、冻土、休眠按节气算
+    const grew = growOvernight(clock, (key) => {
+      const [x, y] = key.split(',').map(Number);
+      return this.grid[y]?.[x] === 'O';
+    });
+    if (grew.frostKilled) news.push(['msg.frost', { n: grew.frostKilled }]);
+    if (grew.dormant) news.push(['msg.dormant']);
+    if (grew.woke) news.push(['msg.woke']);
+    for (const key of Object.keys(gameState.crops)) this.refreshCrop(key);
+    // 木匠
+    const built = buildOvernight();
+    if (built) {
+      news.push(['house.finished', { name: localName(stageInfo(built.stage)!.name) }]);
+      if (stageInfo(built.stage)!.learns.length) news.push(['house.learned']);
+      if (built.page) news.push([built.page.readable ? 'diary.foundReadable' : 'diary.foundPaper', { where: t(built.page.where) }]);
+      gameState.maxStamina = Math.max(gameState.maxStamina, dwelling().maxStamina);
+      this.refreshHouse();
+    }
+    // 收货筐
+    const sold = settleBasket();
+    if (sold > 0) news.push(['msg.basketSold', { total: sold }]);
     gameState.stamina = Math.round(gameState.maxStamina * staminaRatio);
     // 浇过的水第二天就干了
     this.grid.forEach((row, y) => row.forEach((ch, x) => ch === 'O' && this.setTile({ x, y }, 'o')));
@@ -462,6 +687,7 @@ export class FarmScene extends Phaser.Scene {
     this.setFeet(door.x, door.y);
     this.facing = 'down';
     this.showStanding();
+    return news;
   }
 
   // =================================================================
@@ -665,8 +891,22 @@ export class FarmScene extends Phaser.Scene {
     const maxY = Math.max(...tiles.map((t) => t.y));
     const cx = ((minX + maxX + 1) / 2) * s;
     const bottom = (maxY + 1) * s;
-    const key = `house_${gameState.house}`;
-    const hut = this.add.image(cx, bottom, this.textures.exists(key) ? key : 'house_straw_hut', 0).setOrigin(0.5, 1).setDepth(bottom);
+    const hut = this.add.image(cx, bottom, 'house_straw_hut', 0).setOrigin(0.5, 1).setDepth(bottom);
     this.lightSpots.push({ x: cx + hut.width / 2 - 11, y: bottom - hut.height * 0.45, radius: 20 });
   }
 }
+
+/** 作物、收货筐按「x,y」记格子 */
+function cellKey(c: Cell) {
+  return `${c.x},${c.y}`;
+}
+
+/** 农场场景另外听的消息（M 菜单的测试选项、开通收货服务） */
+export const FARM_EVENTS = {
+  /** 直接过几天。参数：天数 */
+  debugDays: 'farm:debugDays',
+  /** 给够材料，请木匠修下一阶段 */
+  debugBuild: 'farm:debugBuild',
+  /** 收货服务开通了：门口放上收货筐 */
+  basketUnlocked: 'farm:basketUnlocked',
+} as const;

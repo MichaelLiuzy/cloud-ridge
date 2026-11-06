@@ -17,7 +17,11 @@ import { askName } from '../ui/nameInput';
 import { CHAPTERS, type ChapterId } from '../data/clues';
 import { localName as nameOf } from '../locales/i18n';
 import { fillNames } from '../story/text';
-import { STORY_EVENTS, fireStoryEvent, storyEvents } from '../systems/story/notebook';
+import { STORY_EVENTS, debugNextChapter, fireStoryEvent, storyEvents } from '../systems/story/notebook';
+import { FARM_EVENTS } from './FarmScene';
+import { debugSetHearts } from '../systems/affection';
+import { pickupOfferReady, unlockPickup } from '../systems/economy/pickup';
+import { SERVICES } from '../data/services';
 import { hasItem } from '../systems/GameState';
 import type { MenuTabId } from '../data/menuTabs';
 import { gameState } from '../systems/GameState';
@@ -39,11 +43,13 @@ export const UI_EVENTS = {
   worldTap: 'ui:worldTap',
   /** 播一段剧本对话。参数：剧本里的段落名（knot），播完后调用的函数 */
   playDialogue: 'ui:playDialogue',
+  /** 工具变了（比如拿到开局物资）：重画工具栏 */
+  toolsChanged: 'ui:toolsChanged',
 } as const;
 
 
 /** 左上角时辰框、底部工具栏、对话框的大小和位置 */
-const INFO = { x: 2, y: 2, w: 92, h: 46 };
+const INFO = { x: 2, y: 2, w: 112, h: 46 };
 const SLOT = 18;
 const SLOT_GAP = 2;
 const BAR_PAD = 3;
@@ -69,6 +75,10 @@ export class HudScene extends Phaser.Scene {
   private notebookIcon!: Phaser.GameObjects.Container;
 
   private toolCursor!: Phaser.GameObjects.Graphics;
+  /** 工具栏的所有东西（工具变了时整个重画） */
+  private toolbar?: Phaser.GameObjects.Container;
+  /** 对话框开着时又来的话，排队等着 */
+  private sayQueue: [string, Record<string, string | number> | undefined][] = [];
   private toolSlotX: number[] = [];
   private touchButtons: Phaser.GameObjects.Container[] = [];
   private touch = false;
@@ -143,7 +153,8 @@ export class HudScene extends Phaser.Scene {
       [INPUT_EVENTS.tap, (x: number, y: number) => this.onTap(x, y)],
       [INPUT_EVENTS.debugMemory, () => (gameState.memoryMode = !gameState.memoryMode)],
       [UI_EVENTS.say, (key: string, params?: Record<string, string | number>) => this.say(key, params)],
-      [UI_EVENTS.showMenu, (opts: MenuOption[]) => this.openMenu(opts)],
+      [UI_EVENTS.showMenu, (opts: MenuOption[], title?: string) => this.openMenu(opts, title)],
+      [UI_EVENTS.toolsChanged, () => this.buildToolbar(W, H)],
       [UI_EVENTS.playDialogue, (knot: string, onDone?: () => void) => this.playStory(knot, onDone)],
     ];
     const onNew = () => this.flashNotebook();
@@ -202,6 +213,11 @@ export class HudScene extends Phaser.Scene {
   // ---------------- 对话框 ----------------
 
   say(key: string, params?: Record<string, string | number>) {
+    // 上一句还没看完：排在后面，关掉上一句时再显示
+    if (this.dialog.visible) {
+      this.sayQueue.push([key, params]);
+      return;
+    }
     this.closeMenu();
     this.dialogText.setText(t(key, params));
     this.dialog.setVisible(true);
@@ -210,6 +226,8 @@ export class HudScene extends Phaser.Scene {
 
   closeDialog() {
     this.dialog.setVisible(false);
+    const next = this.sayQueue.shift();
+    if (next) return this.say(next[0], next[1]);
     this.syncBusy();
   }
 
@@ -258,16 +276,50 @@ export class HudScene extends Phaser.Scene {
         },
         { label: t('menu.rename'), run: () => void this.rename() },
         // 测试用（settings.ts 的 debugMenu 改成 false 就没有了）
-        ...(SETTINGS.debugMenu
-          ? [
-              { label: t('menu.debugSkipTime'), run: () => gameState.clock && (gameState.clock.minutes += 180) },
-              { label: t('menu.debugMemory'), run: () => (gameState.memoryMode = !gameState.memoryMode) },
-              { label: t('menu.debugPoster'), run: () => fireStoryEvent('saw_missing_poster') },
-            ]
-          : []),
+        ...(SETTINGS.debugMenu ? [{ label: t('menu.debug'), run: () => this.debugMenu() }] : []),
       ],
       t('menu.title'),
     );
+  }
+
+  /** 测试用的选项（settings.ts 的 debugMenu 改成 false 就没有了） */
+  private debugMenu() {
+    const ev = this.game.events;
+    this.openMenu(
+      [
+        { label: t('menu.debugSkipTime'), run: () => gameState.clock && (gameState.clock.minutes += 180) },
+        { label: t('menu.debugDay1'), run: () => ev.emit(FARM_EVENTS.debugDays, 1) },
+        { label: t('menu.debugDay7'), run: () => ev.emit(FARM_EVENTS.debugDays, 7) },
+        { label: t('menu.debugBuild'), run: () => ev.emit(FARM_EVENTS.debugBuild) },
+        { label: t('menu.debugPickup'), run: () => this.debugPickup() },
+        { label: t('menu.debugPoster'), run: () => fireStoryEvent('saw_missing_poster') },
+        { label: t('menu.debugChapter'), run: () => debugNextChapter() },
+        { label: t('menu.debugMemory'), run: () => (gameState.memoryMode = !gameState.memoryMode) },
+      ],
+      t('menu.debug'),
+    );
+  }
+
+  /** （测试）杂货铺掌柜好感到够，然后他来提上门收货 */
+  private debugPickup() {
+    const cfg = SERVICES.pickup;
+    debugSetHearts(cfg.npc, cfg.unlockHearts);
+    if (!pickupOfferReady()) return this.say('pickup.already');
+    this.playStory('pickup_offer', () => {
+      this.openMenu(
+        [
+          {
+            label: t('pickup.pay', { fee: cfg.fee }),
+            run: () => {
+              if (!unlockPickup()) return this.say('pickup.noMoney', { fee: cfg.fee });
+              this.game.events.emit(FARM_EVENTS.basketUnlocked);
+              this.say('pickup.unlocked');
+            },
+          },
+        ],
+        t('pickup.question', { fee: cfg.fee }),
+      );
+    });
   }
 
   private backToTitle() {
@@ -356,26 +408,36 @@ export class HudScene extends Phaser.Scene {
 
   /** 底部正中一排格子，每格放工具图标；当前拿着的那格有橘色框 */
   private buildToolbar(W: number, H: number) {
+    this.toolbar?.destroy();
+    this.toolSlotX = [];
+    this.toolbar = this.add.container(0, 0).setDepth(40);
     const n = gameState.tools.length;
+    if (!n) return; // 还没拿到工具（序章里周里正给之前）
     const w = BAR_PAD * 2 + n * SLOT + (n - 1) * SLOT_GAP;
     const h = BAR_PAD * 2 + SLOT;
     const x0 = Math.round((W - w) / 2);
     const y0 = H - 2 - h;
-    const g = this.add.graphics().setDepth(40);
+    const g = this.add.graphics();
+    this.toolbar.add(g);
     drawPanel(g, x0, y0, w, h);
     gameState.tools.forEach((id, i) => {
       const x = x0 + BAR_PAD + i * (SLOT + SLOT_GAP);
       const y = y0 + BAR_PAD;
       this.toolSlotX.push(x);
       g.fillStyle(toColor(SETTINGS.ui.innerBorder)).fillRect(x, y, SLOT, SLOT);
-      const slot = this.add.zone(x, y, SLOT, SLOT).setOrigin(0).setInteractive().setDepth(41);
+      const slot = this.add.zone(x, y, SLOT, SLOT).setOrigin(0).setInteractive();
+      this.toolbar!.add(slot);
       slot.on('pointerdown', () => !this.busy() && this.selectTool(i));
       const key = `icon_${id}`;
-      if (this.textures.exists(key)) this.add.image(x + SLOT / 2, y + SLOT / 2, key).setDepth(41);
-      else pixelText(this, x + SLOT / 2, y + SLOT / 2, this.itemName(id).slice(0, 1)).setOrigin(0.5).setDepth(41);
+      this.toolbar!.add(
+        this.textures.exists(key)
+          ? this.add.image(x + SLOT / 2, y + SLOT / 2, key)
+          : pixelText(this, x + SLOT / 2, y + SLOT / 2, this.itemName(id).slice(0, 1)).setOrigin(0.5),
+      );
     });
     // 当前工具的框：画在 (0,0)，每帧挪到选中的那格
-    this.toolCursor = this.add.graphics().setDepth(42).setY(y0 + BAR_PAD - 1);
+    this.toolCursor = this.add.graphics().setY(y0 + BAR_PAD - 1);
+    this.toolbar.add(this.toolCursor);
     drawFrame(this.toolCursor, 0, 0, SLOT + 2, SLOT + 2, toColor(SETTINGS.ui.toolSelected));
   }
 

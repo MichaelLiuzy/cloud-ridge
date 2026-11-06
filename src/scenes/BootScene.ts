@@ -97,6 +97,28 @@ function drawPlaceholder(g: Phaser.GameObjects.Graphics, spec: AssetSpec, i: num
       rect(w - 15, roofH + 6, 8, 6, toColor(PALETTE.ink)); // 窗
       break;
     }
+    case 'crop': {
+      // 0 种子：土里一个小点；1 幼苗；2 半大；3 成熟（带果实颜色）；4 枯萎（褐色）
+      const leaf = toColor(PALETTE.leaf);
+      const brown = toColor(PALETTE.brown);
+      if (i === 0) rect(6, h - 6, 4, 3, brown);
+      if (i === 1) rect(7, h - 8, 2, 6, leaf);
+      if (i === 2) {
+        rect(7, h - 12, 2, 10, leaf);
+        rect(4, h - 10, 8, 3, leaf);
+      }
+      if (i === 3) {
+        rect(7, h - 16, 2, 14, leaf);
+        rect(3, h - 13, 10, 4, leaf);
+        rect(4, h - 20, 8, 7, ink);
+        rect(5, h - 19, 6, 5, c);
+      }
+      if (i === 4) {
+        rect(7, h - 10, 2, 8, brown);
+        rect(5, h - 6, 6, 2, brown);
+      }
+      break;
+    }
     case 'cg':
       rect(0, 0, w, h, c);
       rect(0, h - 4, w, 4, ink);

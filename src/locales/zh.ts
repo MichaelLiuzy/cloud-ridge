@@ -48,6 +48,7 @@ export const zh = {
     zhou: "周里正",
     doctor: "大夫",
     fan: "老范",
+    store_keeper: "杂货铺掌柜",
     eric: "Eric",
     // 下面几个是主线大纲里的暂名，可以随时改
     /** Eric 的妹妹 */
@@ -131,6 +132,10 @@ export const zh = {
     solved: "已解决",
     answer: "答案：{text}",
     newChapter: "笔记本里写下了新的一页：{name}",
+    /** 每章唯一一句明确的去处提示（按章节 id，没写的章就没有） */
+    goals: {
+      prologue: "去镇上买种子、卖东西，认识一下镇上的人。",
+    },
     /** 「操作」栏：每一项分 Mac 键盘和手机两种说法 */
     controls: {
       move: { keyboard: "走路：W A S D 或方向键", touch: "走路：在屏幕左半边按住拖动" },
@@ -142,6 +147,10 @@ export const zh = {
     /** 「已学会」栏 */
     learned: {
       got_notebook: "@zhou 给了我一本笔记本。记不住的事，就写下来。",
+      recipe_veg_porridge: "菜谱：菜粥",
+      recipe_radish_soup: "菜谱：萝卜汤",
+      recipe_roast_sweet_potato: "菜谱：烤红薯",
+      make_plant_ash: "烧草木灰（灶台里的灰，撒在地里能让菜长得快些）",
     },
   },
 
@@ -152,7 +161,7 @@ export const zh = {
   },
 
   hud: {
-    date: "{month}{day}",
+    date: "{month}{day} · {term}",
     time: "{shichen}（{hour}:{minute}）",
     money: "{amount} {unit}",
     stamina: "体力 {value}/{max}",
@@ -178,6 +187,13 @@ export const zh = {
     sleep: "睡觉",
     cancel: "算了",
     saveOnly: "存档（不睡）",
+    clearRuin: "清理废墟",
+    sow: "种{name}（还有 {n} 包）",
+    harvest: "收{name}",
+    clearDead: "拔掉枯苗",
+    basketPut: "放进收货筐",
+    basketTake: "把筐里的东西拿回来",
+    houseStatus: "看看老宅",
   },
 
   // ===== 对着东西「查看」时显示的话 =====
@@ -189,6 +205,14 @@ export const zh = {
     rock: "一块石头，挡在地里。要用铁镐才敲得碎，铁匠铺有卖。",
     stump: "一截老树桩，要用斧头才砍得动。",
     fireDebris: "烧焦的木头和瓦片……是那场火留下的。",
+    ruin: "一片烧焦的废墟。",
+    site: "老宅的地基，已经清干净了。",
+    house: "老宅，一点点重新立起来了。",
+    basket: "门口的收货筐。晚上放进去的东西，第二天一早杂货铺来收。",
+    cropGrowing: "{name}正在长。",
+    cropRipe: "{name}熟了，可以收了。",
+    cropDead: "{name}枯死了。",
+    cropDormant: "{name}在过冬，开春会自己发芽。",
     water: "一口小池塘，水很清。",
     tree: "一棵大树。",
     fence: "旧篱笆。",
@@ -211,6 +235,52 @@ export const zh = {
     saved: "已存档（存档{slot}）。现在的时间、位置和田地都记下了。",
     saveFailed: "存档没成功……可以再试一次，或者在菜单里先导出一份备份。",
     exported: "存档文件已导出。",
+    notSowTime: "现在不是种{name}的时节。",
+    harvested: "收了 {n} 个{name}。",
+    frost: "霜降了。地里 {n} 棵怕冷的菜一夜之间冻死了。",
+    dormant: "韭菜的叶子枯了，根还活着，要过冬了。",
+    woke: "开春了，过冬的韭菜又冒出了新芽。",
+    basketSold: "杂货铺的伙计一早来过了，收货筐里的东西卖了 {total} 文。",
+    nothingToSell: "身上没有杂货铺收的东西。",
+    basketPut: "把 {n} 个{name}放进了收货筐。明天一早结算。",
+    basketTaken: "把筐里的东西都拿回来了。",
+    debugDays: "（测试）过了 {n} 天，今天是{date}。",
+  },
+
+  // ===== 重建老宅 =====
+  house: {
+    ruinsCleared: "废墟终于清干净了，露出了老宅的地基。接下来可以去镇上请木匠来修了。",
+    building: "木匠正在修「{name}」，还要 {days} 天。",
+    statusRuins: "老宅只剩一片废墟，还有 {left} 格没清。拿斧头或锄头一点点清吧。",
+    statusNext: "下一步是「{name}」：要{mats}，还有 {cost} 文工钱。去镇上找木匠。",
+    allDone: "老宅已经完全修好了。",
+    busy: "木匠已经在修了，还要 {days} 天。",
+    clearFirst: "得先把废墟清干净，木匠才好动工。",
+    notEnough: "材料或工钱还不够。",
+    started: "木匠来了，开始修「{name}」，要 {days} 天。",
+    finished: "「{name}」修好了！",
+    learned: "有了灶台，能做几样吃的了。（记在笔记本「已学会」里）",
+  },
+
+  // ===== 日记碎片 =====
+  diary: {
+    where: {
+      bed: "烧塌的床板下",
+      stove: "灶台边的砖缝里",
+      beam: "房梁的缝里",
+      backdoor: "后门外的土里",
+    },
+    foundReadable: "在{where}找到一页日记，记进了笔记本。",
+    foundPaper: "在{where}找到一片烧焦的纸片。字迹模糊，看不清写了什么。",
+  },
+
+  // ===== 杂货铺上门收货 =====
+  pickup: {
+    question: "付 {fee} 文，请杂货铺每天上门收货？",
+    pay: "付 {fee} 文开通",
+    noMoney: "钱不够，要 {fee} 文。",
+    unlocked: "开通了。家门口多了一个收货筐。",
+    already: "（测试）上门收货已经开通了。",
   },
 
   // ===== 游戏中的「菜单」（M 键 / 右上菜单按钮） =====
@@ -225,6 +295,12 @@ export const zh = {
     debugSkipTime: "测试：时间快进 3 小时",
     debugMemory: "测试：回忆模式 开 / 关",
     debugPoster: "测试：触发「看到寻人启事」",
+    debug: "测试……",
+    debugDay1: "测试：直接睡到明天",
+    debugDay7: "测试：快进 7 天",
+    debugBuild: "测试：请木匠修下一阶段（材料不够直接给）",
+    debugPickup: "测试：杂货铺掌柜好感到 2 心",
+    debugChapter: "测试：直接进入下一章",
     rename: "改名字",
   },
 };

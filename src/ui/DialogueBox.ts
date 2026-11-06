@@ -12,7 +12,7 @@ import { MOOD_FRAMES } from '../config/assets';
 import { t } from '../locales/i18n';
 import { DialogueRunner, type DialogueLine } from '../story/runner';
 import { parseClueMarks } from '../story/text';
-import { gameState } from '../systems/GameState';
+import { addItem, gameState, giveStartKit } from '../systems/GameState';
 import { addLearned, canGetClue, giveClue, learnControl } from '../systems/story/notebook';
 import { askName } from './nameInput';
 import { drawPanel, pixelText } from './pixelUi';
@@ -133,10 +133,14 @@ export class DialogueBox {
     this.arrow.setVisible(!this.waiting);
   }
 
-  /** 行尾标签：线索、操作、已学会、给东西 */
+  /** 行尾标签：线索、操作、已学会、给东西、给开局物资 */
   private applyTags(line: DialogueLine) {
     const { clue, learn, learned, give } = line.tags;
-    if (give) gameState.inventory[give] = (gameState.inventory[give] ?? 0) + 1;
+    if (give) addItem(give, 1);
+    if ('give_start' in line.tags) {
+      giveStartKit();
+      this.scene.game.events.emit('ui:toolsChanged');
+    }
     if (clue) giveClue(clue);
     if (learn) learnControl(learn);
     if (learned) addLearned(learned);

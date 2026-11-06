@@ -15,6 +15,11 @@
  *    r  石头（挡路）        g  杂草（挡路）
  *    s  树桩（挡路）        x  火灾残骸（挡路）
  *    L  灯笼（挡路，夜里会亮）
+ *    R  老宅的废墟（挡路，用斧头、锄头一格格清掉）
+ *    _  清干净的老宅地基（能走）
+ *    K  重建好的老宅（挡路；第 2 阶段修好后，地基上会自动盖起来，见下面的 HOUSE_SITE）
+ *    E  老宅门口（能走）
+ *    B  收货筐（挡路；开通杂货铺上门收货后自动出现在 BASKET_CELL）
  *
  *  中间被篱笆 # 围起来的就是 15×12 的农田区（数值来自 src/data/start.ts）。
  *  以后正式地图会改用 Tiled 地图编辑器的格式，这份文字地图只是原型用。
@@ -22,11 +27,11 @@
 
 export const FARM_MAP: string[] = [
   'TTTTTTTTTTTTTTTTTTTTTTTTTT',
-  'T,......................,T',
-  'T..HHH......,.........~~.T',
-  'T..HHH...............~~~.T',
-  'T..LD....,............~..T',
-  'T...=....................T',
+  'T,......RRRRRR..........,T',
+  'T..HHH..RRRRRR........~~.T',
+  'T..HHH..RRRRRR.......~~~.T',
+  'T..LD...RRRRRR........~..T',
+  'T...=...RRRRRR...........T',
   'T...=.#################..T',
   'T...=.#ooo.....g.....x#..T',
   'T...=.#ooo..r.....g..x#..T',
@@ -81,5 +86,26 @@ export const TILE_TYPES: Record<string, TileType> = {
   'g': { kind: 'weed', solid: true, hint: 'hint.weed', ground: 'grass', object: 'debris_weed' },
   's': { kind: 'stump', solid: true, hint: 'hint.stump', ground: 'grass', object: 'debris_stump' },
   'x': { kind: 'fireDebris', solid: true, hint: 'hint.fireDebris', ground: 'grass', object: 'debris_fire' },
+  'R': { kind: 'ruin', solid: true, hint: 'hint.ruin', ground: 'dirt', object: 'debris_ruin' },
+  '_': { kind: 'site', solid: false, hint: 'hint.site', ground: 'dirt' },
+  'K': { kind: 'house', solid: true, hint: 'hint.house', ground: 'dirt' },
+  'E': { kind: 'path', solid: false, hint: 'hint.house', ground: 'path' },
+  'B': { kind: 'basket', solid: true, hint: 'hint.basket', ground: 'grass', object: 'prop_basket' },
   'L': { kind: 'lantern', solid: true, hint: 'hint.lantern', ground: 'grass', object: 'prop_lantern', light: true, fire: true },
 };
+
+/**
+ * 老宅：废墟（R）清干净后变成地基（_）；第 2 阶段修好后，
+ * house 这块（左上角 x, y，宽 w、高 h，单位：格）盖成房子（K），door 那一格是门口（E）。
+ * 房子的图按 house 这块的底边居中画，屋顶可以往上伸出去。
+ */
+export const HOUSE_SITE = {
+  house: { x: 9, y: 1, w: 4, h: 4 },
+  door: { x: 10, y: 5 },
+};
+
+/** 收货筐放在哪一格（开通上门收货后出现） */
+export const BASKET_CELL = { x: 6, y: 4 };
+
+/** 地图上一共有几格废墟 */
+export const RUIN_TILES = FARM_MAP.reduce((n, row) => n + [...row].filter((ch) => ch === 'R').length, 0);

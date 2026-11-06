@@ -9,8 +9,10 @@
  *  shape 是占位色块的样子（只是为了占位时好认）：
  *    full = 整格填满；object = 地上的小东西（留点边）；char = 人物（头 + 身子，带一个点表示朝向）；
  *    tree = 树（树冠 + 树干）；lantern = 灯笼（杆子 + 灯）；building = 房子（墙 + 屋顶 + 门）；icon = 图标
+ *    crop = 作物（5 格：种子、幼苗、半大、成熟、枯萎，一格比一格高）
  */
 import type { PaletteName } from './palette';
+import { CROPS } from '../data/crops';
 
 export interface AssetSpec {
   /** 每格宽、高（像素） */
@@ -20,7 +22,7 @@ export interface AssetSpec {
   frames: string[];
   /** 占位色块的颜色：一个颜色 = 每格都用它；一串 = 每格各用各的 */
   color: PaletteName | PaletteName[];
-  shape: 'full' | 'object' | 'char' | 'tree' | 'lantern' | 'building' | 'icon' | 'portrait' | 'cg';
+  shape: 'full' | 'object' | 'char' | 'tree' | 'lantern' | 'building' | 'icon' | 'portrait' | 'cg' | 'crop';
 }
 
 const DIRS = ['down', 'left', 'right', 'up'];
@@ -67,11 +69,19 @@ export const ASSETS: Record<string, AssetSpec> = {
   debris_rock: { w: 16, h: 16, frames: ['main'], color: 'stone', shape: 'object' },
   debris_stump: { w: 16, h: 16, frames: ['main'], color: 'ochre', shape: 'object' },
   debris_fire: { w: 16, h: 16, frames: ['main'], color: 'ink', shape: 'object' },
+  /** 老宅的废墟（一格一格清） */
+  debris_ruin: { w: 16, h: 16, frames: ['main'], color: 'ash', shape: 'object' },
+  /** 门口的收货筐（开通杂货铺上门收货后出现） */
+  prop_basket: { w: 16, h: 16, frames: ['main'], color: 'ochre', shape: 'object' },
   prop_tree: { w: 16, h: 32, frames: ['main'], color: 'leafDark', shape: 'tree' },
   prop_lantern: { w: 16, h: 32, frames: ['main'], color: 'vermilion', shape: 'lantern' },
 
   // ---- 房子 ----
   house_straw_hut: { w: 48, h: 48, frames: ['main'], color: 'ochreLight', shape: 'building' },
+  /** 重建老宅：第 2、3、4 阶段的样子（64×64） */
+  house_timber_frame: { w: 64, h: 64, frames: ['main'], color: 'paperDark', shape: 'building' },
+  house_tiled_roof: { w: 64, h: 64, frames: ['main'], color: 'paper', shape: 'building' },
+  house_courtyard: { w: 64, h: 64, frames: ['main'], color: 'paper', shape: 'building' },
 
   // ---- 图标（工具栏、背包） ----
   icon_hoe: { w: 16, h: 16, frames: ['main'], color: 'ochre', shape: 'icon' },
@@ -86,7 +96,22 @@ export const ASSETS: Record<string, AssetSpec> = {
   icon_radish: { w: 16, h: 16, frames: ['main'], color: 'mist', shape: 'icon' },
   icon_plant_ash: { w: 16, h: 16, frames: ['main'], color: 'ash', shape: 'icon' },
   icon_notebook: { w: 16, h: 16, frames: ['main'], color: 'vermilion', shape: 'icon' },
+  icon_burnt_paper: { w: 16, h: 16, frames: ['main'], color: 'ash', shape: 'icon' },
+
+  // ---- 作物（每种 5 格：种子、幼苗、半大、成熟、枯萎；颜色是成熟时果实的颜色）----
+  ...cropSheets(),
 };
+
+/** 所有作物的图（没有美术图时按 crop 形状画占位） */
+function cropSheets(): Record<string, AssetSpec> {
+  const ripe: Partial<Record<string, PaletteName>> = {
+    radish: 'paper', potato: 'ochreLight', pea: 'leafLight', chili: 'vermilion', watermelon: 'leafDark',
+    pumpkin: 'candle', taro: 'stone', cucumber: 'leafLight', eggplant: 'indigo', sweet_potato: 'maroon', garlic: 'paper',
+  };
+  return Object.fromEntries(
+    CROPS.crops.map((c) => [`crop_${c.id}`, { w: 16, h: 32, frames: ['seed', 'sprout', 'half', 'ripe', 'withered'], color: ripe[c.id] ?? 'leaf', shape: 'crop' } as AssetSpec]),
+  );
+}
 
 /**
  * 地图上的地面名字 → 用哪张图的哪一格。

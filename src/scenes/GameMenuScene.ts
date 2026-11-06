@@ -208,7 +208,7 @@ export class GameMenuScene extends Phaser.Scene {
       const key = `icon_${e.item.id}`;
       if (this.textures.exists(key)) this.content.add(this.add.image(x + S / 2, y + S / 2, key));
       else this.content.add(pixelText(this, x + S / 2, y + S / 2, localName(e.item.name).slice(0, 1)).setOrigin(0.5));
-      if (e.item.type !== 'tool' && e.item.type !== 'key' && e.count > 1) {
+      if (e.item.type !== 'tool' && e.count > 1) {
         this.content.add(pixelText(this, x + S, y + S + 2, String(e.count), { color: ui.text }).setOrigin(1, 1).setStroke(ui.panel, 3));
       }
       const hit = this.add.zone(x, y, S, S).setOrigin(0).setInteractive();
@@ -223,10 +223,12 @@ export class GameMenuScene extends Phaser.Scene {
     const sel = entries[this.slot];
     let line = t('bag.empty');
     if (sel) {
-      const extra = sel.item.type === 'tool' ? `（${t('bag.tool')}）` : sel.item.type === 'key' ? '' : `  ${t('bag.count', { n: sel.count })}`;
+      const extra = sel.item.type === 'tool' ? `（${t('bag.tool')}）` : sel.count > 1 || sel.item.type !== 'key' ? `  ${t('bag.count', { n: sel.count })}` : '';
       line = localName(sel.item.name) + extra;
     }
     this.content.add(pixelText(this, W / 2, y, line).setOrigin(0.5, 0));
+    // 物品说明（物品表里的 desc）
+    if (sel?.item.desc) this.content.add(pixelText(this, W / 2, y + LINE_H + 2, localName(sel.item.desc), { color: SETTINGS.ui.textDim2 }).setOrigin(0.5, 0));
   }
 
   // ---------------- 笔记本 ----------------
@@ -312,6 +314,10 @@ export class GameMenuScene extends Phaser.Scene {
       );
       write(fillNames(localName(CHAPTERS[ch].name)), { color: ui.money, gapAfter: 2 });
       wrote = true;
+      // 这一章的去处提示（序章：周里正教完以后才有）
+      const goalKey = `notebook.goals.${ch}`;
+      const goal = t(goalKey);
+      if (goal !== goalKey && (ch !== 'prologue' || gameState.prologue === 'done')) write(fillNames(goal), { indent: 10, bullet: '·', color: ui.textDim2, gapAfter: 3 });
       if (!clues.length && !questions.length) write(t('notebook.none'), { color: ui.textDim, indent: 10, gapAfter: 6 });
       for (const c of clues) {
         write(fillNames(localName(CLUES[c].text)), { indent: 10, bullet: '·' });
