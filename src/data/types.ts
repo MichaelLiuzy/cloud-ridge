@@ -40,7 +40,8 @@ export type ItemId =
   | 'garlic_seed' | 'garlic' | 'mustard_greens_seed' | 'mustard_greens'
   | 'wood' | 'thatch' | 'stone' | 'roof_tile' | 'brick' | 'firewood' | 'plant_ash'
   | 'mantou' | 'tea' | 'veg_porridge' | 'radish_soup' | 'roast_sweet_potato'
-  | 'hoe' | 'bucket' | 'sickle' | 'axe' | 'pickaxe';
+  | 'hoe' | 'bucket' | 'sickle' | 'axe' | 'pickaxe'
+  | 'notebook';
 
 /** 所有作物的 id。在 crops.ts 加新作物时，也要加到这里。 */
 export type CropId =
@@ -178,8 +179,8 @@ export interface CropsTable {
 export interface Item {
   id: ItemId;
   name: LocalName;
-  /** 种类：种子 / 农产品 / 材料 / 食物 / 肥料 / 工具 */
-  type: 'seed' | 'crop' | 'material' | 'food' | 'fertilizer' | 'tool';
+  /** 种类：种子 / 农产品 / 材料 / 食物 / 肥料 / 工具 / 重要物品（不能卖、不会用完，比如笔记本） */
+  type: 'seed' | 'crop' | 'material' | 'food' | 'fertilizer' | 'tool' | 'key';
   /** 买入价格（文，null = 店里买不到） */
   buyPrice: number | null;
   /** 卖出价格（文，null = 卖不掉） */

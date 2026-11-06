@@ -525,5 +525,13 @@ export const ITEMS: ItemsTable = {
       soldAt: ["blacksmith"],
       action: "mine_rock",
     },
+    {
+      id: "notebook",
+      name: { zh: "笔记本", en: "Notebook" },
+      type: "key",  // 重要物品：不能卖、不会用完
+      buyPrice: null,
+      sellPrice: null,
+      soldAt: [],
+    },
   ],
 };
