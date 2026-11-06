@@ -1,5 +1,5 @@
 {
-  "_说明": "美术规范 v0.1 的 24 色调色板。整理脚本（tools/art.mjs）会把所有素材的颜色套成这 24 种；游戏里的占位色块和界面颜色也从这里取。暗紫 eric 只给 Eric 的觉醒之力用。",
+  "_说明": "美术规范的 27 色调色板（美术主管 2026-11-06 从 24 色扩成 27 色，加了肤色阶：skinHighlight 肤高光、skin 肤亮、skinMid 肤中、skinDark 肤暗、skinDeep 肤深）。整理脚本（tools/art.mjs）会把所有素材的颜色套成这 27 种；游戏里的占位色块和界面颜色也从这里取。暗紫 eric 只给 Eric 的觉醒之力用。",
   "colors": {
     "ink": "#1E1A1F",
     "outline": "#3B3540",
@@ -22,8 +22,11 @@
     "maroon": "#6B2A26",
     "orange": "#D97B3A",
     "candle": "#F2C46B",
+    "skinHighlight": "#F3D6BD",
     "skin": "#E6B998",
+    "skinMid": "#D2A07F",
     "skinDark": "#B9876A",
+    "skinDeep": "#8C5F4B",
     "eric": "#5A4363"
   }
 }

@@ -27,9 +27,9 @@ const RAW_DIR = path.resolve(process.argv[2] ?? path.join(ROOT, 'art_raw'));
 const OUT_DIR = path.resolve(process.argv[3] ?? path.join(ROOT, 'public', 'assets'));
 const PREVIEW_DIR = path.resolve(OUT_DIR, '..', 'art_preview');
 const RULES = JSON.parse(fs.readFileSync(path.join(ROOT, 'tools', 'art_rules.json'), 'utf8')).rules;
-const PALETTE = Object.values(JSON.parse(fs.readFileSync(path.join(ROOT, 'src', 'config', 'palette.json'), 'utf8')).colors).map(
-  (hex) => [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)],
-);
+const PALETTE_NAMED = JSON.parse(fs.readFileSync(path.join(ROOT, 'src', 'config', 'palette.json'), 'utf8')).colors;
+const hexToRgb = (hex) => [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+const PALETTE = Object.values(PALETTE_NAMED).map(hexToRgb);
 
 /** 可以调的数 */
 const TUNING = {
@@ -49,6 +49,19 @@ const TUNING = {
   alphaCut: 0.5,
   /** 地面纹理每格四周往里收几成（去掉贴着空隙的杂色边），0.03 = 3% */
   tileInset: 0.03,
+  /**
+   * 肤色保护（只对规则里写了 "skin": true 的图生效：人物、头像。过场 CG 不开，因为木头、红衣服会被误当成皮肤）：
+   * 色相在 hue 范围内、饱和度在 sat 范围内、亮度不低于 minValue 的像素算作皮肤，
+   * 先把饱和度降低 desaturate（0.3 = 降 30%），再只在 5 个肤色和两个墨色里找最近色，
+   * 不会落到橘火、朱红、赭石上。ChatGPT 画的皮肤普遍偏艳，不这样脸会发橙、花成斑点。
+   */
+  skin: {
+    hue: [10, 45],
+    sat: [0.2, 0.8],
+    minValue: 0.5,
+    desaturate: 0.3,
+    colors: ['skinHighlight', 'skin', 'skinMid', 'skinDark', 'skinDeep', 'ink', 'outline'],
+  },
   /** 生成精灵表的输出文件夹（每次运行先清空，fonts 等别的文件夹不动） */
   outFolders: ['chars', 'tiles', 'objects', 'buildings', 'crops', 'icons', 'portraits', 'cg'],
 };
@@ -133,18 +146,18 @@ function processFile(file, rule, id) {
       const scale = Math.min(box.w / cw, box.h / ch);
       const w = Math.round(cw * scale), h = Math.round(ch * scale);
       const inner = { x: box.x + Math.floor((box.w - w) / 2), y: box.y + Math.floor((box.h - h) / 2), w, h };
-      return quantize(hardEdge(resize(img, inner, cw, ch, false), true));
+      return quantize(hardEdge(resize(img, inner, cw, ch, false), true), rule.skin);
     }
     if (isTile) {
       const ix = Math.round(box.w * TUNING.tileInset);
       const iy = Math.round(box.h * TUNING.tileInset);
       const inner = { x: box.x + ix, y: box.y + iy, w: Math.max(1, box.w - 2 * ix), h: Math.max(1, box.h - 2 * iy) };
-      return quantize(hardEdge(resize(img, inner, cw, ch, false), true));
+      return quantize(hardEdge(resize(img, inner, cw, ch, false), true), rule.skin);
     }
     const scale = Math.min(cw / box.w, ch / box.h);
     const w = Math.max(1, Math.min(cw, Math.round(box.w * scale)));
     const h = Math.max(1, Math.min(ch, Math.round(box.h * scale)));
-    const small = quantize(hardEdge(resize(img, box, w, h, true), false));
+    const small = quantize(hardEdge(resize(img, box, w, h, true), false), rule.skin);
     // 底部居中放进格子
     const out = blank(cw, ch);
     blit(small, out, Math.floor((cw - w) / 2), ch - h);
@@ -397,20 +410,48 @@ function hardEdge(img, opaque) {
   return img;
 }
 
-/** 每个像素换成调色板里最近的颜色（按人眼感觉加权的距离），不抖动 */
-function quantize(img) {
+/** 每个像素换成调色板里最近的颜色（按人眼感觉的距离），不抖动。skin = 开肤色保护（见 TUNING.skin） */
+function quantize(img, skin = false) {
   for (let i = 0; i < img.w * img.h; i++) {
     const o = i * 4;
     if (img.data[o + 3] === 0) {
       img.data[o] = img.data[o + 1] = img.data[o + 2] = 0;
       continue;
     }
-    const [r, g, b] = nearest(img.data[o], img.data[o + 1], img.data[o + 2]);
+    const r0 = img.data[o], g0 = img.data[o + 1], b0 = img.data[o + 2];
+    const [r, g, b] = (skin && skinTone(r0, g0, b0)) || nearest(r0, g0, b0);
     img.data[o] = r;
     img.data[o + 1] = g;
     img.data[o + 2] = b;
   }
   return img;
+}
+
+/** 这个像素像皮肤的话：降一点饱和度，再只在肤色和墨色里找最近色；不像皮肤返回 null */
+const SKIN_PALETTE = TUNING.skin.colors.map((n) => hexToRgb(PALETTE_NAMED[n]));
+const SKIN_LAB = SKIN_PALETTE.map((p) => toLab(p[0], p[1], p[2]));
+function skinTone(r, g, b) {
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const v = max / 255;
+  const s = max === 0 ? 0 : (max - min) / max;
+  if (max === min) return null;
+  let h = max === r ? ((g - b) / (max - min)) * 60 : max === g ? ((b - r) / (max - min)) * 60 + 120 : ((r - g) / (max - min)) * 60 + 240;
+  if (h < 0) h += 360;
+  const t = TUNING.skin;
+  if (h < t.hue[0] || h > t.hue[1] || s < t.sat[0] || s > t.sat[1] || v < t.minValue) return null;
+  // 降饱和：往灰（同亮度的最大值）那边拉一点
+  const k = t.desaturate;
+  const [R, G, B] = [r, g, b].map((c) => c + (max - c) * k);
+  const [L, A, Bb] = toLab(R, G, B);
+  let best = SKIN_PALETTE[0], bestD = Infinity;
+  SKIN_LAB.forEach(([l2, a2, b2], i) => {
+    const d = (L - l2) ** 2 + (A - a2) ** 2 + (Bb - b2) ** 2;
+    if (d < bestD) {
+      bestD = d;
+      best = SKIN_PALETTE[i];
+    }
+  });
+  return best;
 }
 
 /**

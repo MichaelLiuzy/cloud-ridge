@@ -28,11 +28,14 @@ ChatGPT 每次出完图会告诉你文件名，照着存就行。
 |---|---|---|
 | `player_stand.png` | 主角站立图 | 1 行 4 格：朝下、朝左、朝右、朝上 |
 | `tiles_farm.png` | 农田地面 | 2 行 3 格：草地、黄土、锄过的地、浇过水的地、小路、篱笆 |
+| `tiles_water.png` | 水面 | 1 行 2 格：`water`（平静水面）、`water_shimmer`（带波光的水面）。游戏里两格轮流换，做出水波 |
 | `debris.png` | 田间杂物 | 1 行 4 格：野草、石头、树桩、火灾残骸 |
 | `house_straw_hut.png` | 草棚 | 1 格，整栋房子 |
 | `crop_bok_choy.png` | 小白菜 | 1 行 5 格：种子、幼苗、半大、成熟、枯萎 |
 | `crop_radish.png` | 萝卜 | 同上 |
 | `icons_batch1.png` | 第一批图标 | 2 行 5 格：锄头、水桶、镰刀、斧头、馒头；小白菜种子、萝卜种子、小白菜、萝卜、草木灰 |
+| `icons_batch2.png` | 第二批图标 | 1 行 3 格：`pickaxe`（镐）、`notebook`（笔记本）、`burnt_paper`（烧焦的纸页） |
+| `house_old_ruin.png` | 烧毁的老宅（64×64） | 1 格，整栋烧毁的房子。立在宅基地上，四周的破瓦焦木（`debris_ruin`）清完、木匠搭好梁架后换成 `house_timber_frame` |
 | `portrait_player.png` | 主角头像 | 1 行 4 格：平常、笑、担忧、惊讶 |
 | `player_walk.png` | 主角走路（以后再画） | 4 行 5 格：每行一个方向（下、左、右、上），每行是站立 + 走路 4 格。有了它游戏会自动改用真的走路动画 |
 | `prop_lantern.png` | 灯笼 | 1 格（16×32） |
@@ -46,7 +49,7 @@ ChatGPT 每次出完图会告诉你文件名，照着存就行。
 - 其他作物：`crop_` + 作物 id，例如 `crop_potato.png`（作物 id 见 `src/data/crops.ts`）
 - 镇上的人：`npc_` + 人物 id + `_stand`，例如 `npc_clinic_doctor_stand.png`；头像是 `portrait_` + 人物 id
 - 其他房子：`house_` + 房子 id，例如 `house_thatched_cottage.png`（房子 id 见 `src/data/housing.ts`）。
-  默认缩成 48×48；其他大小要在 `tools/art_rules.json` 的 `sizes` 里写一行（烧毁的老宅 `house_old_ruin` 已写好 64×64）
+  默认缩成 48×48；其他大小要在 `tools/art_rules.json` 的 `sizes` 里写一行（烧毁的老宅 `house_old_ruin` 和重建各阶段已写好 64×64）
 - 其他地面：`tiles_` + 名字，2 行 3 格
 - 其他摆设：`prop_` + 名字，默认 16×32
 
