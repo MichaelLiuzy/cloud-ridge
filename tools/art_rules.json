@@ -81,7 +81,7 @@
     {
       "name": "house_{id}",
       "rows": 1, "cols": 1, "cell": [48, 48],
-      "sizes": { "straw_hut": [48, 48], "old_ruin": [64, 64], "burned_ruins": [64, 64], "timber_frame": [64, 64], "tiled_roof": [64, 64], "courtyard": [64, 64] },
+      "sizes": { "straw_hut": [48, 48], "woodshed": [48, 48], "old_ruin": [64, 64], "burned_ruins": [64, 64], "timber_frame": [64, 64], "tiled_roof": [64, 64], "courtyard": [64, 64] },
       "frames": ["main"],
       "out": "buildings/house_{id}.png"
     },

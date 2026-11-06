@@ -194,6 +194,9 @@ export const zh = {
     basketPut: "放进收货筐",
     basketTake: "把筐里的东西拿回来",
     houseStatus: "看看老宅",
+    chest: "打开箱子",
+    chestPut: "放东西进箱子",
+    chestTake: "从箱子里拿",
   },
 
   // ===== 对着东西「查看」时显示的话 =====
@@ -216,7 +219,8 @@ export const zh = {
     water: "一口小池塘，水很清。",
     tree: "一棵大树。",
     fence: "旧篱笆。",
-    hut: "镇上的人帮忙搭的草棚。晚上可以在这里睡觉。",
+    hut: "镇上的人帮忙搭的草棚。晚上可以在这里睡觉，里面还有个箱子。",
+    shed: "以前住的草棚，现在当柴房用。里面的箱子还在。",
     path: "通往镇上的小路。",
     lantern: "门口挂着一盏灯笼，天黑了会点上。",
   },
@@ -235,7 +239,7 @@ export const zh = {
     saved: "已存档（存档{slot}）。现在的时间、位置和田地都记下了。",
     saveFailed: "存档没成功……可以再试一次，或者在菜单里先导出一份备份。",
     exported: "存档文件已导出。",
-    notSowTime: "现在不是种{name}的时节。",
+    notSowTime: "现在不是种{name}的时节，{term}以后再种吧。",
     harvested: "收了 {n} 个{name}。",
     frost: "霜降了。地里 {n} 棵怕冷的菜一夜之间冻死了。",
     dormant: "韭菜的叶子枯了，根还活着，要过冬了。",
@@ -243,7 +247,11 @@ export const zh = {
     basketSold: "杂货铺的伙计一早来过了，收货筐里的东西卖了 {total} 文。",
     nothingToSell: "身上没有杂货铺收的东西。",
     basketPut: "把 {n} 个{name}放进了收货筐。明天一早结算。",
-    basketTaken: "把筐里的东西都拿回来了。",
+    taken: "拿回了 {n} 个{name}。",
+    chestTitle: "箱子（{used}/{slots} 格）",
+    chestPut: "把 {n} 个{name}放进了箱子。",
+    chestFull: "箱子满了，最多只能放 {slots} 种东西。",
+    nothingToStore: "身上没有能放进箱子的东西。",
     debugDays: "（测试）过了 {n} 天，今天是{date}。",
   },
 
@@ -260,6 +268,7 @@ export const zh = {
     started: "木匠来了，开始修「{name}」，要 {days} 天。",
     finished: "「{name}」修好了！",
     learned: "有了灶台，能做几样吃的了。（记在笔记本「已学会」里）",
+    hutToShed: "搬进老宅了。原来的草棚改成柴房，箱子还留在里面。",
   },
 
   // ===== 日记碎片 =====
@@ -272,6 +281,19 @@ export const zh = {
     },
     foundReadable: "在{where}找到一页日记，记进了笔记本。",
     foundPaper: "在{where}找到一片烧焦的纸片。字迹模糊，看不清写了什么。",
+  },
+
+  // ===== 选数量的小框 =====
+  quantity: {
+    count: "{n} 个（最多 {max}）",
+    askBasket: "放几个{name}进收货筐？",
+    askChest: "放几个{name}进箱子？",
+    askTake: "拿回几个{name}？",
+    one: "1个",
+    half: "一半",
+    all: "全部",
+    ok: "确定",
+    cancel: "算了",
   },
 
   // ===== 杂货铺上门收货 =====
@@ -299,7 +321,7 @@ export const zh = {
     debugDay1: "测试：直接睡到明天",
     debugDay7: "测试：快进 7 天",
     debugBuild: "测试：请木匠修下一阶段（材料不够直接给）",
-    debugPickup: "测试：杂货铺掌柜好感到 2 心",
+    debugPickup: "测试：杂货铺掌柜好感加到 200 点（2 颗心）",
     debugChapter: "测试：直接进入下一章",
     rename: "改名字",
   },

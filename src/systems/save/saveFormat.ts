@@ -9,7 +9,7 @@
 import { FARM_MAP } from '../../world/farmMap';
 import type { PlantedCrop } from '../farming/crops';
 
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 
 /** 存档里存了什么 */
 export interface SaveData {
@@ -36,6 +36,10 @@ export interface SaveData {
   diaryFound: number[];
   /** 杂货铺上门收货开通了没有 */
   pickup: { unlocked: boolean };
+  /** 草棚是不是已经改成柴房了 */
+  hutIsShed: boolean;
+  /** 草棚（柴房）箱子里的东西 */
+  storage: Record<string, number>;
   /** 收货筐里放的东西 */
   basket: Record<string, number>;
   /** 地里种的东西：「x,y」→ 作物 */
@@ -122,6 +126,15 @@ const MIGRATIONS: Record<number, (old: any) => any> = {
       flags: { ...old.flags, startKitGiven: true },
     };
   },
+  // 5 → 6：好感度改成按点数记（100 点 1 颗心），以前存的「几颗心」乘 100；
+  // 草棚修完第 2 阶段后改成柴房；加了草棚里的箱子
+  5: (old) => ({
+    ...old,
+    saveVersion: 6,
+    npcs: { ...old.npcs, affection: Object.fromEntries(Object.entries(old.npcs.affection as Record<string, number>).map(([k, v]) => [k, v * 100])) },
+    hutIsShed: old.houseStage >= 2,
+    storage: {},
+  }),
 };
 
 /** 把任意版本的存档升级到最新。认不出来的返回 null。 */

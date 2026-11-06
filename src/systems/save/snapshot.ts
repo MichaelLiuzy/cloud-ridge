@@ -24,6 +24,8 @@ export function stateFields(): Omit<SaveData, 'farm' | 'player'> {
     diaryFound: [...gameState.diaryFound],
     pickup: { ...gameState.pickup },
     basket: { ...gameState.basket },
+    hutIsShed: gameState.hutIsShed,
+    storage: { ...gameState.storage },
     crops: JSON.parse(JSON.stringify(gameState.crops)),
     tools: [...gameState.tools],
     toolIndex: gameState.toolIndex,

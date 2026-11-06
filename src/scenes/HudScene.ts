@@ -19,13 +19,15 @@ import { localName as nameOf } from '../locales/i18n';
 import { fillNames } from '../story/text';
 import { STORY_EVENTS, debugNextChapter, fireStoryEvent, storyEvents } from '../systems/story/notebook';
 import { FARM_EVENTS } from './FarmScene';
-import { debugSetHearts } from '../systems/affection';
+import { debugSetAffection } from '../systems/affection';
+import { AFFECTION } from '../data/affection';
 import { pickupOfferReady, unlockPickup } from '../systems/economy/pickup';
 import { SERVICES } from '../data/services';
 import { hasItem } from '../systems/GameState';
 import type { MenuTabId } from '../data/menuTabs';
 import { gameState } from '../systems/GameState';
 import { ListMenu, type MenuOption } from '../ui/ListMenu';
+import { QuantityPicker } from '../ui/QuantityPicker';
 import { downloadText } from '../ui/fileTransfer';
 import { exportText } from '../systems/save/saveManager';
 import { ITEMS as itemsData } from '../data/items';
@@ -45,6 +47,8 @@ export const UI_EVENTS = {
   playDialogue: 'ui:playDialogue',
   /** 工具变了（比如拿到开局物资）：重画工具栏 */
   toolsChanged: 'ui:toolsChanged',
+  /** 让玩家选数量。参数：标题、最多几个、选好后调用的函数（取消时传 null） */
+  askQuantity: 'ui:askQuantity',
 } as const;
 
 
@@ -79,6 +83,8 @@ export class HudScene extends Phaser.Scene {
   private toolbar?: Phaser.GameObjects.Container;
   /** 对话框开着时又来的话，排队等着 */
   private sayQueue: [string, Record<string, string | number> | undefined][] = [];
+  /** 正在选数量 */
+  private picker?: QuantityPicker;
   private toolSlotX: number[] = [];
   private touchButtons: Phaser.GameObjects.Container[] = [];
   private touch = false;
@@ -145,16 +151,17 @@ export class HudScene extends Phaser.Scene {
     const handlers: [string, (...a: any[]) => void][] = [
       [INPUT_EVENTS.action, (mode?: string) => this.onAction(mode)],
       [INPUT_EVENTS.useTool, () => (this.story.active ? this.story.advance() : !this.busy() && ev.emit(UI_EVENTS.worldUseTool))],
-      [INPUT_EVENTS.cancel, () => !gameState.menuOpen && (this.menu ? this.closeMenu() : this.closeDialog())],
+      [INPUT_EVENTS.cancel, () => !gameState.menuOpen && (this.picker ? this.picker.cancel() : this.menu ? this.closeMenu() : this.closeDialog())],
       [INPUT_EVENTS.bag, () => !this.busy() && this.openGameMenu('bag')],
       [INPUT_EVENTS.menu, () => !this.busy() && this.gameMenu()],
       [INPUT_EVENTS.toolSlot, (i: number) => !this.busy() && this.selectTool(i)],
-      [INPUT_EVENTS.nav, (dir: 'up' | 'down') => this.menu?.move(dir === 'up' ? -1 : 1)],
+      [INPUT_EVENTS.nav, (dir: 'up' | 'down') => (this.picker ? this.picker.nudge(dir) : this.menu?.move(dir === 'up' ? -1 : 1))],
       [INPUT_EVENTS.tap, (x: number, y: number) => this.onTap(x, y)],
       [INPUT_EVENTS.debugMemory, () => (gameState.memoryMode = !gameState.memoryMode)],
       [UI_EVENTS.say, (key: string, params?: Record<string, string | number>) => this.say(key, params)],
       [UI_EVENTS.showMenu, (opts: MenuOption[], title?: string) => this.openMenu(opts, title)],
       [UI_EVENTS.toolsChanged, () => this.buildToolbar(W, H)],
+      [UI_EVENTS.askQuantity, (title: string, max: number, onDone: (n: number | null) => void) => this.askQuantity(title, max, onDone)],
       [UI_EVENTS.playDialogue, (knot: string, onDone?: () => void) => this.playStory(knot, onDone)],
     ];
     const onNew = () => this.flashNotebook();
@@ -169,6 +176,8 @@ export class HudScene extends Phaser.Scene {
       this.scene.stop('GameMenu');
       for (const [name, fn] of handlers) ev.off(name, fn);
       this.closeMenu();
+      this.picker?.destroy();
+      this.picker = undefined;
       this.touchButtons = [];
     });
   }
@@ -189,12 +198,13 @@ export class HudScene extends Phaser.Scene {
   // ---------------- 操作分配 ----------------
 
   private busy() {
-    return this.dialog.visible || !!this.menu || this.story.active || this.naming || gameState.menuOpen;
+    return this.dialog.visible || !!this.menu || !!this.picker || this.story.active || this.naming || gameState.menuOpen;
   }
 
   /** 回车 / 「使用」键 */
   private onAction(mode?: string) {
     if (gameState.menuOpen || this.naming) return;
+    if (this.picker) return this.picker.confirm();
     if (this.story.active) return this.story.advance();
     if (this.menu) return this.menu.choose();
     if (this.dialog.visible) return this.closeDialog();
@@ -203,7 +213,7 @@ export class HudScene extends Phaser.Scene {
 
   /** 点了屏幕空白处（不是按钮） */
   private onTap(x: number, y: number) {
-    if (gameState.menuOpen || this.naming) return;
+    if (gameState.menuOpen || this.naming || this.picker) return;
     if (this.story.active) return this.story.advance();
     if (this.menu) return this.closeMenu(); // 点菜单外面 = 取消
     if (this.dialog.visible) return this.closeDialog();
@@ -228,6 +238,19 @@ export class HudScene extends Phaser.Scene {
     this.dialog.setVisible(false);
     const next = this.sayQueue.shift();
     if (next) return this.say(next[0], next[1]);
+    this.syncBusy();
+  }
+
+  // ---------------- 选数量 ----------------
+
+  private askQuantity(title: string, max: number, onDone: (n: number | null) => void) {
+    this.closeMenu();
+    this.picker?.destroy();
+    this.picker = new QuantityPicker(this, title, max, (n) => {
+      this.picker = undefined;
+      this.syncBusy();
+      onDone(n);
+    });
     this.syncBusy();
   }
 
@@ -303,7 +326,7 @@ export class HudScene extends Phaser.Scene {
   /** （测试）杂货铺掌柜好感到够，然后他来提上门收货 */
   private debugPickup() {
     const cfg = SERVICES.pickup;
-    debugSetHearts(cfg.npc, cfg.unlockHearts);
+    debugSetAffection(cfg.npc, cfg.unlockHearts * AFFECTION.pointsPerHeart);
     if (!pickupOfferReady()) return this.say('pickup.already');
     this.playStory('pickup_offer', () => {
       this.openMenu(

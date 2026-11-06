@@ -30,19 +30,24 @@ export function sellableInBag() {
   return Object.keys(gameState.inventory).filter((id) => (gameState.inventory[id] ?? 0) > 0 && basketPrice(id) != null);
 }
 
-/** 把背包里某样东西全部放进筐 */
-export function putInBasket(id: string) {
-  const n = gameState.inventory[id] ?? 0;
-  if (n <= 0) return 0;
-  addItem(id, -n);
-  gameState.basket[id] = (gameState.basket[id] ?? 0) + n;
-  return n;
+/** 把背包里的某样东西放 n 个进筐（最多放背包里有的数），返回实际放了几个 */
+export function putInBasket(id: string, n: number) {
+  const k = Math.min(n, gameState.inventory[id] ?? 0);
+  if (k <= 0) return 0;
+  addItem(id, -k);
+  gameState.basket[id] = (gameState.basket[id] ?? 0) + k;
+  return k;
 }
 
-/** 把筐里的东西全拿回来 */
-export function takeBackAll() {
-  for (const [id, n] of Object.entries(gameState.basket)) addItem(id, n);
-  gameState.basket = {};
+/** 从筐里拿回 n 个（还没结算的当天都能拿回），返回实际拿了几个 */
+export function takeFromBasket(id: string, n: number) {
+  const k = Math.min(n, gameState.basket[id] ?? 0);
+  if (k <= 0) return 0;
+  addItem(id, k);
+  const left = (gameState.basket[id] ?? 0) - k;
+  if (left > 0) gameState.basket[id] = left;
+  else delete gameState.basket[id];
+  return k;
 }
 
 /** 第二天早上：结算筐里的东西，返回一共卖了多少文（筐是空的返回 0） */

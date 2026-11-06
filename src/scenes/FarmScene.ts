@@ -16,9 +16,10 @@ import { BASKET_CELL, FARM_MAP, HOUSE_SITE, TILE_TYPES } from '../world/farmMap'
 import { PLAIN_ACTIONS, TOOL_ACTIONS, type ToolAction } from '../world/actions';
 import { KeyboardControls } from '../input/Controls';
 import { addItem, currentTool, gameState, hasTool } from '../systems/GameState';
-import { CROP_LOOKS, cropFromSeed, cropInfo, cropLook, growOvernight, harvest, inSowWindow, isRipe, plant } from '../systems/farming/crops';
+import { CROP_LOOKS, cropFromSeed, cropInfo, cropLook, growOvernight, harvest, inSowWindow, isRipe, nextSowTerm, plant } from '../systems/farming/crops';
 import { buildOvernight, dwelling, requestBuild, ruinCleared, stageInfo } from '../systems/home/house';
-import { putInBasket, sellableInBag, settleBasket, takeBackAll } from '../systems/economy/pickup';
+import { putInBasket, sellableInBag, settleBasket, takeFromBasket } from '../systems/economy/pickup';
+import { CHEST_SLOTS, putInChest, storableInBag, takeFromChest } from '../systems/home/storage';
 import { HOUSING } from '../data/housing';
 import type { SaveData } from '../systems/save/saveFormat';
 import { stateFields } from '../systems/save/snapshot';
@@ -87,6 +88,9 @@ export class FarmScene extends Phaser.Scene {
   /** 重建中的老宅的图 */
   private houseImage?: Phaser.GameObjects.Image;
   private houseLight?: LightSpot;
+  /** 草棚（柴房）的图和窗户的光 */
+  private hutImage?: Phaser.GameObjects.Image;
+  private hutLight?: LightSpot;
 
   constructor() {
     super('Farm');
@@ -102,6 +106,8 @@ export class FarmScene extends Phaser.Scene {
     this.cropViews = new Map();
     this.houseImage = undefined;
     this.houseLight = undefined;
+    this.hutImage = undefined;
+    this.hutLight = undefined;
     this.route = [];
     this.onArrive = undefined;
     const rows = this.grid.length;
@@ -397,14 +403,17 @@ export class FarmScene extends Phaser.Scene {
         }
       }
     }
+    if (kind === 'hut') list.push({ label: t('action.chest'), run: () => this.chestMenu(), needReach: true });
     for (const plain of PLAIN_ACTIONS) {
+      // 草棚改成柴房以后不能睡、不能存档（去老宅）
+      if (kind === 'hut' && gameState.hutIsShed) continue;
       if (plain.on.includes(kind)) {
         list.push({ label: t(`action.${plain.id}`), run: () => this.doPlainAction(plain.id), needReach: true });
       }
     }
     const isGround = GROUND_KINDS.includes(kind);
     if (!isGround) {
-      const hint = TILE_TYPES[this.grid[cell.y][cell.x]]?.hint ?? 'hint.nothing';
+      const hint = kind === 'hut' && gameState.hutIsShed ? 'hint.shed' : (TILE_TYPES[this.grid[cell.y][cell.x]]?.hint ?? 'hint.nothing');
       list.push({ label: t('action.look'), run: () => this.say(hint), needReach: true });
     }
     if (opts.walk && isGround && !this.isSolid(cell)) {
@@ -448,7 +457,10 @@ export class FarmScene extends Phaser.Scene {
 
   private doSow(cell: Cell, seed: string) {
     const crop = cropFromSeed(seed)!;
-    if (!inSowWindow(crop, gameState.clock!)) return this.say('msg.notSowTime', { name: localName(crop.name) });
+    if (!inSowWindow(crop, gameState.clock!)) {
+      const term = timeData.calendar.solarTerms.find((s) => s.id === nextSowTerm(crop, gameState.clock!))!;
+      return this.say('msg.notSowTime', { name: localName(crop.name), term: localName(term.name) });
+    }
     plant(cellKey(cell), crop);
     addItem(seed, -1);
     this.refreshCrop(cellKey(cell));
@@ -547,23 +559,68 @@ export class FarmScene extends Phaser.Scene {
     if (this.grid[BASKET_CELL.y][BASKET_CELL.x] !== 'B') this.setTile(BASKET_CELL, 'B');
   }
 
-  /** 选一样东西，全部放进筐 */
+  /**
+   * 先选一样东西，再选几个（数量框），然后 move(id, n) 真正去放 / 拿。
+   * from = 从哪里选（物品 id → 有几个）
+   */
+  private pickItemAndCount(from: Record<string, number>, ids: string[], menuTitle: string, askKey: string, move: (id: string, n: number) => void) {
+    const options: MenuOption[] = ids.map((id) => ({
+      label: `${this.itemName(id)} ×${from[id]}`,
+      run: () => {
+        const max = from[id] ?? 0;
+        if (max <= 0) return;
+        this.game.events.emit(UI_EVENTS.askQuantity, t(askKey, { name: this.itemName(id) }), max, (n: number | null) => n && move(id, n));
+      },
+    }));
+    this.game.events.emit(UI_EVENTS.showMenu, options, menuTitle);
+  }
+
+  /** 往收货筐里放：选东西、选数量 */
   private basketMenu() {
     const ids = sellableInBag();
     if (!ids.length) return this.say('msg.nothingToSell');
-    const options: MenuOption[] = ids.map((id) => ({
-      label: `${this.itemName(id)} ×${gameState.inventory[id]}`,
-      run: () => {
-        const n = putInBasket(id);
-        this.say('msg.basketPut', { name: this.itemName(id), n });
-      },
-    }));
-    this.game.events.emit(UI_EVENTS.showMenu, options, t('action.basketPut'));
+    this.pickItemAndCount(gameState.inventory, ids, t('action.basketPut'), 'quantity.askBasket', (id, n) => {
+      const k = putInBasket(id, n);
+      this.say('msg.basketPut', { name: this.itemName(id), n: k });
+    });
   }
 
+  /** 从收货筐里拿回来（还没结算的当天都能拿） */
   private basketTake() {
-    takeBackAll();
-    this.say('msg.basketTaken');
+    this.pickItemAndCount(gameState.basket, Object.keys(gameState.basket), t('action.basketTake'), 'quantity.askTake', (id, n) => {
+      const k = takeFromBasket(id, n);
+      this.say('msg.taken', { name: this.itemName(id), n: k });
+    });
+  }
+
+  // =================================================================
+  //  草棚（柴房）里的箱子（规则在 src/systems/home/storage.ts）
+  // =================================================================
+
+  private chestMenu() {
+    const options: MenuOption[] = [
+      { label: t('action.chestPut'), run: () => this.chestPut() },
+      { label: t('action.chestTake'), run: () => this.chestTake(), disabled: !Object.keys(gameState.storage).length },
+    ];
+    const used = Object.keys(gameState.storage).length;
+    this.game.events.emit(UI_EVENTS.showMenu, options, t('msg.chestTitle', { used, slots: CHEST_SLOTS }));
+  }
+
+  private chestPut() {
+    const ids = storableInBag((id) => itemsData.items.find((it) => it.id === id)?.type === 'tool' || itemsData.items.find((it) => it.id === id)?.type === 'key');
+    if (!ids.length) return this.say('msg.nothingToStore');
+    this.pickItemAndCount(gameState.inventory, ids, t('action.chestPut'), 'quantity.askChest', (id, n) => {
+      const k = putInChest(id, n);
+      if (k < 0) return this.say('msg.chestFull', { slots: CHEST_SLOTS });
+      this.say('msg.chestPut', { name: this.itemName(id), n: k });
+    });
+  }
+
+  private chestTake() {
+    this.pickItemAndCount(gameState.storage, Object.keys(gameState.storage), t('action.chestTake'), 'quantity.askTake', (id, n) => {
+      const k = takeFromChest(id, n);
+      this.say('msg.taken', { name: this.itemName(id), n: k });
+    });
   }
 
   // =================================================================
@@ -674,6 +731,8 @@ export class FarmScene extends Phaser.Scene {
       if (built.page) news.push([built.page.readable ? 'diary.foundReadable' : 'diary.foundPaper', { where: t(built.page.where) }]);
       gameState.maxStamina = Math.max(gameState.maxStamina, dwelling().maxStamina);
       this.refreshHouse();
+      if (gameState.hutIsShed && !this.hutImage?.texture.key.includes('woodshed')) news.push(['house.hutToShed']);
+      this.refreshHut();
     }
     // 收货筐
     const sold = settleBasket();
@@ -891,8 +950,17 @@ export class FarmScene extends Phaser.Scene {
     const maxY = Math.max(...tiles.map((t) => t.y));
     const cx = ((minX + maxX + 1) / 2) * s;
     const bottom = (maxY + 1) * s;
-    const hut = this.add.image(cx, bottom, 'house_straw_hut', 0).setOrigin(0.5, 1).setDepth(bottom);
-    this.lightSpots.push({ x: cx + hut.width / 2 - 11, y: bottom - hut.height * 0.45, radius: 20 });
+    this.hutImage = this.add.image(cx, bottom, 'house_straw_hut', 0).setOrigin(0.5, 1).setDepth(bottom);
+    this.hutLight = { x: cx + this.hutImage.width / 2 - 11, y: bottom - this.hutImage.height * 0.45, radius: 20 };
+    this.refreshHut();
+  }
+
+  /** 草棚改成柴房：换图，窗户不再亮灯 */
+  private refreshHut() {
+    if (!this.hutImage || !this.hutLight) return;
+    this.hutImage.setTexture(gameState.hutIsShed ? 'house_woodshed' : 'house_straw_hut', 0);
+    this.lightSpots = this.lightSpots.filter((l) => l !== this.hutLight);
+    if (!gameState.hutIsShed) this.lightSpots.push(this.hutLight);
   }
 }
 

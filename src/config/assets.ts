@@ -78,6 +78,8 @@ export const ASSETS: Record<string, AssetSpec> = {
 
   // ---- 房子 ----
   house_straw_hut: { w: 48, h: 48, frames: ['main'], color: 'ochreLight', shape: 'building' },
+  /** 搬进老宅后，草棚改成的柴房（先用占位） */
+  house_woodshed: { w: 48, h: 48, frames: ['main'], color: 'brown', shape: 'building' },
   /** 重建老宅：第 2、3、4 阶段的样子（64×64） */
   house_timber_frame: { w: 64, h: 64, frames: ['main'], color: 'paperDark', shape: 'building' },
   house_tiled_roof: { w: 64, h: 64, frames: ['main'], color: 'paper', shape: 'building' },

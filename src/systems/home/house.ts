@@ -59,6 +59,8 @@ export function buildOvernight() {
 function completeStage(stage: number) {
   const info = stageInfo(stage)!;
   gameState.houseStage = stage;
+  // 搬进老宅后，草棚改成柴房（箱子留着）
+  if (stage >= 2) gameState.hutIsShed = true;
   gameState.maxStamina = Math.max(gameState.maxStamina, info.maxStamina);
   for (const id of info.learns) addLearned(id);
   const page = findDiary(stage);
