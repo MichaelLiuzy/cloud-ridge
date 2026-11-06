@@ -1,3 +1,7 @@
 node_modules
 dist
 .DS_Store
+# 整理脚本（npm run art）自动生成的图和预览页，每次打包会重新生成，不用提交
+public/assets/*
+!public/assets/fonts/
+public/art_preview/

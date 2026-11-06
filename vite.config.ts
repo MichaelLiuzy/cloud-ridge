@@ -20,8 +20,8 @@ export default defineConfig({
         lang: 'zh-CN',
         display: 'fullscreen',
         orientation: 'landscape',
-        background_color: '#1d2b24',
-        theme_color: '#1d2b24',
+        background_color: "#1E1A1F",
+        theme_color: "#1E1A1F",
         icons: [
           { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
@@ -29,6 +29,10 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,png,json,svg,woff2}'],
+        // 美术预览页（里面有大原图）不用存到手机里离线
+        globIgnores: ['art_preview/**'],
+        // 打开预览页时不要被离线缓存换成游戏首页
+        navigateFallbackDenylist: [/art_preview/],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
       },
     }),

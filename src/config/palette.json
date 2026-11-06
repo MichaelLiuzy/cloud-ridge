@@ -1,0 +1,29 @@
+{
+  "_说明": "美术规范 v0.1 的 24 色调色板。整理脚本（tools/art.mjs）会把所有素材的颜色套成这 24 种；游戏里的占位色块和界面颜色也从这里取。暗紫 eric 只给 Eric 的觉醒之力用。",
+  "colors": {
+    "ink": "#1E1A1F",
+    "outline": "#3B3540",
+    "stone": "#5E5A63",
+    "ash": "#8A8B8C",
+    "paper": "#EFE4C8",
+    "paperDark": "#D9C59A",
+    "ochreLight": "#B89A64",
+    "ochre": "#9C6B3E",
+    "brown": "#6E4A2E",
+    "brownDark": "#48301F",
+    "leafLight": "#A7B36A",
+    "leaf": "#6F8A4C",
+    "leafDark": "#46603E",
+    "pine": "#2C3D30",
+    "indigo": "#4D6B73",
+    "teal": "#7A9AA0",
+    "mist": "#B5C7C4",
+    "vermilion": "#A8402F",
+    "maroon": "#6B2A26",
+    "orange": "#D97B3A",
+    "candle": "#F2C46B",
+    "skin": "#E6B998",
+    "skinDark": "#B9876A",
+    "eric": "#5A4363"
+  }
+}

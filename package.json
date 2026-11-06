@@ -5,14 +5,19 @@
   "description": "云岭 Cloud Ridge：明清风中式玄幻种田悬疑游戏",
   "type": "module",
   "scripts": {
+    "art": "node tools/art.mjs",
+    "predev": "npm run art",
     "dev": "vite --host",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview --host"
+    "preview": "vite preview --host",
+    "prebuild": "npm run art"
   },
   "dependencies": {
     "phaser": "3.90.0"
   },
   "devDependencies": {
+    "@types/pngjs": "^6.0.5",
+    "pngjs": "^7.0.0",
     "typescript": "5.9.3",
     "vite": "7.3.7",
     "vite-plugin-pwa": "1.3.0"

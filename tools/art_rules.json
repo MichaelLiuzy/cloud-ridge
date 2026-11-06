@@ -1,0 +1,100 @@
+{
+  "_说明": [
+    "整理脚本（npm run art）靠这张表认图：文件名 → 切几行几格、每格多大、存到哪里。",
+    "新增一种素材时，只要在 rules 里加一条，不用改脚本。",
+    "name：文件名（不带 .png）。{id} 代表任意英文小写名字，例如 npc_{id}_stand 能匹配 npc_aqueer_stand。",
+    "rows / cols：原图里排了几行、每行几格。",
+    "cell：每格最后缩成多大（宽, 高），单位像素。",
+    "sizes：（可选）按 {id} 单独指定格子大小，例如不同房子大小不一样。没写的用 cell。",
+    "frames：每格叫什么，按从左到右、从上到下的顺序。",
+    "out：存到 public/assets/ 下哪里。out 里有 {frame} 时，每格单独存一张图；没有 {frame} 就拼成一张精灵表（排法和原图一样）。",
+    "tile：true 表示是地面纹理：不抠背景，只用品红空隙分格，每格拉满。",
+    "上面的规则从上往下找，用第一条匹配上的。"
+  ],
+  "rules": [
+    {
+      "name": "player_stand",
+      "rows": 1, "cols": 4, "cell": [16, 32],
+      "frames": ["down", "left", "right", "up"],
+      "out": "chars/player_stand.png"
+    },
+    {
+      "name": "player_walk",
+      "rows": 4, "cols": 5, "cell": [16, 32],
+      "frames": [
+        "down_stand", "down_1", "down_2", "down_3", "down_4",
+        "left_stand", "left_1", "left_2", "left_3", "left_4",
+        "right_stand", "right_1", "right_2", "right_3", "right_4",
+        "up_stand", "up_1", "up_2", "up_3", "up_4"
+      ],
+      "out": "chars/player_walk.png"
+    },
+    {
+      "name": "npc_{id}_stand",
+      "rows": 1, "cols": 4, "cell": [16, 32],
+      "frames": ["down", "left", "right", "up"],
+      "out": "chars/npc_{id}_stand.png"
+    },
+    {
+      "name": "npc_{id}_walk",
+      "rows": 4, "cols": 5, "cell": [16, 32],
+      "frames": [
+        "down_stand", "down_1", "down_2", "down_3", "down_4",
+        "left_stand", "left_1", "left_2", "left_3", "left_4",
+        "right_stand", "right_1", "right_2", "right_3", "right_4",
+        "up_stand", "up_1", "up_2", "up_3", "up_4"
+      ],
+      "out": "chars/npc_{id}_walk.png"
+    },
+    {
+      "name": "tiles_farm",
+      "rows": 2, "cols": 3, "cell": [16, 16], "tile": true,
+      "frames": ["grass", "dirt", "tilled", "watered", "path", "fence"],
+      "out": "tiles/tiles_farm.png"
+    },
+    {
+      "name": "tiles_{id}",
+      "rows": 2, "cols": 3, "cell": [16, 16], "tile": true,
+      "frames": ["1", "2", "3", "4", "5", "6"],
+      "out": "tiles/tiles_{id}.png"
+    },
+    {
+      "name": "debris",
+      "rows": 1, "cols": 4, "cell": [16, 16],
+      "frames": ["weed", "rock", "stump", "fire"],
+      "out": "objects/debris_{frame}.png"
+    },
+    {
+      "name": "prop_{id}",
+      "rows": 1, "cols": 1, "cell": [16, 32],
+      "sizes": { "tree": [16, 32], "lantern": [16, 32] },
+      "frames": ["main"],
+      "out": "objects/prop_{id}.png"
+    },
+    {
+      "name": "house_{id}",
+      "rows": 1, "cols": 1, "cell": [48, 48],
+      "sizes": { "straw_hut": [48, 48], "old_ruin": [64, 64] },
+      "frames": ["main"],
+      "out": "buildings/house_{id}.png"
+    },
+    {
+      "name": "crop_{id}",
+      "rows": 1, "cols": 5, "cell": [16, 32],
+      "frames": ["seed", "sprout", "half", "ripe", "withered"],
+      "out": "crops/crop_{id}.png"
+    },
+    {
+      "name": "icons_batch1",
+      "rows": 2, "cols": 5, "cell": [16, 16],
+      "frames": ["hoe", "bucket", "sickle", "axe", "mantou", "bok_choy_seed", "radish_seed", "bok_choy", "radish", "plant_ash"],
+      "out": "icons/icon_{frame}.png"
+    },
+    {
+      "name": "portrait_{id}",
+      "rows": 1, "cols": 4, "cell": [64, 64],
+      "frames": ["normal", "smile", "worried", "surprised"],
+      "out": "portraits/portrait_{id}.png"
+    }
+  ]
+}
