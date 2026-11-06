@@ -89,7 +89,8 @@ export const TIME: TimeTable = {
       { id: "dahan", name: { zh: "大寒", en: "Major Cold" }, month: 12, day: 24 },
     ],
     marketDays: [4, 11, 18, 25],  // 每月哪几天赶集
-    marketSellBonus: 0.2,  // 赶集日卖东西多赚多少（0.2 = 多 20%）
+    marketPriceBonus: 0.1,  // 赶集日镇上所有买卖价格都涨多少（0.1 = 贵 10%）：卖东西多赚，买东西（包括种子）也多花。家门口的收货筐不算
+    marketOnlySeeds: ["chive_seed", "watermelon_seed", "pumpkin_seed"],  // 只在赶集日卖的种子（同样按上面的涨幅卖）
     // 节日：每月 2 个，暂用传统节日占日期，活动以后再定（activities 先空着）。
     // 「空位」= 还没定是什么节（placeholder: true，day: null）。冬至和节气同一天是有意的。
     festivals: [
@@ -147,6 +148,7 @@ export const TIME: TimeTable = {
       cut_grass: 1,
       chop_tree: 6,
       mine_rock: 4,
+      clear_ruin: 4,  // 清废墟：每清一格
     },
     wateringCanCapacity: 20,  // 水桶装满能浇几格
   },

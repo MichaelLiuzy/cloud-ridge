@@ -13,8 +13,8 @@ import type { StartTable } from './types';
 export const START: StartTable = {
   schemaVersion: 2,  // 数据格式版本号（程序用，不用改）
   startDay: { month: 1, day: 16 },  // 开局日期：正月十六（month 1 = 正月）
+  // 下面的钱和背包不是一开局就有：序章里周里正教完操作后交给玩家（剧本 src/story/zh/prologue.ink 的 #give_start）
   cash: 500,  // 开局的钱（火灾抚恤，单位：文）
-  house: "straw_hut",  // 开局住的房子
   // 开局背包：物品 → 数量
   inventory: {
     bok_choy_seed: 15,

@@ -75,6 +75,15 @@ export function checkChapters() {
   }
 }
 
+/** （测试用）不管条件，直接进入下一章 */
+export function debugNextChapter() {
+  const next = chaptersInOrder().find((id) => CHAPTERS[id].number === gameState.chapter + 1);
+  if (!next) return;
+  gameState.chapter += 1;
+  storyEvents.emit(STORY_EVENTS.chapterStart, next);
+  notifyNew(null);
+}
+
 /** 问题现在的状态：hidden = 还没被引出；open = 未解决；solved = 已解决 */
 export function questionState(id: QuestionId): 'hidden' | 'open' | 'solved' {
   const q = QUESTIONS[id];

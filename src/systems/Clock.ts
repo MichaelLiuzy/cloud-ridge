@@ -93,11 +93,11 @@ export class Clock {
     return timeData.calendar.festivals.find((f) => f.month === this.month && f.day === this.day);
   }
 
-  /** 屏幕上显示的日期：「正月十六」 */
+  /** 屏幕上显示的日期：「正月十六 · 立春」 */
   dateText() {
     const month = timeData.calendar.months[this.month - 1];
     const days = t('calendar.dayNames').split(',');
-    return t('hud.date', { month: localName(month.name), day: days[this.day - 1] ?? String(this.day) });
+    return t('hud.date', { month: localName(month.name), day: days[this.day - 1] ?? String(this.day), term: localName(this.solarTerm.name) });
   }
 
   /** 屏幕上显示的时间：「辰时（7:00）」 */

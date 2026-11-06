@@ -41,7 +41,7 @@ export type ItemId =
   | 'wood' | 'thatch' | 'stone' | 'roof_tile' | 'brick' | 'firewood' | 'plant_ash'
   | 'mantou' | 'tea' | 'veg_porridge' | 'radish_soup' | 'roast_sweet_potato'
   | 'hoe' | 'bucket' | 'sickle' | 'axe' | 'pickaxe'
-  | 'notebook';
+  | 'notebook' | 'burnt_paper';
 
 /** 所有作物的 id。在 crops.ts 加新作物时，也要加到这里。 */
 export type CropId =
@@ -61,10 +61,10 @@ export type NpcId =
   | 'dock_manager' | 'tutor' | 'carpenter' | 'blacksmith' | 'night_watchman';
 
 /** 会花体力的动作 */
-export type StaminaAction = 'hoe' | 'water' | 'plant' | 'harvest' | 'cut_grass' | 'chop_tree' | 'mine_rock';
+export type StaminaAction = 'hoe' | 'water' | 'plant' | 'harvest' | 'cut_grass' | 'chop_tree' | 'mine_rock' | 'clear_ruin';
 
-/** 房子 id */
-export type HouseId = 'straw_hut' | 'thatched_cottage' | 'tiled_house' | 'courtyard';
+/** 重建老宅的阶段 id */
+export type HouseStageId = 'clear_ruins' | 'timber_frame' | 'tiled_roof' | 'courtyard';
 
 type Weather = 'sunny' | 'cloudy' | 'rain' | 'snow';
 
@@ -97,8 +97,10 @@ export interface TimeTable {
     solarTerms: { id: SolarTermId; name: LocalName; month: number; day: number }[];
     /** 每月哪几天赶集 */
     marketDays: number[];
-    /** 赶集日卖东西多赚的比例 */
-    marketSellBonus: number;
+    /** 赶集日镇上所有买卖价格的涨幅（0.1 = 贵 10%），收货筐不算 */
+    marketPriceBonus: number;
+    /** 只在赶集日卖的种子 */
+    marketOnlySeeds: ItemId[];
     /** 节日。placeholder = 空位（还没定是什么节，day 为 null） */
     festivals: { id: string; name: LocalName; month: number; day: number | null; activities: string[]; placeholder?: boolean }[];
     /** 农事规则 */
@@ -197,6 +199,8 @@ export interface Item {
   stamina?: number;
   /** （工具）做什么动作 */
   action?: StaminaAction;
+  /** 在背包里选中时显示的一句说明（可以不写） */
+  desc?: LocalName;
 }
 
 export interface ItemsTable {
@@ -206,30 +210,61 @@ export interface ItemsTable {
   items: Item[];
 }
 
-// ---------------- housing.ts：房子 ----------------
+// ---------------- housing.ts：重建老宅 ----------------
 
-export interface HouseLevel {
-  level: number;
-  id: HouseId;
-  name: LocalName;
-  /** 要什么材料、各多少个 */
-  materials: Partial<Record<ItemId, number>>;
-  /** 要花多少文 */
-  cost: number;
+/** 住的地方：开局的草棚，或者重建好的老宅 */
+export interface Dwelling {
   /** 体力上限 */
   maxStamina: number;
-  /** 储物箱格数 */
+  /** 储物格数 */
   storageSlots: number;
   /** 解锁的家具或功能 */
   unlocks: string[];
 }
 
+export interface HouseStage extends Dwelling {
+  /** 第几阶段（1 ~ 4） */
+  stage: number;
+  id: HouseStageId;
+  name: LocalName;
+  /** 要什么材料、各多少个（第 1 阶段自己清，不要材料） */
+  materials: Partial<Record<ItemId, number>>;
+  /** 要花多少文 */
+  cost: number;
+  /** 是不是请木匠来修（false = 玩家自己动手，比如清废墟） */
+  byCarpenter: boolean;
+  /** 修好后自动学会的本事（记进笔记本「已学会」栏，文字在语言文件 notebook.learned） */
+  learns: string[];
+}
+
 export interface HousingTable {
   schemaVersion: number;
-  /** 盖房要几天 */
+  /** 木匠动工要几天 */
   buildDays: number;
   builder: NpcId;
-  levels: HouseLevel[];
+  /** 开局住的草棚（镇上的人在废墟旁搭的） */
+  hut: Dwelling;
+  /** 清废墟：每清一格花多少体力在 time.ts 的 stamina.costs.clear_ruin；能用哪些工具清 */
+  ruins: { tools: ItemId[] };
+  /** 重建的四个阶段，按顺序 */
+  stages: HouseStage[];
+}
+
+// ---------------- services.ts：服务 ----------------
+
+export interface ServicesTable {
+  schemaVersion: number;
+  /** 杂货铺上门收货 */
+  pickup: {
+    /** 哪家店收（按这家店的收购价结算） */
+    shop: ShopId;
+    /** 谁来提这件事 */
+    npc: NpcId;
+    /** 这个人的好感度到几颗心才会提 */
+    unlockHearts: number;
+    /** 开通要付多少文 */
+    fee: number;
+  };
 }
 
 // ---------------- jobs.ts：打工 ----------------
@@ -280,7 +315,6 @@ export interface StartTable {
   startDay: { month: number; day: number };
   /** 开局的钱（文） */
   cash: number;
-  house: HouseId;
   /** 开局背包：物品 → 数量 */
   inventory: Partial<Record<ItemId, number>>;
   farm: { width: number; height: number; preTilledTiles: number; debris: string[] };

@@ -8,25 +8,42 @@ import { ITEMS as itemsData } from '../data/items';
 import { HOUSING as housingData } from '../data/housing';
 import { Clock } from './Clock';
 import type { SaveData } from './save/saveFormat';
+import type { PlantedCrop } from './farming/crops';
 
 export type PrologueStep = 'opening' | 'clinic' | 'tutorial' | 'done';
 
+/** 背包里有哪些工具（按物品表里的顺序放进工具栏） */
+function toolsIn(inventory: Record<string, number>) {
+  return itemsData.items.filter((it) => it.type === 'tool' && (inventory[it.id] ?? 0) > 0).map((it) => it.id as string);
+}
+
 function freshState() {
-  const inventory: Record<string, number> = { ...startData.inventory };
-  // 工具放进工具栏（按 start.ts 里写的顺序）
-  const tools = Object.keys(inventory).filter((id) => itemsData.items.find((it) => it.id === id)?.type === 'tool');
-  const house = housingData.levels.find((h) => h.id === startData.house)!;
+  // 开局身上什么都没有：钱、种子和工具由周里正在序章里交给玩家（giveStartKit）
+  const hut = housingData.hut;
   return {
     clock: null as Clock | null,
     /** 现在用的是第几个存档位（1~3） */
     slot: 1,
-    cash: startData.cash as number,
-    house: startData.house as string,
-    maxStamina: house.maxStamina as number,
-    stamina: house.maxStamina as number,
-    tools,
+    cash: 0,
+    /** 重建老宅到第几阶段：0 = 住草棚、废墟还没清完；1 = 废墟清完了；2~4 = 木匠修好的阶段（见 src/data/housing.ts） */
+    houseStage: 0,
+    /** 废墟清了几格 */
+    ruinsCleared: 0,
+    /** 木匠正在修：修的是第几阶段、还要几天（没在修是 null） */
+    build: null as { stage: number; daysLeft: number } | null,
+    /** 找到了哪几片日记（按修房阶段记：1 ~ 4） */
+    diaryFound: [] as number[],
+    /** 杂货铺上门收货：开通了没有 */
+    pickup: { unlocked: false },
+    /** 收货筐里放了什么（物品 id → 数量），第二天早上结算 */
+    basket: {} as Record<string, number>,
+    /** 地里种的东西：「x,y」→ 这一格的作物 */
+    crops: {} as Record<string, PlantedCrop>,
+    maxStamina: hut.maxStamina as number,
+    stamina: hut.maxStamina as number,
+    tools: [] as string[],
     toolIndex: 0,
-    inventory,
+    inventory: {} as Record<string, number>,
     affection: { ...startData.affection } as Record<string, number>,
     flags: {} as Record<string, boolean | number | string>,
     quests: {} as Record<string, string>,
@@ -65,7 +82,13 @@ export function resetGameState(slot: number, load: SaveData | null = null) {
     Object.assign(gameState.clock, load.clock);
     Object.assign(gameState, {
       cash: load.cash,
-      house: load.house,
+      houseStage: load.houseStage,
+      ruinsCleared: load.ruinsCleared,
+      build: load.build ? { ...load.build } : null,
+      diaryFound: [...load.diaryFound],
+      pickup: { ...load.pickup },
+      basket: { ...load.basket },
+      crops: JSON.parse(JSON.stringify(load.crops)),
       maxStamina: load.maxStamina,
       stamina: load.stamina,
       tools: [...load.tools],
@@ -81,6 +104,32 @@ export function resetGameState(slot: number, load: SaveData | null = null) {
       prologue: load.prologue,
     });
   }
+}
+
+/**
+ * 周里正交给玩家的开局物资（数量在 src/data/start.ts）：钱、种子、工具、馒头。
+ * 只给一次（记在 flags.startKitGiven）。
+ */
+export function giveStartKit() {
+  if (gameState.flags.startKitGiven) return;
+  gameState.flags.startKitGiven = true;
+  gameState.cash += startData.cash;
+  for (const [id, n] of Object.entries(startData.inventory)) gameState.inventory[id] = (gameState.inventory[id] ?? 0) + (n ?? 0);
+  syncTools();
+}
+
+/** 背包里的工具变了：重新排工具栏（手上拿的那件不变） */
+export function syncTools() {
+  const holding = currentTool();
+  gameState.tools = toolsIn(gameState.inventory);
+  gameState.toolIndex = Math.max(0, gameState.tools.indexOf(holding ?? ''));
+}
+
+/** 背包里加 / 减东西（减到 0 就从背包里拿掉） */
+export function addItem(id: string, n = 1) {
+  const left = (gameState.inventory[id] ?? 0) + n;
+  if (left > 0) gameState.inventory[id] = left;
+  else delete gameState.inventory[id];
 }
 
 /** 有没有这件东西（背包里数量大于 0） */

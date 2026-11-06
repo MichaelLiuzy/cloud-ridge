@@ -532,6 +532,16 @@ export const ITEMS: ItemsTable = {
       buyPrice: null,
       sellPrice: null,
       soldAt: [],
+      desc: { zh: "周里正给的本子。记不住的事，就写下来。", en: "" },  // 在背包里选中时显示的说明
+    },
+    {
+      id: "burnt_paper",
+      name: { zh: "烧焦的纸片", en: "Charred scrap of paper" },
+      type: "key",
+      buyPrice: null,
+      sellPrice: null,
+      soldAt: [],
+      desc: { zh: "字迹模糊，看不清写了什么。", en: "" },
     },
   ],
 };
