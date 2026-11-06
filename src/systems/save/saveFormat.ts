@@ -6,10 +6,10 @@
  *  读档时会一步一步升级，所以很早以前的存档也能继续玩。
  */
 
-import { FARM_MAP } from '../../world/farmMap';
+import { FARM_MAP, RUIN_TILES } from '../../world/farmMap';
 import type { PlantedCrop } from '../farming/crops';
 
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 
 /** 存档里存了什么 */
 export interface SaveData {
@@ -135,6 +135,30 @@ const MIGRATIONS: Record<number, (old: any) => any> = {
     hutIsShed: old.houseStage >= 2,
     storage: {},
   }),
+  // 6 → 7：宅基地上立起了整栋烧毁的老宅（Q），四周的废墟（R）换了位置；田的篱笆开了两个 2 格宽的门（G）。
+  // 已经清掉的废墟还算清掉；变成挡路格子的地方，种的东西去掉；清了几格按地图重新数。
+  6: (old) => {
+    const stage: number = old.houseStage ?? 0;
+    const crops = { ...(old.crops ?? {}) };
+    const farm: string[] = old.farm.map((row: string, y: number) =>
+      [...row]
+        .map((ch, x) => {
+          const want = FARM_MAP[y]?.[x];
+          let out = ch;
+          if (want === 'G') out = 'G';
+          else if (want === 'Q') out = stage >= 2 ? 'K' : 'Q';
+          else if (want === 'R') {
+            if (stage >= 1) out = ch === 'E' ? 'E' : '_';
+            else out = ch === '_' ? '_' : 'R';
+          }
+          if (out !== ch && (out === 'Q' || out === 'R' || out === 'K')) delete crops[`${x},${y}`];
+          return out;
+        })
+        .join(''),
+    );
+    const left = farm.join('').split('R').length - 1;
+    return { ...old, saveVersion: 7, farm, crops, ruinsCleared: stage >= 1 ? RUIN_TILES : RUIN_TILES - left };
+  },
 };
 
 /** 把任意版本的存档升级到最新。认不出来的返回 null。 */

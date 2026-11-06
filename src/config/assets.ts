@@ -61,8 +61,8 @@ export const ASSETS: Record<string, AssetSpec> = {
     color: ['leaf', 'ochreLight', 'ochre', 'brown', 'paperDark', 'brownDark'],
     shape: 'full',
   },
-  /** 水塘（第一批素材里没有，先一直用色块） */
-  tiles_water: { w: 16, h: 16, frames: ['water'], color: 'indigo', shape: 'full' },
+  /** 水塘：平静水面、带波光的水面（两格轮流换，间隔在 settings.ts 的 waterShimmerMs） */
+  tiles_water: { w: 16, h: 16, frames: ['water', 'water_shimmer'], color: 'indigo', shape: 'full' },
 
   // ---- 地上的东西 ----
   debris_weed: { w: 16, h: 16, frames: ['main'], color: 'leafDark', shape: 'object' },
@@ -80,6 +80,8 @@ export const ASSETS: Record<string, AssetSpec> = {
   house_straw_hut: { w: 48, h: 48, frames: ['main'], color: 'ochreLight', shape: 'building' },
   /** 搬进老宅后，草棚改成的柴房（先用占位） */
   house_woodshed: { w: 48, h: 48, frames: ['main'], color: 'brown', shape: 'building' },
+  /** 烧毁的老宅（64×64）：重建的第 1 阶段，立在宅基地上；四周的废墟清完、木匠搭好梁架后换掉 */
+  house_old_ruin: { w: 64, h: 64, frames: ['main'], color: 'ash', shape: 'building' },
   /** 重建老宅：第 2、3、4 阶段的样子（64×64） */
   house_timber_frame: { w: 64, h: 64, frames: ['main'], color: 'paperDark', shape: 'building' },
   house_tiled_roof: { w: 64, h: 64, frames: ['main'], color: 'paper', shape: 'building' },

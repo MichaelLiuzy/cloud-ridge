@@ -12,6 +12,7 @@ import { toColor } from '../config/palette';
 import { localName, t } from '../locales/i18n';
 import { INPUT_EVENTS, PointerControls, makeRoundButton } from '../input/Controls';
 import { drawFrame, drawPanel, pixelText } from '../ui/pixelUi';
+import { TINY_DIGIT_H, drawCoin, drawTinyNumber } from '../ui/tinyDigits';
 import { DialogueBox } from '../ui/DialogueBox';
 import { askName } from '../ui/nameInput';
 import { CHAPTERS, type ChapterId } from '../data/clues';
@@ -52,8 +53,7 @@ export const UI_EVENTS = {
 } as const;
 
 
-/** 左上角时辰框、底部工具栏、对话框的大小和位置 */
-const INFO = { x: 2, y: 2, w: 112, h: 46 };
+/** 底部工具栏、对话框的大小和位置（左上角时辰框的大小在 settings.ts 的 ui.infoBox） */
 const SLOT = 18;
 const SLOT_GAP = 2;
 const BAR_PAD = 3;
@@ -62,10 +62,12 @@ const DIALOG = { w: 240, h: 46 };
 export class HudScene extends Phaser.Scene {
   private dateText!: Phaser.GameObjects.Text;
   private timeText!: Phaser.GameObjects.Text;
-  private moneyText!: Phaser.GameObjects.Text;
-  /** 体力条（竖的，在时辰框右边） */
-  private staminaBar!: Phaser.GameObjects.Rectangle;
-  private staminaBarH = 0;
+  /** 时辰框的底板、钱数（迷你数字）、体力条：内容变了才重画 */
+  private infoBg!: Phaser.GameObjects.Graphics;
+  private infoMoney!: Phaser.GameObjects.Graphics;
+  private infoW = 0;
+  private shownCash = -1;
+  private shownStamina = -1;
 
   private dialog!: Phaser.GameObjects.Container;
   private dialogText!: Phaser.GameObjects.Text;
@@ -99,18 +101,16 @@ export class HudScene extends Phaser.Scene {
     const { gameWidth: W, gameHeight: H } = SETTINGS;
     const ui = SETTINGS.ui;
 
-    // ---- 左上角：日期、时辰、钱，右边一条竖的体力条 ----
-    drawPanel(this.add.graphics(), INFO.x, INFO.y, INFO.w, INFO.h);
-    const tx = INFO.x + 5;
-    this.dateText = pixelText(this, tx, INFO.y + 3, '');
-    this.timeText = pixelText(this, tx, INFO.y + 16, '');
-    this.moneyText = pixelText(this, tx, INFO.y + 29, '', { color: ui.money });
-    const barX = INFO.x + INFO.w - 9;
-    const barY = INFO.y + 5;
-    this.staminaBarH = INFO.h - 10;
-    this.add.rectangle(barX - 1, barY - 1, 6, this.staminaBarH + 2, toColor(ui.border)).setOrigin(0);
-    this.add.rectangle(barX, barY, 4, this.staminaBarH, toColor(ui.innerBorder)).setOrigin(0);
-    this.staminaBar = this.add.rectangle(barX, barY + this.staminaBarH, 4, this.staminaBarH, toColor(ui.staminaFull)).setOrigin(0, 1);
+    // ---- 左上角时辰框：第一行日期、时辰；第二行钱、体力条（大小在 settings.ts 的 ui.infoBox）----
+    const box = ui.infoBox;
+    this.infoBg = this.add.graphics();
+    this.infoMoney = this.add.graphics();
+    this.dateText = pixelText(this, box.x + box.padding, box.y + box.padding + box.textNudgeY, '');
+    // 时辰用褐色字，和日期分开
+    this.timeText = pixelText(this, 0, box.y + box.padding + box.textNudgeY, '', { color: ui.textDim2 }).setOrigin(1, 0);
+    this.infoW = 0;
+    this.shownCash = -1;
+    this.shownStamina = -1;
 
     // ---- 底部工具栏 ----
     this.buildToolbar(W, H);
@@ -185,14 +185,44 @@ export class HudScene extends Phaser.Scene {
   update() {
     const clock = gameState.clock;
     if (!clock) return;
-    this.dateText.setText(clock.dateText());
-    this.timeText.setText(clock.timeText());
-    this.moneyText.setText(t('hud.money', { amount: gameState.cash, unit: localName(itemsData.currency.name) }));
-    const ratio = Math.max(0, Math.min(1, gameState.stamina / gameState.maxStamina));
-    this.staminaBar.height = Math.round(this.staminaBarH * ratio);
-    this.staminaBar.setFillStyle(toColor(ratio <= 0.25 ? SETTINGS.ui.staminaLow : SETTINGS.ui.staminaFull));
+    this.refreshInfoBox(clock.shortDateText(), clock.shichen);
     const x = this.toolSlotX[gameState.toolIndex];
     if (x !== undefined) this.toolCursor.setX(x - 1);
+  }
+
+  // ---------------- 左上角时辰框 ----------------
+
+  /** 日期、时辰、钱、体力有变化时才重画（每帧都会调用） */
+  private refreshInfoBox(date: string, shichen: string) {
+    const ui = SETTINGS.ui;
+    const box = ui.infoBox;
+    const bar = ui.staminaBar;
+    if (this.dateText.text !== date) this.dateText.setText(date);
+    if (this.timeText.text !== shichen) this.timeText.setText(shichen);
+    // 框的宽度：至少 box.w；日期 + 时辰放不下就加宽
+    const need = Math.ceil(this.dateText.width + 2 + this.timeText.width) + box.padding * 2;
+    const w = Math.max(box.w, need);
+    const stamina = Math.round((Math.max(0, Math.min(1, gameState.stamina / gameState.maxStamina))) * bar.w);
+    if (w === this.infoW && gameState.cash === this.shownCash && stamina === this.shownStamina) return;
+    this.infoW = w;
+    this.shownCash = gameState.cash;
+    this.shownStamina = stamina;
+    this.timeText.setX(box.x + w - box.padding);
+    // 底板
+    this.infoBg.clear();
+    drawPanel(this.infoBg, box.x, box.y, w, box.h);
+    // 第二行：小铜钱 + 钱数（左），体力条（右），都贴着框的下边
+    const rowY = box.y + box.h - box.padding - TINY_DIGIT_H;
+    const g = this.infoMoney.clear();
+    const money = toColor(ui.money);
+    drawCoin(g, box.x + box.padding, rowY, money);
+    drawTinyNumber(g, box.x + box.padding + 7, rowY, gameState.cash, money);
+    const bx = box.x + w - box.padding - bar.w;
+    const by = rowY + Math.floor((TINY_DIGIT_H - bar.h) / 2);
+    const low = stamina <= bar.w * 0.25;
+    g.fillStyle(toColor(ui.border)).fillRect(bx - 1, by - 1, bar.w + 2, bar.h + 2);
+    g.fillStyle(toColor(ui.innerBorder)).fillRect(bx, by, bar.w, bar.h);
+    g.fillStyle(toColor(low ? ui.staminaLow : ui.staminaFull)).fillRect(bx, by, stamina, bar.h);
   }
 
   // ---------------- 操作分配 ----------------

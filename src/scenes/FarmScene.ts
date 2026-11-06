@@ -129,6 +129,7 @@ export class FarmScene extends Phaser.Scene {
     });
     if (hutTiles.length) this.placeHut(hutTiles);
     this.refreshHouse();
+    this.startWaterShimmer();
     if (gameState.pickup.unlocked) this.placeBasket();
     for (const key of Object.keys(gameState.crops)) this.refreshCrop(key);
 
@@ -226,6 +227,7 @@ export class FarmScene extends Phaser.Scene {
     if (x !== 0 || y !== 0) {
       this.route = []; // 自己动了方向键/摇杆，就取消自动走路
       this.onArrive = undefined;
+      ({ x, y } = this.cornerSlide(x, y));
     } else if (this.route.length && !paused) {
       ({ x, y } = this.followRoute());
     }
@@ -248,6 +250,48 @@ export class FarmScene extends Phaser.Scene {
 
   private feetBody() {
     return this.feet.body as Phaser.Physics.Arcade.Body;
+  }
+
+  /**
+   * 贴边滑入：朝一个方向直走、被墙角挡住，而旁边差几个像素就能对准通道（门、窄路）时，
+   * 先往通道那边挪，对准了再接着往前走。最多挪 SETTINGS.cornerSlidePixels 像素。
+   * 斜着走（两个方向都按得很明显）时不管，免得抢玩家的方向。
+   */
+  private cornerSlide(x: number, y: number) {
+    const max = SETTINGS.cornerSlidePixels;
+    const horiz = Math.abs(x) >= Math.abs(y);
+    const main = horiz ? x : y;
+    const side = horiz ? y : x;
+    if (max <= 0 || Math.abs(side) > Math.abs(main) * 0.5) return { x, y };
+    const b = this.feetBody();
+    const dir = Math.sign(main);
+    // 把脚的框挪 (ox, oy) 以后，再往前走一步会不会撞上
+    const stepBlocked = (ox: number, oy: number) =>
+      this.rectBlocked(b.x + ox + (horiz ? dir : 0), b.y + oy + (horiz ? 0 : dir), b.width, b.height);
+    if (!stepBlocked(0, 0)) return { x, y };
+    // 往两边找最近的空当；摇杆稍微偏向哪边，就先试哪边
+    const sides = side < 0 ? [-1, 1] : [1, -1];
+    for (let d = 1; d <= max; d++) {
+      for (const s of sides) {
+        const ox = horiz ? 0 : s * d;
+        const oy = horiz ? s * d : 0;
+        if (stepBlocked(ox, oy)) continue;
+        // 挪过去的路上不能有东西挡着
+        let clear = true;
+        for (let k = 1; k <= d && clear; k++) clear = !this.rectBlocked(b.x + (horiz ? 0 : s * k), b.y + (horiz ? s * k : 0), b.width, b.height);
+        if (clear) return horiz ? { x: 0, y: s } : { x: s, y: 0 };
+      }
+    }
+    return { x, y };
+  }
+
+  /** 左上角 (x, y)、宽 w 高 h 的框（单位像素）有没有碰到挡路的格子 */
+  private rectBlocked(x: number, y: number, w: number, h: number) {
+    const s = SETTINGS.tileSize;
+    const x0 = Math.floor(x / s), x1 = Math.floor((x + w - 0.01) / s);
+    const y0 = Math.floor(y / s), y1 = Math.floor((y + h - 0.01) / s);
+    for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) if (this.isSolid({ x: tx, y: ty })) return true;
+    return false;
   }
 
   /** 脚底中间的位置 */
@@ -393,7 +437,7 @@ export class FarmScene extends Phaser.Scene {
       list.push({ label: t('action.basketPut'), run: () => this.basketMenu(), needReach: true });
       if (Object.keys(gameState.basket).length) list.push({ label: t('action.basketTake'), run: () => this.basketTake(), needReach: true });
     }
-    if (kind === 'site' || kind === 'house') {
+    if (kind === 'site' || kind === 'house' || kind === 'ruinHouse') {
       list.push({ label: t('action.houseStatus'), run: () => this.sayHouseStatus(), needReach: false });
     }
     if (opts.tools) {
@@ -531,19 +575,28 @@ export class FarmScene extends Phaser.Scene {
     this.say('house.statusNext', { name: localName(next.name), mats, cost: next.cost });
   }
 
-  /** 按修房阶段画老宅：第 2 阶段起，地基上盖起房子，并且搬进去住（醒来在老宅门口） */
+  /**
+   * 按修房阶段画老宅：
+   *  - 第 0、1 阶段：宅基地上立着烧毁的老宅（house_old_ruin），四周是一格格的废墟；
+   *  - 第 2 阶段起：换成新房子，并且搬进去住（醒来在老宅门口）。
+   */
   private refreshHouse() {
-    if (gameState.houseStage < 2) return;
     const s = SETTINGS.tileSize;
     const { house, door } = HOUSE_SITE;
+    const cx = (house.x + house.w / 2) * s;
+    const bottom = (house.y + house.h) * s;
+    if (gameState.houseStage < 2) {
+      if (this.grid[house.y]?.[house.x] !== 'Q') return;
+      this.houseImage?.destroy();
+      this.houseImage = this.add.image(cx, bottom, 'house_old_ruin', 0).setOrigin(0.5, 1).setDepth(bottom);
+      return;
+    }
     for (let y = house.y; y < house.y + house.h; y++) {
       for (let x = house.x; x < house.x + house.w; x++) if (this.grid[y][x] !== 'K') this.setTile({ x, y }, 'K');
     }
     if (this.grid[door.y][door.x] !== 'E') this.setTile(door, 'E');
     this.doorTile = { ...door };
     const key = `house_${stageInfo(gameState.houseStage)!.id}`;
-    const cx = (house.x + house.w / 2) * s;
-    const bottom = (house.y + house.h) * s;
     this.houseImage?.destroy();
     this.houseImage = this.add.image(cx, bottom, key, 0).setOrigin(0.5, 1).setDepth(bottom);
     if (this.houseLight) this.lightSpots = this.lightSpots.filter((l) => l !== this.houseLight);
@@ -851,6 +904,24 @@ export class FarmScene extends Phaser.Scene {
     return !this.isSolid(c);
   }
 
+  /** 水面：每隔 SETTINGS.waterShimmerMs 在「平静」「波光」两格之间换一次 */
+  private startWaterShimmer() {
+    const water = GROUND_TILES.water;
+    const frames = [frameIndex(water.texture, 'water'), frameIndex(water.texture, 'water_shimmer')];
+    if (frames[0] === frames[1]) return; // 水面图只有一格，就不换了
+    let i = 0;
+    this.time.addEvent({
+      delay: SETTINGS.waterShimmerMs,
+      loop: true,
+      callback: () => {
+        i = 1 - i;
+        this.views.flat().forEach((v) => {
+          if (v.ground.texture.key === water.texture) v.ground.setFrame(frames[i]);
+        });
+      },
+    });
+  }
+
   /** 把一格改成别的字符（比如草地 → 田），并重画 */
   private setTile(c: Cell, ch: string) {
     this.grid[c.y][c.x] = ch;
@@ -880,7 +951,7 @@ export class FarmScene extends Phaser.Scene {
 
     if (info.solid && !view.body) {
       view.body = this.solids.create(tx * s + s / 2, ty * s + s / 2, undefined) as Phaser.Physics.Arcade.Sprite;
-      view.body.setVisible(false).setSize(s, s).refreshBody();
+      view.body.setVisible(false).setDisplaySize(s, s).refreshBody(); // 先设显示大小再 refreshBody：碰撞块正好一格（以前写 setSize 被 refreshBody 冲掉，碰撞块变成 32×32，把窄路都堵上了）
     } else if (!info.solid && view.body) {
       view.body.destroy();
       view.body = undefined;
@@ -907,7 +978,7 @@ export class FarmScene extends Phaser.Scene {
     const marker = this.add.container(feet.x, feet.y - 40, [g]).setDepth(10000);
     this.tweens.add({ targets: marker, y: feet.y - 43, duration: 450, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     const body = this.solids.create(cell.x * s + s / 2, cell.y * s + s / 2, undefined) as Phaser.Physics.Arcade.Sprite;
-    body.setVisible(false).setSize(s, s).refreshBody();
+    body.setVisible(false).setDisplaySize(s, s).refreshBody();
     this.zhou = { cell, sprite, marker, body };
   }
 

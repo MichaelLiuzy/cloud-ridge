@@ -12,39 +12,42 @@
  *    D  草棚门口（能走）
  *    T  树（挡路）          ~  水塘（挡路）
  *    #  篱笆（挡路）        H  草棚（挡路，连在一起的 H 会画成一座房子）
+    G  篱笆上的门（能走；现在画成小路的样子，以后美术补门的图）
  *    r  石头（挡路）        g  杂草（挡路）
  *    s  树桩（挡路）        x  火灾残骸（挡路）
  *    L  灯笼（挡路，夜里会亮）
- *    R  老宅的废墟（挡路，用斧头、锄头一格格清掉）
+ *    Q  烧毁的老宅（挡路，连在一起的 Q 会画成一整栋烧毁的房子 house_old_ruin）
+    R  老宅四周的破瓦焦木（挡路，用斧头、锄头一格格清掉）
  *    _  清干净的老宅地基（能走）
  *    K  重建好的老宅（挡路；第 2 阶段修好后，地基上会自动盖起来，见下面的 HOUSE_SITE）
  *    E  老宅门口（能走）
  *    B  收货筐（挡路；开通杂货铺上门收货后自动出现在 BASKET_CELL）
  *
  *  中间被篱笆 # 围起来的就是 15×12 的农田区（数值来自 src/data/start.ts）。
+ *  田有两个门 G：左边小路通进来一个、下面一排篱笆中间一个，都是 2 格宽。
  *  以后正式地图会改用 Tiled 地图编辑器的格式，这份文字地图只是原型用。
  */
 
 export const FARM_MAP: string[] = [
   'TTTTTTTTTTTTTTTTTTTTTTTTTT',
-  'T,......RRRRRR..........,T',
-  'T..HHH..RRRRRR........~~.T',
-  'T..HHH..RRRRRR.......~~~.T',
-  'T..LD...RRRRRR........~..T',
-  'T...=...RRRRRR...........T',
+  'T,.....RRQQQQRRR........,T',
+  'T..HHH.RRQQQQRRR......~~.T',
+  'T..HHH.RRQQQQRRR.....~~~.T',
+  'T..LD..RRQQQQRRR......~..T',
+  'T...=..RRRRRRRRR.........T',
   'T...=.#################..T',
   'T...=.#ooo.....g.....x#..T',
   'T...=.#ooo..r.....g..x#..T',
   'T...=.#.......g.......#,.T',
   'T,..=.#...g......s....#..T',
-  'T...==#.......P.......#..T',
-  'T....=#..r.........g..#..T',
+  'T...==G.......P.......#..T',
+  'T....=G..r.........g..#..T',
   'T....=#......g........#..T',
   'T....=#...s.......r...#..T',
   'T....=#.g.........g...#..T',
   'T....=#..........x....#..T',
   'T....=#...............#..T',
-  'T....=####=############..T',
+  'T....=####GG###########..T',
   'T....=====================',
   'T,.......................T',
   'TTTTTTTTTTTTTTTTTTTTTTTTTT',
@@ -81,11 +84,13 @@ export const TILE_TYPES: Record<string, TileType> = {
   'T': { kind: 'tree', solid: true, hint: 'hint.tree', ground: 'grass', object: 'prop_tree' },
   '~': { kind: 'water', solid: true, hint: 'hint.water', ground: 'water' },
   '#': { kind: 'fence', solid: true, hint: 'hint.fence', ground: 'fence' },
+  'G': { kind: 'gate', solid: false, hint: 'hint.gate', ground: 'path' },
   'H': { kind: 'hut', solid: true, hint: 'hint.hut', ground: 'dirt' },
   'r': { kind: 'rock', solid: true, hint: 'hint.rock', ground: 'grass', object: 'debris_rock' },
   'g': { kind: 'weed', solid: true, hint: 'hint.weed', ground: 'grass', object: 'debris_weed' },
   's': { kind: 'stump', solid: true, hint: 'hint.stump', ground: 'grass', object: 'debris_stump' },
   'x': { kind: 'fireDebris', solid: true, hint: 'hint.fireDebris', ground: 'grass', object: 'debris_fire' },
+  'Q': { kind: 'ruinHouse', solid: true, hint: 'hint.oldHouse', ground: 'dirt' },
   'R': { kind: 'ruin', solid: true, hint: 'hint.ruin', ground: 'dirt', object: 'debris_ruin' },
   '_': { kind: 'site', solid: false, hint: 'hint.site', ground: 'dirt' },
   'K': { kind: 'house', solid: true, hint: 'hint.house', ground: 'dirt' },
@@ -95,8 +100,8 @@ export const TILE_TYPES: Record<string, TileType> = {
 };
 
 /**
- * 老宅：废墟（R）清干净后变成地基（_）；第 2 阶段修好后，
- * house 这块（左上角 x, y，宽 w、高 h，单位：格）盖成房子（K），door 那一格是门口（E）。
+ * 老宅：一开始 house 这块是烧毁的老宅（Q），四周的废墟（R）清干净后变成地基（_）；
+ * 第 2 阶段修好后，house 这块（左上角 x, y，宽 w、高 h，单位：格）换成新房子（K），door 那一格是门口（E）。
  * 房子的图按 house 这块的底边居中画，屋顶可以往上伸出去。
  */
 export const HOUSE_SITE = {

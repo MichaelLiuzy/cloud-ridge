@@ -162,6 +162,8 @@ export const zh = {
 
   hud: {
     date: "{month}{day} · {term}",
+    /** 左上角时辰框里的短日期 */
+    shortDate: "{month}{day}",
     time: "{shichen}（{hour}:{minute}）",
     money: "{amount} {unit}",
     stamina: "体力 {value}/{max}",
@@ -208,7 +210,8 @@ export const zh = {
     rock: "一块石头，挡在地里。要用铁镐才敲得碎，铁匠铺有卖。",
     stump: "一截老树桩，要用斧头才砍得动。",
     fireDebris: "烧焦的木头和瓦片……是那场火留下的。",
-    ruin: "一片烧焦的废墟。",
+    ruin: "烧塌下来的破瓦和焦木，堆在老宅四周。",
+    oldHouse: "烧剩下的老宅，只剩几根黑乎乎的柱子和半截墙。",
     site: "老宅的地基，已经清干净了。",
     house: "老宅，一点点重新立起来了。",
     basket: "门口的收货筐。晚上放进去的东西，第二天一早杂货铺来收。",
@@ -219,6 +222,7 @@ export const zh = {
     water: "一口小池塘，水很清。",
     tree: "一棵大树。",
     fence: "旧篱笆。",
+    gate: "篱笆上的门，从这里进出田地。",
     hut: "镇上的人帮忙搭的草棚。晚上可以在这里睡觉，里面还有个箱子。",
     shed: "以前住的草棚，现在当柴房用。里面的箱子还在。",
     path: "通往镇上的小路。",
@@ -257,9 +261,9 @@ export const zh = {
 
   // ===== 重建老宅 =====
   house: {
-    ruinsCleared: "废墟终于清干净了，露出了老宅的地基。接下来可以去镇上请木匠来修了。",
+    ruinsCleared: "老宅四周的破瓦焦木终于清干净了。接下来可以去镇上请木匠来修了。",
     building: "木匠正在修「{name}」，还要 {days} 天。",
-    statusRuins: "老宅只剩一片废墟，还有 {left} 格没清。拿斧头或锄头一点点清吧。",
+    statusRuins: "老宅四周堆满了废墟，还有 {left} 格没清。拿斧头或锄头一点点清吧。",
     statusNext: "下一步是「{name}」：要{mats}，还有 {cost} 文工钱。去镇上找木匠。",
     allDone: "老宅已经完全修好了。",
     busy: "木匠已经在修了，还要 {days} 天。",

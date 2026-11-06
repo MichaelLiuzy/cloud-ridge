@@ -67,11 +67,14 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
 | 想改的东西 | 打开这个文件 | 找哪一项 |
 |---|---|---|
 | 走路速度 | `src/config/settings.ts` | `playerSpeed` |
+| 被墙角、门框卡住时自动往通道挪多少（贴边滑入） | `src/config/settings.ts` | `cornerSlidePixels`（0 = 关掉） |
 | 按键（比如把背包改成 B） | `src/config/settings.ts` | `keys` 里的 `bag: ['Q']` 改成 `['B']` |
 | 手机摇杆、按钮大小和透明度 | `src/config/settings.ts` | `touch` |
 | 对话框、物品栏、时辰框的颜色 | `src/config/settings.ts` | `ui` |
+| 左上角时辰框的位置、大小、内边距，体力条的长和粗 | `src/config/settings.ts` | `ui.infoBox`、`ui.staminaBar` |
+| 水面波光多久换一次 | `src/config/settings.ts` | `waterShimmerMs` |
 | 没有图时占位色块的颜色和样子 | `src/config/assets.ts` | 每张图的 `color`、`shape` |
-| 24 色调色板 | `src/config/palette.json` | `colors` |
+| 27 色调色板 | `src/config/palette.json` | `colors` |
 | 昼夜颜色、几点变色、灯光多亮、回忆模式 | `src/config/atmosphere.ts` | `dayTint`、`lightLevel`、`light`、`memory` |
 | 走路颠动、工具挥动的快慢 | `src/config/settings.ts` | `walkBob…`、`toolSwingMs` |
 | 新的一种美术图怎么切（几行几格、多大） | `tools/art_rules.json` | 照着已有的规则加一条 |
@@ -89,7 +92,9 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
 | 打工任务和报酬 | `src/data/jobs.ts` | `reward` 等 |
 | 重建老宅的四个阶段：材料、工钱、体力上限、修好后学会什么 | `src/data/housing.ts` | `stages` 里每阶段的 `materials`、`cost`、`maxStamina`、`learns` |
 | 清废墟每格花多少体力、能用哪些工具 | `src/data/time.ts`、`src/data/housing.ts` | `stamina.costs.clear_ruin`；`ruins.tools` |
-| 废墟在地图上的位置、老宅盖在哪 | `src/world/farmMap.ts` | 地图里的 `R`；`HOUSE_SITE` |
+| 废墟在地图上的位置、老宅盖在哪 | `src/world/farmMap.ts` | 地图里的 `R`（四周的破瓦焦木）、`Q`（烧毁的老宅）；`HOUSE_SITE` |
+| 田地篱笆上的门 | `src/world/farmMap.ts` | 地图里的 `G` |
+| 人物图套色时的肤色保护 | `tools/art.mjs` | `TUNING.skin` |
 | 每个阶段找到哪一页日记、在哪找到 | `src/data/diary.ts` | `DIARY_PAGES`（找到的位置文字在 `src/locales/zh.ts` 的 `diary.where`） |
 | 赶集日涨价多少、哪些种子只在赶集日卖 | `src/data/time.ts` | `calendar.marketPriceBonus`、`calendar.marketOnlySeeds` |
 | 杂货铺上门收货：几颗心解锁、开通要多少钱 | `src/data/services.ts` | `pickup.unlockHearts`、`pickup.fee`（掌柜的台词在 `prologue.ink` 的 `pickup_offer`） |

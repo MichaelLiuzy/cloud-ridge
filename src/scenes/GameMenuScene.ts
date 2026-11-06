@@ -169,6 +169,13 @@ export class GameMenuScene extends Phaser.Scene {
       this.tabBar.add([g, label, hit]);
       x += w + 4;
     }
+    // 右边：完整的日期和节气、钱（左上角时辰框里放不下的）
+    const clock = gameState.clock;
+    if (clock) {
+      const money = t('hud.money', { amount: gameState.cash, unit: localName(ITEMS.currency.name) });
+      const info = pixelText(this, W - 30, 9, `${clock.dateText()}　${money}`, { color: ui.textDim2 }).setOrigin(1, 0);
+      this.tabBar.add(info);
+    }
     // 右上角 ✕
     const close = pixelText(this, W - 20, 8, '✕');
     const hit = this.add.zone(W - 26, 4, 22, 22).setOrigin(0).setInteractive();

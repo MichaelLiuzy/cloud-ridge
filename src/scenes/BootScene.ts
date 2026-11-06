@@ -67,6 +67,13 @@ function drawPlaceholder(g: Phaser.GameObjects.Graphics, spec: AssetSpec, i: num
   switch (spec.shape) {
     case 'full':
       rect(0, 0, w, h, c);
+      // 水面的「波光」那一格：点几道浅色的短线
+      if (spec.frames[i]?.includes('shimmer')) {
+        const glint = toColor(PALETTE.mist);
+        rect(3, 4, 3, 1, glint);
+        rect(10, 9, 3, 1, glint);
+        rect(5, 13, 2, 1, glint);
+      }
       break;
     case 'object':
       rect(2, h - 11, w - 4, 10, ink);

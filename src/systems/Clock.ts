@@ -100,6 +100,13 @@ export class Clock {
     return t('hud.date', { month: localName(month.name), day: days[this.day - 1] ?? String(this.day), term: localName(this.solarTerm.name) });
   }
 
+  /** 左上角时辰框用的短日期：「正月十六」 */
+  shortDateText() {
+    const month = timeData.calendar.months[this.month - 1];
+    const days = t('calendar.dayNames').split(',');
+    return t('hud.shortDate', { month: localName(month.name), day: days[this.day - 1] ?? String(this.day) });
+  }
+
   /** 屏幕上显示的时间：「辰时（7:00）」 */
   timeText() {
     const minute = String(this.minutes % 60).padStart(2, '0');
