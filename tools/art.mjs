@@ -50,7 +50,7 @@ const TUNING = {
   /** 地面纹理每格四周往里收几成（去掉贴着空隙的杂色边），0.03 = 3% */
   tileInset: 0.03,
   /** 生成精灵表的输出文件夹（每次运行先清空，fonts 等别的文件夹不动） */
-  outFolders: ['chars', 'tiles', 'objects', 'buildings', 'crops', 'icons', 'portraits'],
+  outFolders: ['chars', 'tiles', 'objects', 'buildings', 'crops', 'icons', 'portraits', 'cg'],
 };
 
 // =================================================================
@@ -111,7 +111,9 @@ function findRule(base) {
 function processFile(file, rule, id) {
   const png = PNG.sync.read(fs.readFileSync(file));
   const img = { w: png.width, h: png.height, data: png.data };
-  const isTile = !!rule.tile;
+  // full = 整张画（过场 CG）：不抠图，从正中裁成目标比例再缩小
+  const isFull = !!rule.full;
+  const isTile = !!rule.tile || isFull;
   const [cw, ch] = rule.sizes?.[id] ?? rule.cell;
 
   // 1. 哪些像素是背景（不是品红底时，自动认出白底、黑底这类纯色底）
@@ -127,6 +129,12 @@ function processFile(file, rule, id) {
   const frames = cells.map((c) => {
     const box = contentBox(bg, img.w, c);
     if (!box) return blank(cw, ch);
+    if (isFull) {
+      const scale = Math.min(box.w / cw, box.h / ch);
+      const w = Math.round(cw * scale), h = Math.round(ch * scale);
+      const inner = { x: box.x + Math.floor((box.w - w) / 2), y: box.y + Math.floor((box.h - h) / 2), w, h };
+      return quantize(hardEdge(resize(img, inner, cw, ch, false), true));
+    }
     if (isTile) {
       const ix = Math.round(box.w * TUNING.tileInset);
       const iy = Math.round(box.h * TUNING.tileInset);

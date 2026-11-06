@@ -13,6 +13,9 @@ interface ArtManifest {
   textures: Record<string, { file: string; frameWidth: number; frameHeight: number; frames: string[] }>;
 }
 
+/** 哪些图是占位色块（还没有真图）。剧情画面没图时要额外写一句说明 */
+export const PLACEHOLDERS = new Set<string>();
+
 export class BootScene extends Phaser.Scene {
   constructor() {
     super('Boot');
@@ -41,6 +44,7 @@ export class BootScene extends Phaser.Scene {
     const g = this.add.graphics();
     for (const [key, spec] of Object.entries(ASSETS)) {
       if (this.textures.exists(key)) continue;
+      PLACEHOLDERS.add(key);
       g.clear();
       spec.frames.forEach((_, i) => drawPlaceholder(g, spec, i, i * spec.w));
       g.generateTexture(key, spec.w * spec.frames.length, spec.h);
@@ -91,6 +95,21 @@ function drawPlaceholder(g: Phaser.GameObjects.Graphics, spec: AssetSpec, i: num
       rect(1, 3, w - 2, roofH - 2, toColor(PALETTE.ochre)); // 屋顶
       rect(w / 2 - 5, h - 14, 10, 14, toColor(PALETTE.brownDark)); // 门
       rect(w - 15, roofH + 6, 8, 6, toColor(PALETTE.ink)); // 窗
+      break;
+    }
+    case 'cg':
+      rect(0, 0, w, h, c);
+      rect(0, h - 4, w, 4, ink);
+      break;
+    case 'portrait': {
+      // 头像：脸 + 头发 + 身子，每格表情用嘴巴形状区分
+      rect(0, 0, w, h, toColor(PALETTE.paperDark));
+      rect(12, 44, 40, 20, c); // 衣服
+      rect(18, 12, 28, 32, toColor(PALETTE.skin)); // 脸
+      rect(16, 8, 32, 8, toColor(PALETTE.brownDark)); // 头发
+      rect(24, 24, 4, 4, ink).fillRect(ox + 36, 24, 4, 4); // 眼睛
+      const mouth = [[28, 35, 8, 2], [27, 34, 10, 3], [29, 36, 6, 1], [30, 34, 4, 5]][i] ?? [28, 35, 8, 2];
+      rect(mouth[0], mouth[1], mouth[2], mouth[3], toColor(PALETTE.maroon));
       break;
     }
     case 'char': {

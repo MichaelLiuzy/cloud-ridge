@@ -20,15 +20,36 @@ export interface AssetSpec {
   frames: string[];
   /** 占位色块的颜色：一个颜色 = 每格都用它；一串 = 每格各用各的 */
   color: PaletteName | PaletteName[];
-  shape: 'full' | 'object' | 'char' | 'tree' | 'lantern' | 'building' | 'icon';
+  shape: 'full' | 'object' | 'char' | 'tree' | 'lantern' | 'building' | 'icon' | 'portrait' | 'cg';
 }
 
 const DIRS = ['down', 'left', 'right', 'up'];
+/** 头像四格：平常、笑、担忧、惊讶（和 tools/art_rules.json 的 portrait_ 一样） */
+const MOODS = ['normal', 'smile', 'worried', 'surprised'];
+/** 剧情画面 320×180 */
+const cg = (color: PaletteName): AssetSpec => ({ w: 320, h: 180, frames: ['main'], color, shape: 'cg' });
 
 export const ASSETS: Record<string, AssetSpec> = {
   // ---- 人物 ----
   /** 主角站立：下、左、右、上 */
   player_stand: { w: 16, h: 32, frames: DIRS, color: 'leaf', shape: 'char' },
+
+  /** 周里正站立（序章在农场里教操作） */
+  npc_zhou_stand: { w: 16, h: 32, frames: DIRS, color: 'indigo', shape: 'char' },
+
+  // ---- 头像 64×64：平常、笑、担忧、惊讶 ----
+  portrait_player: { w: 64, h: 64, frames: MOODS, color: 'leaf', shape: 'portrait' },
+  portrait_zhou: { w: 64, h: 64, frames: MOODS, color: 'indigo', shape: 'portrait' },
+  portrait_doctor: { w: 64, h: 64, frames: MOODS, color: 'mist', shape: 'portrait' },
+  portrait_fan: { w: 64, h: 64, frames: MOODS, color: 'ochre', shape: 'portrait' },
+
+  // ---- 剧情画面 320×180（开场过场；没图时是色块加说明） ----
+  cg_office: cg('stone'),
+  cg_walk_home: cg('pine'),
+  cg_penn_station: cg('outline'),
+  cg_headlights: cg('paper'),
+  cg_hospital_bed: cg('mist'),
+  cg_clinic_wake: cg('ochreLight'),
 
   // ---- 地面 ----
   /** 农田地面：草地、黄土、锄过的地、浇过水的地、小路、篱笆 */
@@ -64,6 +85,7 @@ export const ASSETS: Record<string, AssetSpec> = {
   icon_bok_choy: { w: 16, h: 16, frames: ['main'], color: 'leaf', shape: 'icon' },
   icon_radish: { w: 16, h: 16, frames: ['main'], color: 'mist', shape: 'icon' },
   icon_plant_ash: { w: 16, h: 16, frames: ['main'], color: 'ash', shape: 'icon' },
+  icon_notebook: { w: 16, h: 16, frames: ['main'], color: 'vermilion', shape: 'icon' },
 };
 
 /**
@@ -87,3 +109,14 @@ export function frameIndex(texture: string, frame: string): number {
 
 /** 有走路动画图（player_walk）时：每个方向一行，每行 5 格 = 站立 + 走路 4 格 */
 export const WALK_SHEET = { framesPerDir: 5, dirs: DIRS };
+
+/** 剧本里的语气（#mood:xxx）→ 头像第几格。没写的语气用第 0 格（平常） */
+export const MOOD_FRAMES: Record<string, number> = {
+  normal: 0,
+  smile: 1,
+  happy: 1,
+  excited: 1,
+  worried: 2,
+  sad: 2,
+  surprised: 3,
+};
