@@ -7,7 +7,8 @@
 **在线试玩：** https://cloud-ridge.michaelliuzy83.workers.dev/
 
 > 现在是**原型**：能在农场里走动、开垦、浇水、割草、砍树桩、睡觉、存档。
-> 地图和人物还是色块占位，等美术定了再换。
+> 画面是 320×180 的像素风，整数倍放大铺满屏幕（多出来的地方留黑边）。有昼夜变化，夜里灯笼会亮。
+> 还没有正式美术的地方用调色板色块占位；把 ChatGPT 出的图放进 `art_raw/`，就会自动换上（见下面「换美术图」）。
 
 ---
 
@@ -25,6 +26,9 @@ Mac 和手机用同一套规则：**想干什么就直接点那个东西**。只
 | 菜单 | M | | 右上「菜单」按钮 |
 
 现在能做的事：锄头开垦草地、水桶浇田、镰刀割草、斧头砍树桩和火灾残骸。
+
+**测试用：** 按 M 打开菜单，最下面有「时间快进 3 小时」（看傍晚和夜里）和「回忆模式 开 / 关」（画面去色，只有灯笼保留颜色）。
+Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/config/settings.ts` 里的 `debugMenu` 改成 `false`。
 每件事花体力，体力用完或熬到凌晨两点会昏倒，第二天在草棚醒来（数值都在 `src/data/time.ts`）。
 
 ### 存档
@@ -39,6 +43,23 @@ Mac 和手机用同一套规则：**想干什么就直接点那个东西**。只
 
 ---
 
+## 换美术图（不用修图，也不用写代码）
+
+1. **把图放进 `art_raw/` 文件夹。** 文件名要照规则起，比如主角站立图叫 `player_stand.png`（完整对照表见 [`art_raw/README.md`](art_raw/README.md)）。
+   - 在 GitHub 网页上：打开 `art_raw` → **Add file** → **Upload files** → 拖进去 → **Commit changes**。
+   - 或者放进自己电脑上的仓库文件夹，让本地的 Claude Code 帮你提交推送。
+2. **整理脚本会自动运行。** 在 GitHub 上传后，Cloudflare 发布时会自动跑一遍（一两分钟），刷新游戏就能看到新图。
+   在自己电脑上，打开终端进到仓库文件夹，输入 `npm run art` 回车；`npm run dev` 启动时也会先自动跑一遍。
+   它会把大图缩小、抠掉品红背景、切格子、套 24 色，结果放进 `public/assets/`。
+3. **看预览页，检查切得对不对。** 每张原图旁边是处理后放大 4 倍的样子。
+   - 网上：游戏网址后面加 `/art_preview/`，即 https://cloud-ridge.michaelliuzy83.workers.dev/art_preview/
+   - 自己电脑上：跑完 `npm run art` 后，双击打开 `public/art_preview/index.html`。
+   - 如果某张图被标成红字「按平均分格切的」，说明没找到格子间的品红空隙，切歪了的话让 ChatGPT 把格子间距留大一点重出。
+
+没图的东西会用同样大小的色块代替，所以随时都能玩。`public/assets/` 和预览页是自动生成的，不会提交到 GitHub。
+
+---
+
 ## 想改什么，去哪里改
 
 所有文件都在 `src/` 文件夹里。每个文件开头都有中文说明，常调的东西旁边都写了注释。
@@ -46,10 +67,15 @@ Mac 和手机用同一套规则：**想干什么就直接点那个东西**。只
 | 想改的东西 | 打开这个文件 | 找哪一项 |
 |---|---|---|
 | 走路速度 | `src/config/settings.ts` | `playerSpeed` |
-| 画面放大缩小 | `src/config/settings.ts` | `tilesVisibleVertically`（数字越小画面越大） |
 | 按键（比如把背包改成 B） | `src/config/settings.ts` | `keys` 里的 `bag: ['Q']` 改成 `['B']` |
 | 手机摇杆、按钮大小和透明度 | `src/config/settings.ts` | `touch` |
-| 草地、水、人物衣服等颜色 | `src/config/settings.ts` | `colors` |
+| 对话框、物品栏、时辰框的颜色 | `src/config/settings.ts` | `ui` |
+| 没有图时占位色块的颜色和样子 | `src/config/assets.ts` | 每张图的 `color`、`shape` |
+| 24 色调色板 | `src/config/palette.json` | `colors` |
+| 昼夜颜色、几点变色、灯光多亮、回忆模式 | `src/config/atmosphere.ts` | `dayTint`、`lightLevel`、`light`、`memory` |
+| 走路颠动、工具挥动的快慢 | `src/config/settings.ts` | `walkBob…`、`toolSwingMs` |
+| 新的一种美术图怎么切（几行几格、多大） | `tools/art_rules.json` | 照着已有的规则加一条 |
+| 抠图有多狠、空隙多宽算空隙 | `tools/art.mjs` | 开头的 `TUNING` |
 | 游戏里显示的任何中文字 | `src/locales/zh.ts` | 搜你想改的那句话，改引号里的字 |
 | 游戏名 | `src/locales/zh.ts` | `game.title` |
 | 农场地图（树、石头、田放在哪） | `src/world/farmMap.ts` | 用字符画的地图，文件开头有字符对照表 |
@@ -81,7 +107,10 @@ Mac 和手机用同一套规则：**想干什么就直接点那个东西**。只
 docs/技术方案.md        ★ 技术方案定稿（开工前先读）
 src/
   main.ts              游戏入口，把各个场景接起来
-  config/settings.ts   ★ 常调设置：速度、按键、颜色、摇杆
+  config/settings.ts   ★ 常调设置：速度、按键、界面颜色、摇杆
+  config/assets.ts     ★ 素材清单：用哪些图、缺图时的占位色块
+  config/atmosphere.ts ★ 昼夜叠色、灯光、回忆模式
+  config/palette.json  ★ 24 色调色板（整理脚本和游戏共用）
   locales/zh.ts        ★ 所有中文文字
   locales/i18n.ts      多语言工具（以后加英文版用）
   data/*.ts            ★ 数值表：时间、作物、物品、打工、房子、开局
@@ -89,9 +118,10 @@ src/
   world/farmMap.ts     ★ 农场地图（字符画）
   world/actions.ts     ★ 对什么东西能做什么（工具规则、床边菜单）
   scenes/
-    BootScene.ts       画占位图（以后换成加载美术图片）
+    BootScene.ts       读美术图；缺的画占位色块
     TitleScene.ts      标题画面：继续 / 新游戏 / 导入存档
     FarmScene.ts       农场：地图、走路、点东西、开垦浇水、睡觉存档
+    AtmosphereScene.ts 昼夜色层、灯笼光圈、回忆模式
     HudScene.ts        界面：日期时间体力、工具栏、对话框、小菜单、手机按钮
   systems/
     Clock.ts           游戏时钟（季节、天、时辰）
@@ -99,11 +129,16 @@ src/
     pathfind.ts        点远处时自动找路
     save/              存档：格式和自动升级、3 个存档位、临时进度、存储
   ui/
+    pixelUi.ts         画界面框、写像素字
     ListMenu.ts        小菜单
     fileTransfer.ts    导出 / 导入存档文件
   input/Controls.ts    键盘、鼠标、手机摇杆和点击，统一成同一套指令
 public/icons/          主屏幕图标
+public/assets/fonts/   像素字体 Fusion Pixel 12px（开源字体，许可证在同一个文件夹）
+public/assets/         整理好的美术图（npm run art 自动生成，不提交）
 art_raw/               ★ ChatGPT 生成的美术原图放这里（命名规则见 art_raw/README.md）
+tools/art.mjs          美术整理脚本（npm run art）
+tools/art_rules.json   ★ 每种图怎么切、切成多大
 ```
 
 带 ★ 的是你最可能想改的。
@@ -117,7 +152,8 @@ art_raw/               ★ ChatGPT 生成的美术原图放这里（命名规则
 ## 技术说明（给程序用）
 
 - Phaser 3 + TypeScript + Vite，PWA（vite-plugin-pwa）离线。
-- 本地运行：`npm install`，然后 `npm run dev`；打包：`npm run build`（会先做类型检查）。
+- 本地运行：`npm install`，然后 `npm run dev`；打包：`npm run build`（会先跑 `npm run art`，再做类型检查）。
+- 画面：320×180，`Scale.NONE` + 按真实像素取整的 zoom，`pixelArt`/`roundPixels`。主角位置 = 脚底，按 y 排遮挡。
 - 发布：Cloudflare（Workers & Pages）连接本仓库，构建命令 `npm run build`，部署命令 `npx wrangler deploy`（设置在 `wrangler.jsonc`），Node 版本见 `.node-version`。推到 `main` 自动发布。
 - 存档：带 `saveVersion` 的 JSON，存在 IndexedDB（`src/systems/save/storage.ts`，转 app 时只换这一层）。改存档格式时把 `SAVE_VERSION` 加 1，并在 `saveFormat.ts` 的 `MIGRATIONS` 里写升级步骤。
 - 以后转 app：iOS 用 Capacitor，Mac 用 Tauri 套壳，不用重写。
