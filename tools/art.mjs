@@ -413,19 +413,46 @@ function quantize(img) {
   return img;
 }
 
+/**
+ * 调色板里离 (r, g, b) 最近的颜色。距离在 CIELAB 色彩空间里算（最接近人眼的感觉），
+ * 这样肤色这类介于几种颜色之间的地方，会一整片落到同一种颜色上，不会花成斑点。
+ */
+/** 颜色差的权重（1 = 和明暗一样重要；小一点 = 更看重明暗，颜色更统一）。觉得图套色后发灰就调大 */
+const CHROMA_WEIGHT = 1;
+const PALETTE_LAB = PALETTE.map((p) => toLab(p[0], p[1], p[2]));
+const nearestCache = new Map();
 function nearest(r, g, b) {
+  const key = (r << 16) | (g << 8) | b;
+  const hit = nearestCache.get(key);
+  if (hit) return hit;
+  const [L, A, B] = toLab(r, g, b);
   let best = PALETTE[0];
   let bestD = Infinity;
-  for (const p of PALETTE) {
-    const rm = (r + p[0]) / 2;
-    const dr = r - p[0], dg = g - p[1], db = b - p[2];
-    const d = (2 + rm / 256) * dr * dr + 4 * dg * dg + (2 + (255 - rm) / 256) * db * db;
+  PALETTE_LAB.forEach(([l2, a2, b2], i) => {
+    // 明暗差算足，颜色深浅（饱和度）差打折：原图偏艳的肤色会落到 skin / skinDark，而不是橙色
+    const d = (L - l2) ** 2 + CHROMA_WEIGHT * ((A - a2) ** 2 + (B - b2) ** 2);
     if (d < bestD) {
       bestD = d;
-      best = p;
+      best = PALETTE[i];
     }
-  }
+  });
+  nearestCache.set(key, best);
   return best;
+}
+
+/** sRGB → CIELAB（D65 白点） */
+function toLab(r, g, b) {
+  const lin = (c) => {
+    c /= 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  const R = lin(r), G = lin(g), B = lin(b);
+  const x = (R * 0.4124 + G * 0.3576 + B * 0.1805) / 0.95047;
+  const y = R * 0.2126 + G * 0.7152 + B * 0.0722;
+  const z = (R * 0.0193 + G * 0.1192 + B * 0.9505) / 1.08883;
+  const f = (t) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+  const fx = f(x), fy = f(y), fz = f(z);
+  return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)];
 }
 
 // =================================================================
