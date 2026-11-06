@@ -45,6 +45,15 @@ export function inSowWindow(crop: Crop, clock: Clock) {
   return crop.sowWindows.some(([from, to]) => now >= termIndex(from) && now <= termIndex(to));
 }
 
+/** 下一段播种时节从哪个节气开始（现在不能种时，提示「××以后再种吧」用） */
+export function nextSowTerm(crop: Crop, clock: Clock): SolarTermId {
+  const now = termIndex(clock.solarTerm.id);
+  const n = TERMS.length;
+  const starts = crop.sowWindows.map(([from]) => from);
+  // 从现在往后数，最先碰到的那个起始节气（跨年就绕回正月）
+  return starts.sort((a, b) => ((termIndex(a) - now + n) % n) - ((termIndex(b) - now + n) % n))[0];
+}
+
 /** 冻土期：从 frozenGround.from 节气到 until 节气的前一天 */
 export function isFrozen(clock: Clock) {
   const { from, until } = TIME.calendar.farmingRules.frozenGround;

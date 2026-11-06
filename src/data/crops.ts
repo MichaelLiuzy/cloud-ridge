@@ -23,7 +23,7 @@ export const CROPS: CropsTable = {
     {
       id: "bok_choy",  // 程序用的英文名字，其他表靠它互相引用，不要改
       name: { zh: "小白菜", en: "Bok choy" },  // 名字：zh 中文，en 英文（英文以后再填）
-      sowWindows: [["yushui", "guyu"], ["bailu", "shuangjiang"]],  // 哪几段能播种：[起始节气, 结束节气]，含结束节气整整 14 天
+      sowWindows: [["lichun", "guyu"], ["bailu", "shuangjiang"]],  // 哪几段能播种：[起始节气, 结束节气]，含结束节气整整 14 天
       frostHardy: true,  // 耐不耐寒：false 的霜降当天枯死
       seedItem: "bok_choy_seed",  // 种子物品
       seedPrice: 20,  // 种子价格（文）
