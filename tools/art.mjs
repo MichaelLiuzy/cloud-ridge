@@ -37,6 +37,10 @@ const TUNING = {
   keyDistance: 110,
   /** 挨着背景的像素，如果「偏品红」超过这个程度（红和蓝都比绿高这么多），也当杂边去掉 */
   fringeStrength: 60,
+  /** 背景不是品红时（比如 ChatGPT 给了白底、黑底）：从图边上往里「漫水」抠掉和底色接近的像素，这是接近的程度 */
+  plainBgDistance: 40,
+  /** 图边上至少这么多比例的像素是同一种颜色，才认为它是纯色底 */
+  plainBgShare: 0.7,
   /** 去杂边做几圈 */
   fringePasses: 2,
   /** 一列（或一行）里非背景像素少于这个比例，算作空隙（防止零星噪点把空隙打断） */
@@ -77,6 +81,7 @@ function main() {
       fs.copyFileSync(path.join(RAW_DIR, file), path.join(PREVIEW_DIR, 'raw', file));
       report.push({ file, outputs, split: outputs.split });
       console.log(`✓ ${file} → ${outputs.map((o) => o.entry.file).join(', ')}${outputs.split === 'even' ? '（没找到空隙，按平均分格）' : ''}`);
+      if (outputs.bgNote) console.log(`  注意：${outputs.bgNote}`);
     } catch (err) {
       console.log(`✗ ${file} 处理失败：${err.message}`);
       report.push({ file, skipped: `处理失败：${err.message}` });
@@ -109,8 +114,9 @@ function processFile(file, rule, id) {
   const isTile = !!rule.tile;
   const [cw, ch] = rule.sizes?.[id] ?? rule.cell;
 
-  // 1. 哪些像素是背景
-  const bg = backgroundMask(img, !isTile);
+  // 1. 哪些像素是背景（不是品红底时，自动认出白底、黑底这类纯色底）
+  const plain = isTile ? null : plainBackground(img);
+  const bg = plain ? floodMask(img, plain) : backgroundMask(img, !isTile);
   // 2. 抠图（地面纹理不抠）
   if (!isTile) for (let i = 0; i < bg.length; i++) if (bg[i]) img.data[i * 4 + 3] = 0;
 
@@ -154,6 +160,8 @@ function processFile(file, rule, id) {
     outputs.push({ key: keyOf(rel), entry: { file: rel, frameWidth: cw, frameHeight: ch, frames: names, source: path.basename(file) } });
   }
   outputs.split = split;
+  outputs.bgNote = plain ? `背景不是品红，是 ${hex(plain)}，已自动按这个颜色从边上往里抠。` : null;
+  if (!isTile && !plain && !hasMagenta(bg)) outputs.bgNote = '没找到品红背景，也不是纯色底，所以没抠掉背景。请让 ChatGPT 用纯品红 #FF00FF 背景重出。';
   return outputs;
 }
 
@@ -192,6 +200,60 @@ function backgroundMask(img, defringe) {
     for (const i of add) bg[i] = 1;
   }
   return bg;
+}
+
+/** 看图边一圈：如果大部分是同一种颜色、而且不是品红，就返回这个颜色 */
+function plainBackground(img) {
+  const { w, h, data } = img;
+  const edge = [];
+  for (let x = 0; x < w; x += 2) edge.push(x, (h - 1) * w + x);
+  for (let y = 0; y < h; y += 2) edge.push(y * w, y * w + w - 1);
+  const px = (i) => [data[i * 4], data[i * 4 + 1], data[i * 4 + 2]];
+  const isMagenta = ([r, g, b]) => (r - 255) ** 2 + g ** 2 + (b - 255) ** 2 < TUNING.keyDistance ** 2;
+  const cols = edge.map(px);
+  if (cols.filter(isMagenta).length > cols.length * 0.3) return null;
+  // 每个通道取中位数当底色
+  const med = [0, 1, 2].map((k) => cols.map((c) => c[k]).sort((a, b) => a - b)[cols.length >> 1]);
+  const d2 = TUNING.plainBgDistance ** 2;
+  const near = cols.filter((c) => (c[0] - med[0]) ** 2 + (c[1] - med[1]) ** 2 + (c[2] - med[2]) ** 2 < d2).length;
+  return near >= cols.length * TUNING.plainBgShare ? med : null;
+}
+
+/** 从图边开始漫水：和底色接近、又连着图边的像素都算背景（图里面同色的地方不会被抠掉） */
+function floodMask(img, color) {
+  const { w, h, data } = img;
+  const bg = new Uint8Array(w * h);
+  const d2 = TUNING.plainBgDistance ** 2;
+  const close = (i) =>
+    (data[i * 4] - color[0]) ** 2 + (data[i * 4 + 1] - color[1]) ** 2 + (data[i * 4 + 2] - color[2]) ** 2 < d2 || data[i * 4 + 3] < 128;
+  const stack = [];
+  const push = (i) => {
+    if (!bg[i] && close(i)) {
+      bg[i] = 1;
+      stack.push(i);
+    }
+  };
+  for (let x = 0; x < w; x++) push(x), push((h - 1) * w + x);
+  for (let y = 0; y < h; y++) push(y * w), push(y * w + w - 1);
+  while (stack.length) {
+    const i = stack.pop();
+    const x = i % w;
+    if (x > 0) push(i - 1);
+    if (x < w - 1) push(i + 1);
+    if (i >= w) push(i - w);
+    if (i < w * (h - 1)) push(i + w);
+  }
+  return bg;
+}
+
+function hasMagenta(bg) {
+  let n = 0;
+  for (let i = 0; i < bg.length; i++) n += bg[i];
+  return n > bg.length * 0.05;
+}
+
+function hex([r, g, b]) {
+  return '#' + [r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('').toUpperCase();
 }
 
 // =================================================================
@@ -399,7 +461,8 @@ function writePreview(report) {
           return `<figure><img src="../assets/${esc(file)}" onload="this.style.width=this.naturalWidth*4+'px'"><figcaption>${esc(file)}<br>${frameWidth}×${frameHeight}，${frames.length} 格：${esc(frames.join(' / '))}</figcaption></figure>`;
         })
         .join('');
-      const warn = r.split === 'even' ? '<p class="warn">没找到格子之间的品红空隙，是按平均分格切的。如果切歪了，让 ChatGPT 把格子间距留大一点再出一次。</p>' : '';
+      let warn = r.split === 'even' ? '<p class="warn">没找到格子之间的空隙，是按平均分格切的。如果切歪了，让 ChatGPT 把格子间距留大一点再出一次。</p>' : '';
+      if (r.outputs.bgNote) warn += `<p class="warn">${esc(r.outputs.bgNote)}</p>`;
       return `<section><h2>${esc(r.file)}</h2>${warn}<div class="pair"><figure class="raw"><img src="raw/${esc(r.file)}"><figcaption>原图</figcaption></figure><div class="outs">${outs}</div></div></section>`;
     })
     .join('\n');
