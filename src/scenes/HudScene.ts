@@ -12,6 +12,14 @@ import { toColor } from '../config/palette';
 import { localName, t } from '../locales/i18n';
 import { INPUT_EVENTS, PointerControls, makeRoundButton } from '../input/Controls';
 import { drawFrame, drawPanel, pixelText } from '../ui/pixelUi';
+import { DialogueBox } from '../ui/DialogueBox';
+import { askName } from '../ui/nameInput';
+import { CHAPTERS, type ChapterId } from '../data/clues';
+import { localName as nameOf } from '../locales/i18n';
+import { fillNames } from '../story/text';
+import { STORY_EVENTS, fireStoryEvent, storyEvents } from '../systems/story/notebook';
+import { hasItem } from '../systems/GameState';
+import type { MenuTabId } from '../data/menuTabs';
 import { gameState } from '../systems/GameState';
 import { ListMenu, type MenuOption } from '../ui/ListMenu';
 import { downloadText } from '../ui/fileTransfer';
@@ -29,6 +37,8 @@ export const UI_EVENTS = {
   worldUseTool: 'ui:worldUseTool',
   worldSmart: 'ui:worldSmart',
   worldTap: 'ui:worldTap',
+  /** 播一段剧本对话。参数：剧本里的段落名（knot），播完后调用的函数 */
+  playDialogue: 'ui:playDialogue',
 } as const;
 
 
@@ -51,6 +61,12 @@ export class HudScene extends Phaser.Scene {
   private dialogText!: Phaser.GameObjects.Text;
 
   private menu?: ListMenu;
+  /** 剧情对话框（ink 剧本） */
+  private story!: DialogueBox;
+  /** 正在输入名字 */
+  private naming = false;
+  /** 右上角的笔记本图标（拿到笔记本后出现，有新内容会闪） */
+  private notebookIcon!: Phaser.GameObjects.Container;
 
   private toolCursor!: Phaser.GameObjects.Graphics;
   private toolSlotX: number[] = [];
@@ -93,6 +109,10 @@ export class HudScene extends Phaser.Scene {
     hit.on('pointerdown', () => this.closeDialog());
     this.dialog = this.add.container(dx, dy, [dialogBg, this.dialogText, hit]).setVisible(false).setDepth(50);
 
+    // ---- 剧情对话框、笔记本图标 ----
+    this.story = new DialogueBox(this);
+    this.buildNotebookIcon();
+
     // ---- 鼠标 / 手指 ----
     new PointerControls(this, this.touch);
     if (this.touch) {
@@ -114,9 +134,9 @@ export class HudScene extends Phaser.Scene {
     const ev = this.game.events;
     const handlers: [string, (...a: any[]) => void][] = [
       [INPUT_EVENTS.action, (mode?: string) => this.onAction(mode)],
-      [INPUT_EVENTS.useTool, () => !this.busy() && ev.emit(UI_EVENTS.worldUseTool)],
-      [INPUT_EVENTS.cancel, () => (this.menu ? this.closeMenu() : this.closeDialog())],
-      [INPUT_EVENTS.bag, () => !this.busy() && this.say('msg.bagNotReady')],
+      [INPUT_EVENTS.useTool, () => (this.story.active ? this.story.advance() : !this.busy() && ev.emit(UI_EVENTS.worldUseTool))],
+      [INPUT_EVENTS.cancel, () => !gameState.menuOpen && (this.menu ? this.closeMenu() : this.closeDialog())],
+      [INPUT_EVENTS.bag, () => !this.busy() && this.openGameMenu('bag')],
       [INPUT_EVENTS.menu, () => !this.busy() && this.gameMenu()],
       [INPUT_EVENTS.toolSlot, (i: number) => !this.busy() && this.selectTool(i)],
       [INPUT_EVENTS.nav, (dir: 'up' | 'down') => this.menu?.move(dir === 'up' ? -1 : 1)],
@@ -124,9 +144,18 @@ export class HudScene extends Phaser.Scene {
       [INPUT_EVENTS.debugMemory, () => (gameState.memoryMode = !gameState.memoryMode)],
       [UI_EVENTS.say, (key: string, params?: Record<string, string | number>) => this.say(key, params)],
       [UI_EVENTS.showMenu, (opts: MenuOption[]) => this.openMenu(opts)],
+      [UI_EVENTS.playDialogue, (knot: string, onDone?: () => void) => this.playStory(knot, onDone)],
     ];
+    const onNew = () => this.flashNotebook();
+    const onChapter = (id: ChapterId) => this.say('notebook.newChapter', { name: fillNames(nameOf(CHAPTERS[id].name)) });
+    storyEvents.on(STORY_EVENTS.notebookNew, onNew);
+    storyEvents.on(STORY_EVENTS.chapterStart, onChapter);
     for (const [name, fn] of handlers) ev.on(name, fn);
     this.events.once('shutdown', () => {
+      storyEvents.off(STORY_EVENTS.notebookNew, onNew);
+      storyEvents.off(STORY_EVENTS.chapterStart, onChapter);
+      this.story.destroy();
+      this.scene.stop('GameMenu');
       for (const [name, fn] of handlers) ev.off(name, fn);
       this.closeMenu();
       this.touchButtons = [];
@@ -149,11 +178,13 @@ export class HudScene extends Phaser.Scene {
   // ---------------- 操作分配 ----------------
 
   private busy() {
-    return this.dialog.visible || !!this.menu;
+    return this.dialog.visible || !!this.menu || this.story.active || this.naming || gameState.menuOpen;
   }
 
   /** 回车 / 「使用」键 */
   private onAction(mode?: string) {
+    if (gameState.menuOpen || this.naming) return;
+    if (this.story.active) return this.story.advance();
     if (this.menu) return this.menu.choose();
     if (this.dialog.visible) return this.closeDialog();
     this.game.events.emit(mode === 'smart' ? UI_EVENTS.worldSmart : UI_EVENTS.worldAction);
@@ -161,6 +192,8 @@ export class HudScene extends Phaser.Scene {
 
   /** 点了屏幕空白处（不是按钮） */
   private onTap(x: number, y: number) {
+    if (gameState.menuOpen || this.naming) return;
+    if (this.story.active) return this.story.advance();
     if (this.menu) return this.closeMenu(); // 点菜单外面 = 取消
     if (this.dialog.visible) return this.closeDialog();
     this.game.events.emit(UI_EVENTS.worldTap, x, y);
@@ -223,11 +256,13 @@ export class HudScene extends Phaser.Scene {
           label: t('menu.backToTitle'),
           run: () => this.openMenu([{ label: t('menu.yes'), run: () => this.backToTitle() }], t('menu.backConfirm')),
         },
+        { label: t('menu.rename'), run: () => void this.rename() },
         // 测试用（settings.ts 的 debugMenu 改成 false 就没有了）
         ...(SETTINGS.debugMenu
           ? [
               { label: t('menu.debugSkipTime'), run: () => gameState.clock && (gameState.clock.minutes += 180) },
               { label: t('menu.debugMemory'), run: () => (gameState.memoryMode = !gameState.memoryMode) },
+              { label: t('menu.debugPoster'), run: () => fireStoryEvent('saw_missing_poster') },
             ]
           : []),
       ],
@@ -243,6 +278,78 @@ export class HudScene extends Phaser.Scene {
 
   private syncBusy() {
     gameState.uiBusy = this.busy();
+  }
+
+  // ---------------- 剧情对话、名字、总菜单 ----------------
+
+  /** 播一段剧本对话（比如和周里正说话） */
+  private playStory(knot: string, onDone?: () => void) {
+    this.closeMenu();
+    this.closeDialog();
+    this.story.play(knot, () => {
+      this.syncBusy();
+      this.refreshNotebookIcon();
+      onDone?.();
+    });
+    this.syncBusy();
+  }
+
+  /** M 菜单里的「改名字」 */
+  private async rename() {
+    this.naming = true;
+    this.syncBusy();
+    const name = await askName(this.game, { title: t('nameInput.renameTitle'), initial: gameState.playerName, cancellable: true });
+    this.naming = false;
+    if (name) {
+      gameState.playerName = name;
+      this.say('nameInput.renamed', { name });
+    }
+    this.syncBusy();
+  }
+
+  /** 旧存档没有名字：先补填（不能跳过） */
+  private async fillInName() {
+    this.naming = true;
+    this.syncBusy();
+    const name = await askName(this.game, { title: t('nameInput.fillIn') });
+    gameState.playerName = name ?? '';
+    this.naming = false;
+    this.syncBusy();
+  }
+
+  /** 打开 Q 总菜单 */
+  private openGameMenu(tab: MenuTabId) {
+    if (this.scene.isActive('GameMenu')) return;
+    this.scene.launch('GameMenu', { tab });
+    this.notebookIcon.getData('flash')?.stop();
+    this.notebookIcon.setAlpha(1);
+  }
+
+  /** 右上角（手机上在菜单键左边）的笔记本图标：点一下打开笔记本 */
+  private buildNotebookIcon() {
+    const { gameWidth: W } = SETTINGS;
+    const x = this.touch ? W - 2 * SETTINGS.touch.smallButtonRadius - 8 - 22 : W - 22;
+    const g = this.add.graphics();
+    drawPanel(g, 0, 0, 20, 20);
+    const icon = this.add.image(10, 10, 'icon_notebook');
+    const hit = this.add.zone(0, 0, 20, 20).setOrigin(0).setInteractive();
+    hit.on('pointerdown', () => !this.busy() && this.openGameMenu('notebook'));
+    this.notebookIcon = this.add.container(x, 2, [g, icon, hit]).setDepth(45);
+    this.refreshNotebookIcon();
+    if (!gameState.playerName && (gameState.prologue === 'tutorial' || gameState.prologue === 'done')) void this.fillInName();
+  }
+
+  private refreshNotebookIcon() {
+    this.notebookIcon.setVisible(hasItem('notebook'));
+  }
+
+  /** 笔记本有新内容：图标闪几下 */
+  private flashNotebook() {
+    this.refreshNotebookIcon();
+    this.notebookIcon.getData('flash')?.stop();
+    this.notebookIcon.setAlpha(1);
+    const tw = this.tweens.add({ targets: this.notebookIcon, alpha: 0.2, duration: 220, yoyo: true, repeat: 5, onComplete: () => this.notebookIcon.setAlpha(1) });
+    this.notebookIcon.setData('flash', tw);
   }
 
   // ---------------- 工具栏 ----------------

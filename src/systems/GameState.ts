@@ -6,8 +6,10 @@
 import { START as startData } from '../data/start';
 import { ITEMS as itemsData } from '../data/items';
 import { HOUSING as housingData } from '../data/housing';
-import type { Clock } from './Clock';
+import { Clock } from './Clock';
 import type { SaveData } from './save/saveFormat';
+
+export type PrologueStep = 'opening' | 'clinic' | 'tutorial' | 'done';
 
 function freshState() {
   const inventory: Record<string, number> = { ...startData.inventory };
@@ -29,6 +31,19 @@ function freshState() {
     flags: {} as Record<string, boolean | number | string>,
     quests: {} as Record<string, string>,
     clues: [] as string[],
+    /** 玩家起的名字（还没起是空的） */
+    playerName: '',
+    /** 现在是第几章（0 = 序章） */
+    chapter: 0,
+    /** 笔记本「操作」「已学会」两栏记了哪些条目（条目 id，文字在语言文件 notebook 里） */
+    notebook: { controls: [] as string[], learned: [] as string[] },
+    /**
+     * 序章走到哪一步：opening = 开场过场；clinic = 医馆对话；tutorial = 在农场醒来、还没和周里正说话；done = 序章结束
+     * 中途退出时，下次从这一步的开头重来。
+     */
+    prologue: 'opening' as PrologueStep,
+    /** Q 总菜单开着（这时时间暂停、主角不能走） */
+    menuOpen: false,
     /** 界面正忙（对话框或小菜单开着），这时主角不能走、时间暂停 */
     uiBusy: false,
     /** 回忆模式：画面去色、叠一层黛青，只有火光保留颜色（剧情回忆时用，不存档） */
@@ -45,7 +60,9 @@ export const gameState = freshState();
 /** 开新游戏 / 回标题时，把状态清空回开局 */
 export function resetGameState(slot: number, load: SaveData | null = null) {
   Object.assign(gameState, freshState(), { slot, pendingLoad: load });
+  gameState.clock = new Clock();
   if (load) {
+    Object.assign(gameState.clock, load.clock);
     Object.assign(gameState, {
       cash: load.cash,
       house: load.house,
@@ -58,8 +75,17 @@ export function resetGameState(slot: number, load: SaveData | null = null) {
       flags: { ...load.flags },
       quests: { ...load.quests },
       clues: [...load.clues],
+      playerName: load.playerName,
+      chapter: load.chapter,
+      notebook: { controls: [...load.notebook.controls], learned: [...load.notebook.learned] },
+      prologue: load.prologue,
     });
   }
+}
+
+/** 有没有这件东西（背包里数量大于 0） */
+export function hasItem(id: string) {
+  return (gameState.inventory[id] ?? 0) > 0;
 }
 
 /** 有没有这个工具 */

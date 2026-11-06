@@ -6,7 +6,7 @@
  *  读档时会一步一步升级，所以很早以前的存档也能继续玩。
  */
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 /** 存档里存了什么 */
 export interface SaveData {
@@ -36,8 +36,16 @@ export interface SaveData {
   quests: Record<string, string>;
   /** 找到的线索 id（主线做好后会用） */
   clues: string[];
-  /** 剧情进度标记（以后剧情窗口会用） */
+  /** 剧情进度标记（以后剧情窗口会用）。发生过的剧情事件记成 event:事件id */
   flags: Record<string, boolean | number | string>;
+  /** 玩家起的名字（空 = 还没起） */
+  playerName: string;
+  /** 现在是第几章（0 = 序章） */
+  chapter: number;
+  /** 笔记本「操作」「已学会」两栏的条目 */
+  notebook: { controls: string[]; learned: string[] };
+  /** 序章走到哪一步：opening / clinic / tutorial / done */
+  prologue: 'opening' | 'clinic' | 'tutorial' | 'done';
 }
 
 /**
@@ -63,6 +71,16 @@ const MIGRATIONS: Record<number, (old: any) => any> = {
     const day = (total % 28) + 1;
     return { ...old, saveVersion: 3, clock: { month, day, minutes: old.clock.minutes } };
   },
+  // 3 → 4：加了名字、章节、笔记本。旧存档当作已经看完序章，送笔记本；名字留空，读档时让玩家补填
+  3: (old) => ({
+    ...old,
+    saveVersion: 4,
+    playerName: '',
+    chapter: 0,
+    prologue: 'done',
+    inventory: { ...old.inventory, notebook: 1 },
+    notebook: { controls: ['move', 'tools', 'interact', 'save', 'menu'], learned: [] },
+  }),
 };
 
 /** 把任意版本的存档升级到最新。认不出来的返回 null。 */

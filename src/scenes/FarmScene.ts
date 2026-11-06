@@ -15,9 +15,9 @@ import { PALETTE, toColor } from '../config/palette';
 import { FARM_MAP, TILE_TYPES } from '../world/farmMap';
 import { PLAIN_ACTIONS, TOOL_ACTIONS, type ToolAction } from '../world/actions';
 import { KeyboardControls } from '../input/Controls';
-import { Clock } from '../systems/Clock';
 import { currentTool, gameState, hasTool } from '../systems/GameState';
-import { SAVE_VERSION, type SaveData } from '../systems/save/saveFormat';
+import type { SaveData } from '../systems/save/saveFormat';
+import { stateFields } from '../systems/save/snapshot';
 import { clearTemp, saveTemp, saveToSlot } from '../systems/save/saveManager';
 import { findPath, type Cell } from '../systems/pathfind';
 import { localName, t } from '../locales/i18n';
@@ -61,6 +61,8 @@ export class FarmScene extends Phaser.Scene {
   private moving = false;
   /** 有没有真正的走路动画图（player_walk.png） */
   private hasWalkSheet = false;
+  /** 序章里站在农场等你的周里正（教完操作就回镇上） */
+  private zhou?: { cell: Cell; sprite: Phaser.GameObjects.Sprite; marker: Phaser.GameObjects.Container; body: Phaser.Physics.Arcade.Sprite };
   /** 夜里会亮的地方，昼夜色层场景会来读 */
   lightSpots: LightSpot[] = [];
   private controls!: KeyboardControls;
@@ -118,6 +120,13 @@ export class FarmScene extends Phaser.Scene {
       this.setFeet(load.player.x, load.player.y);
       this.facing = (load.player.facing as Facing) ?? 'down';
     }
+    // 序章：刚在农场醒来，周里正站在旁边等你过去说话
+    if (gameState.prologue === 'tutorial') {
+      const door = this.cellFeet(this.doorTile);
+      this.setFeet(door.x, door.y);
+      this.facing = 'right';
+      this.placeZhou({ x: this.doorTile.x + 1, y: this.doorTile.y });
+    }
     this.showStanding();
     this.syncSprite();
     // 物理移动算完之后再把图片挪过去，镜头和人物就不会差一帧
@@ -142,9 +151,8 @@ export class FarmScene extends Phaser.Scene {
     ev.on(UI_EVENTS.worldTap, this.tapScreen, this);
 
     // ---- 时间 ----
-    gameState.clock = new Clock();
-    gameState.clock.onLateNight = () => this.faint('late');
-    if (load) Object.assign(gameState.clock, load.clock);
+    // 时钟在开局 / 读档时已经建好（GameState.resetGameState）
+    gameState.clock!.onLateNight = () => this.faint('late');
 
     // ---- 存档 ----
     gameState.snapshot = () => this.snapshot();
@@ -154,14 +162,13 @@ export class FarmScene extends Phaser.Scene {
     };
     document.addEventListener('visibilitychange', onHide);
     window.addEventListener('pagehide', onHide);
-    // 新游戏：马上存一次，这样存档位里就是这局新游戏了
-    if (!load) void saveToSlot(this.snapshot());
 
     this.events.once('shutdown', () => {
       ev.off(UI_EVENTS.worldAction, this.interactFacing, this);
       ev.off(UI_EVENTS.worldUseTool, this.useToolFacing, this);
       ev.off(UI_EVENTS.worldSmart, this.smartFacing, this);
       ev.off(UI_EVENTS.worldTap, this.tapScreen, this);
+      this.zhou = undefined;
       this.events.off('postupdate', this.syncSprite, this);
       this.lightSpots = [];
       document.removeEventListener('visibilitychange', onHide);
@@ -173,7 +180,7 @@ export class FarmScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number) {
-    const paused = gameState.uiBusy;
+    const paused = gameState.uiBusy || gameState.menuOpen;
     if (gameState.clock) gameState.clock.paused = paused;
     gameState.clock?.update(delta);
 
@@ -330,6 +337,9 @@ export class FarmScene extends Phaser.Scene {
   private optionsFor(cell: Cell, opts: { tools: boolean; walk: boolean }): (MenuOption & { needReach: boolean })[] {
     const kind = this.kindAt(cell);
     const list: (MenuOption & { needReach: boolean })[] = [];
+    if (this.zhou && this.zhou.cell.x === cell.x && this.zhou.cell.y === cell.y) {
+      return [{ label: t('action.talk'), run: () => this.talkToZhou(), needReach: true }];
+    }
     if (opts.tools) {
       for (const rule of TOOL_ACTIONS) {
         if (rule.on.includes(kind) && hasTool(rule.tool)) {
@@ -392,25 +402,10 @@ export class FarmScene extends Phaser.Scene {
 
   /** 把现在的样子打包成存档 */
   private snapshot(): SaveData {
-    const c = gameState.clock!;
     return {
-      saveVersion: SAVE_VERSION,
-      savedAt: new Date().toISOString(),
-      slot: gameState.slot,
-      clock: { month: c.month, day: c.day, minutes: c.minutes },
+      ...stateFields(),
       player: { x: Math.round(this.feetPos().x), y: Math.round(this.feetPos().y), facing: this.facing },
-      cash: gameState.cash,
-      stamina: gameState.stamina,
-      maxStamina: gameState.maxStamina,
-      house: gameState.house,
-      tools: [...gameState.tools],
-      toolIndex: gameState.toolIndex,
-      inventory: { ...gameState.inventory },
       farm: this.grid.map((row) => row.join('')),
-      npcs: { affection: { ...gameState.affection } },
-      flags: { ...gameState.flags },
-      quests: { ...gameState.quests },
-      clues: [...gameState.clues],
     };
   }
 
@@ -562,6 +557,7 @@ export class FarmScene extends Phaser.Scene {
   }
 
   private isSolid(c: Cell) {
+    if (this.zhou && this.zhou.cell.x === c.x && this.zhou.cell.y === c.y) return true;
     const ch = this.grid[c.y]?.[c.x];
     return ch === undefined || (TILE_TYPES[ch]?.solid ?? false);
   }
@@ -608,6 +604,53 @@ export class FarmScene extends Phaser.Scene {
 
   private itemName(id: string) {
     return localName(itemsData.items.find((it) => it.id === id)?.name);
+  }
+
+  // =================================================================
+  //  序章：周里正
+  // =================================================================
+
+  /** 把周里正放在某一格，头上有个「！」提示过去说话（序章唯一一处明确的引导） */
+  private placeZhou(cell: Cell) {
+    const s = SETTINGS.tileSize;
+    const feet = this.cellFeet(cell);
+    const sprite = this.add.sprite(feet.x, feet.y, 'npc_zhou_stand', DIR_FRAME.left).setOrigin(0.5, 1).setDepth(feet.y);
+    const g = this.add.graphics();
+    g.fillStyle(toColor(PALETTE.outline)).fillRect(-4, -6, 9, 12);
+    g.fillStyle(toColor(PALETTE.candle)).fillRect(-3, -5, 7, 10);
+    g.fillStyle(toColor(PALETTE.outline)).fillRect(-1, -4, 3, 5).fillRect(-1, 2, 3, 2);
+    const marker = this.add.container(feet.x, feet.y - 40, [g]).setDepth(10000);
+    this.tweens.add({ targets: marker, y: feet.y - 43, duration: 450, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    const body = this.solids.create(cell.x * s + s / 2, cell.y * s + s / 2, undefined) as Phaser.Physics.Arcade.Sprite;
+    body.setVisible(false).setSize(s, s).refreshBody();
+    this.zhou = { cell, sprite, marker, body };
+  }
+
+  private talkToZhou() {
+    const zhou = this.zhou;
+    if (!zhou) return;
+    // 周里正转过来看着你
+    const here = this.playerCell();
+    const dx = here.x - zhou.cell.x;
+    const dy = here.y - zhou.cell.y;
+    zhou.sprite.setFrame(DIR_FRAME[Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up']);
+    const first = gameState.prologue === 'tutorial';
+    this.game.events.emit(UI_EVENTS.playDialogue, first ? 'tutorial' : 'zhou_idle', () => {
+      if (!first) return;
+      gameState.prologue = 'done';
+      zhou.marker.destroy();
+      // 说完就回镇上了
+      this.tweens.add({
+        targets: zhou.sprite,
+        alpha: 0,
+        duration: 800,
+        onComplete: () => {
+          zhou.sprite.destroy();
+          zhou.body.destroy();
+          this.zhou = undefined;
+        },
+      });
+    });
   }
 
   private say(key: string, params?: Record<string, string | number>) {

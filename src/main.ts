@@ -14,6 +14,8 @@ import { TitleScene } from './scenes/TitleScene';
 import { FarmScene } from './scenes/FarmScene';
 import { AtmosphereScene } from './scenes/AtmosphereScene';
 import { HudScene } from './scenes/HudScene';
+import { StoryScene } from './scenes/StoryScene';
+import { GameMenuScene } from './scenes/GameMenuScene';
 
 document.title = t('game.title');
 const rotate = document.getElementById('rotate');
@@ -52,7 +54,7 @@ async function start() {
     scale: { mode: Phaser.Scale.NONE, zoom: pixelZoom(), autoCenter: Phaser.Scale.CENTER_BOTH },
     physics: { default: 'arcade', arcade: { debug: false } },
     input: { activePointers: 3 },
-    scene: [BootScene, TitleScene, FarmScene, AtmosphereScene, HudScene],
+    scene: [BootScene, TitleScene, StoryScene, FarmScene, AtmosphereScene, HudScene, GameMenuScene],
   });
 
   // 窗口变大小、手机转方向时，重新算放大倍数

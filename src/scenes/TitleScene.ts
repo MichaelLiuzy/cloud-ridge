@@ -11,7 +11,8 @@ import { isTouchDevice } from '../input/Controls';
 import { ListMenu, type MenuOption } from '../ui/ListMenu';
 import { pickTextFile } from '../ui/fileTransfer';
 import { describeClock } from '../systems/Clock';
-import { resetGameState } from '../systems/GameState';
+import { gameState, resetGameState } from '../systems/GameState';
+import { currentSave } from '../systems/save/snapshot';
 import type { SaveData } from '../systems/save/saveFormat';
 import { clearTemp, listSlots, loadTemp, parseImport, saveToSlot } from '../systems/save/saveManager';
 
@@ -156,6 +157,13 @@ export class TitleScene extends Phaser.Scene {
   /** 进游戏。save = null 是新游戏 */
   private startGame(slot: number, save: SaveData | null) {
     resetGameState(slot, save);
+    const step = gameState.prologue;
+    if (!save) void saveToSlot(currentSave()); // 新游戏：马上存一次，存档位里就是这局新游戏了
+    if (step === 'opening' || step === 'clinic') {
+      // 序章还没看完：从开场过场（或医馆对话的开头）重来
+      this.scene.start('Story', { step });
+      return;
+    }
     this.scene.start('Farm');
     this.scene.launch('Atmosphere');
     this.scene.launch('Hud', { touch: isTouchDevice() });

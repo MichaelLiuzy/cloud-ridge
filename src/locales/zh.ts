@@ -42,6 +42,100 @@ export const zh = {
   },
 
   // ===== 左上角：日期、时间、钱、体力 =====
+  // ===== 人名（暂名）=====
+  // 人名只在这里写一次。剧本和线索表里写 @zhou、@fan 这种，会自动换成这里的名字。
+  names: {
+    zhou: "周里正",
+    doctor: "大夫",
+    fan: "老范",
+    eric: "Eric",
+    /** 主角还没起名字时，对话框上显示的名字 */
+    playerUnknown: "？？？",
+  },
+
+  // ===== 开场过场：每一格配的字 =====
+  cutscene: {
+    opening: {
+      office: "曼哈顿，又一个加班到深夜的晚上。老板指着我的鼻子骂。",
+      walkHome: "回家的路上，我垂着头，叹了口气。",
+      crossing: "Penn Station 门口，我低着头过马路。",
+      headlights: "——车灯迎面打来。",
+      hospital: "病床上的那个人是我。身上插满了管子，一动不动。",
+      timePassed: "不知过了多久……",
+      clinic: "……我睁开眼。",
+    },
+    /** 点一下翻页的提示 */
+    next: "▼",
+  },
+
+  // ===== 剧情画面没有美术图时，色块上写的说明 =====
+  cg: {
+    cg_office: "【占位】曼哈顿写字楼里，老板指着主角的鼻子骂",
+    cg_walk_home: "【占位】夜里，主角垂着头走在回家路上",
+    cg_penn_station: "【占位】Penn Station 门口的马路",
+    cg_headlights: "【占位】车灯迎面打来",
+    cg_hospital_bed: "【占位】上帝视角：主角躺在病床上，插着管子，重度昏迷",
+    cg_clinic_wake: "【占位】第一人称：医馆的床上。周里正和大夫站在床边，老范在床尾收拾东西",
+  },
+
+  // ===== 起名字 =====
+  nameInput: {
+    title: "你叫什么名字？",
+    renameTitle: "改名字",
+    placeholder: "输入名字",
+    ok: "确定",
+    cancel: "算了",
+    errEmpty: "名字不能是空的。",
+    errChars: "只能用汉字、英文字母和数字，不能有空格、标点或表情符号。",
+    errLong: "名字太长了：最多 {max} 个汉字（一个字母或数字算半个）。",
+    renamed: "以后大家就叫你「{name}」了。",
+    /** 旧存档第一次读进来时，补填名字 */
+    fillIn: "这份存档还没有名字，先给主角起个名字吧。",
+  },
+
+  // ===== Q 总菜单 =====
+  menuTabs: {
+    bag: "背包",
+    notebook: "笔记本",
+    map: "地图",
+  },
+  bag: {
+    empty: "（空）",
+    count: "×{n}",
+    tool: "工具",
+  },
+  map: {
+    placeholder: "地图（待做）",
+  },
+
+  // ===== 笔记本 =====
+  notebook: {
+    sections: {
+      story: "主线",
+      controls: "操作",
+      learned: "已学会",
+    },
+    none: "还没有写下什么。",
+    noNotebook: "你还没有笔记本。",
+    inference: "我想：{text}",
+    open: "未解决",
+    solved: "已解决",
+    answer: "答案：{text}",
+    newChapter: "笔记本里写下了新的一页：{name}",
+    /** 「操作」栏：每一项分 Mac 键盘和手机两种说法 */
+    controls: {
+      move: { keyboard: "走路：W A S D 或方向键", touch: "走路：在屏幕左半边按住拖动" },
+      tools: { keyboard: "换工具：数字键 1~9；用工具：空格", touch: "换工具：点底下的工具栏；点地里的东西就会去干活" },
+      interact: { keyboard: "查看、说话：回车，或者用鼠标点", touch: "查看、说话：轻点人或东西；「使用」键对着面前一格做事" },
+      save: { keyboard: "存档：点草棚，选「睡觉」或「存档（不睡）」", touch: "存档：点草棚，选「睡觉」或「存档（不睡）」" },
+      menu: { keyboard: "菜单：Q 打开，Tab 切换栏目", touch: "菜单：点「背包」打开，点栏目名切换" },
+    },
+    /** 「已学会」栏 */
+    learned: {
+      got_notebook: "@zhou 给了我一本笔记本。记不住的事，就写下来。",
+    },
+  },
+
   // ===== 日历 =====
   calendar: {
     /** 每月 28 天的叫法，用逗号隔开，按顺序 */
@@ -65,6 +159,7 @@ export const zh = {
   // ===== 小菜单里的选项名字 =====
   action: {
     look: "查看",
+    talk: "说话",
     walk: "走到这里",
     till: "开垦",
     water: "浇水",
@@ -120,6 +215,8 @@ export const zh = {
     // 下面是测试用的选项（src/config/settings.ts 里 debugMenu 改成 false 就不显示）
     debugSkipTime: "测试：时间快进 3 小时",
     debugMemory: "测试：回忆模式 开 / 关",
+    debugPoster: "测试：触发「看到寻人启事」",
+    rename: "改名字",
   },
 };
 

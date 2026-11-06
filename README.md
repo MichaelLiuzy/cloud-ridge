@@ -89,6 +89,15 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
 | 物品价格 | `src/data/items.ts` | `buyPrice`、`sellPrice` |
 | 打工任务和报酬 | `src/data/jobs.ts` | `reward` 等 |
 | 修房子要什么材料 | `src/data/housing.ts` | `materials`、`cost` |
+| 开场过场：有几格、顺序、每格用哪张图和什么效果 | `src/data/cutscenes.ts` | `CUTSCENES.opening`（每格的字在 `src/locales/zh.ts` 的 `cutscene`） |
+| 医馆对话、周里正教学、所有剧情台词 | `src/story/zh/prologue.ink` | 文件开头有写法说明：`#speaker:` 谁说、`<<clue:id=字>>` 标黄字、`@fan` 写人名 |
+| 人物名字（周里正、老范……） | `src/locales/zh.ts` | `names` |
+| 线索、问题、章节和每章怎么解锁 | `src/data/clues.ts` | `CHAPTERS`、`CLUES`、`QUESTIONS` |
+| 笔记本「操作」「已学会」两栏的字 | `src/locales/zh.ts` | `notebook.controls`、`notebook.learned` |
+| Q 菜单有哪几栏、顺序 | `src/data/menuTabs.ts` | `MENU_TABS` |
+| 名字能多长、汉字和字母各算多宽 | `src/config/settings.ts` | `nameRules` |
+| 背包几行几列、格子多大 | `src/config/settings.ts` | `bag` |
+| 对话框里旁白、黄字的颜色 | `src/config/settings.ts` | `ui` 里的 `textDim2`、`clueText`、`clueMark` |
 
 > 改错了，打包会报错（比如数字写成了文字、物品 id 拼错）。看报错信息里的文件名和行号，或者直接告诉编程窗口。
 > 每张数值表的完整格式说明在 `src/data/types.ts`。加新物品、新作物时，要把它的 id 也加进 `types.ts` 里对应的列表。
