@@ -7,5 +7,7 @@
     "directory": "./dist",
     "not_found_handling": "single-page-application"
   },
-  "workers_dev": true
+  "workers_dev": true,
+  // 非 main 分支（比如 PR）构建时，Cloudflare 用 wrangler preview 发布预览版，需要这一项
+  "previews": {}
 }
