@@ -1,0 +1,44 @@
+/**
+ * 像素界面的小工具：画框、写字。对话框、物品栏、时辰框、小菜单都用它，样子统一。
+ * 颜色在 src/config/settings.ts 的 ui 里改。
+ */
+import Phaser from 'phaser';
+import { SETTINGS } from '../config/settings';
+import { toColor } from '../config/palette';
+import { font } from '../locales/i18n';
+
+/**
+ * 画一个界面框：最外 1 像素深色边，里面一圈旧纸色，再里面是米白底。
+ * 画在 g 上，(x, y) 是左上角。
+ */
+export function drawPanel(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number) {
+  const ui = SETTINGS.ui;
+  g.fillStyle(toColor(ui.border)).fillRect(x, y, w, h);
+  g.fillStyle(toColor(ui.innerBorder)).fillRect(x + 1, y + 1, w - 2, h - 2);
+  g.fillStyle(toColor(ui.panel)).fillRect(x + 2, y + 2, w - 4, h - 4);
+}
+
+/** 写一行（或几行）像素字。color 不写就是框里的深色字 */
+export function pixelText(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  text: string,
+  opts: { color?: string; wrap?: number; align?: 'left' | 'center' | 'right' } = {},
+) {
+  const style: Phaser.Types.GameObjects.Text.TextStyle = {
+    fontFamily: font(),
+    fontSize: `${SETTINGS.fontSize}px`,
+    color: opts.color ?? SETTINGS.ui.text,
+    align: opts.align ?? 'left',
+    lineSpacing: 2,
+  };
+  if (opts.wrap) style.wordWrap = { width: opts.wrap, useAdvancedWrap: true };
+  return scene.add.text(Math.round(x), Math.round(y), text, style);
+}
+
+/** 画一个 1 像素粗的空心方框（不用 strokeRect，免得线落在半个像素上变糊） */
+export function drawFrame(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number, color: number) {
+  g.fillStyle(color);
+  g.fillRect(x, y, w, 1).fillRect(x, y + h - 1, w, 1).fillRect(x, y, 1, h).fillRect(x + w - 1, y, 1, h);
+}

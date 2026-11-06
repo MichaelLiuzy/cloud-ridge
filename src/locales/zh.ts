@@ -84,6 +84,7 @@ export const zh = {
     fence: "旧篱笆。",
     hut: "镇上的人帮忙搭的草棚。晚上可以在这里睡觉。",
     path: "通往镇上的小路。",
+    lantern: "门口挂着一盏灯笼，天黑了会点上。",
   },
 
   // ===== 各种提示消息（对话框里显示） =====
@@ -110,6 +111,9 @@ export const zh = {
     backConfirm: "回标题前，没存的进度会丢掉。确定吗？",
     yes: "确定",
     close: "继续玩",
+    // 下面是测试用的选项（src/config/settings.ts 里 debugMenu 改成 false 就不显示）
+    debugSkipTime: "测试：时间快进 3 小时",
+    debugMemory: "测试：回忆模式 开 / 关",
   },
 };
 

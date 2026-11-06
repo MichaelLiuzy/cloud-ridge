@@ -3,12 +3,15 @@
  * 负责：左上角的日期/时间/钱/体力、底部工具栏、对话框、小菜单、手机按钮。
  * 所有操作（键盘、鼠标、手指）都先到这里：对话框或小菜单开着时由这里处理，
  * 否则再转给地图（FarmScene）。
- * 文字内容在 src/locales/zh.ts，颜色在 src/config/settings.ts。
+ * 文字内容在 src/locales/zh.ts，颜色在 src/config/settings.ts 的 ui。
+ * 画面按 320×180 排，下面的数字都是这个大小里的像素。
  */
 import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
-import { font, localName, t } from '../locales/i18n';
+import { toColor } from '../config/palette';
+import { localName, t } from '../locales/i18n';
 import { INPUT_EVENTS, PointerControls, makeRoundButton } from '../input/Controls';
+import { drawFrame, drawPanel, pixelText } from '../ui/pixelUi';
 import { gameState } from '../systems/GameState';
 import { ListMenu, type MenuOption } from '../ui/ListMenu';
 import { downloadText } from '../ui/fileTransfer';
@@ -29,21 +32,28 @@ export const UI_EVENTS = {
 } as const;
 
 
+/** 左上角时辰框、底部工具栏、对话框的大小和位置 */
+const INFO = { x: 2, y: 2, w: 92, h: 46 };
+const SLOT = 18;
+const SLOT_GAP = 2;
+const BAR_PAD = 3;
+const DIALOG = { w: 240, h: 46 };
+
 export class HudScene extends Phaser.Scene {
   private dateText!: Phaser.GameObjects.Text;
   private timeText!: Phaser.GameObjects.Text;
   private moneyText!: Phaser.GameObjects.Text;
-  private staminaText!: Phaser.GameObjects.Text;
+  /** 体力条（竖的，在时辰框右边） */
   private staminaBar!: Phaser.GameObjects.Rectangle;
+  private staminaBarH = 0;
 
   private dialog!: Phaser.GameObjects.Container;
-  private dialogBg!: Phaser.GameObjects.Rectangle;
   private dialogText!: Phaser.GameObjects.Text;
 
   private menu?: ListMenu;
 
-  private toolbar!: Phaser.GameObjects.Container;
-  private toolSlots: Phaser.GameObjects.Rectangle[] = [];
+  private toolCursor!: Phaser.GameObjects.Graphics;
+  private toolSlotX: number[] = [];
   private touchButtons: Phaser.GameObjects.Container[] = [];
   private touch = false;
 
@@ -53,43 +63,52 @@ export class HudScene extends Phaser.Scene {
 
   create(data: { touch: boolean }) {
     this.touch = !!data?.touch;
-    const res = window.devicePixelRatio || 1;
-    const style = { fontFamily: font(), fontSize: '18px', color: SETTINGS.colors.hudText };
+    this.toolSlotX = [];
+    const { gameWidth: W, gameHeight: H } = SETTINGS;
+    const ui = SETTINGS.ui;
 
-    // ---- 左上角：日期、时间、钱、体力 ----
-    this.add.rectangle(12, 12, 236, 112, 0x000000, 0.35).setOrigin(0);
-    this.dateText = this.add.text(24, 20, '', style).setResolution(res);
-    this.timeText = this.add.text(24, 44, '', style).setResolution(res);
-    this.moneyText = this.add.text(24, 68, '', { ...style, fontSize: '16px', color: '#e8c872' }).setResolution(res);
-    this.add.rectangle(24, 98, 120, 10, 0x000000, 0.5).setOrigin(0, 0.5);
-    this.staminaBar = this.add.rectangle(24, 98, 120, 10, 0x8fc25a).setOrigin(0, 0.5);
-    this.staminaText = this.add.text(152, 98, '', { ...style, fontSize: '13px' }).setOrigin(0, 0.5).setResolution(res);
+    // ---- 左上角：日期、时辰、钱，右边一条竖的体力条 ----
+    drawPanel(this.add.graphics(), INFO.x, INFO.y, INFO.w, INFO.h);
+    const tx = INFO.x + 5;
+    this.dateText = pixelText(this, tx, INFO.y + 3, '');
+    this.timeText = pixelText(this, tx, INFO.y + 16, '');
+    this.moneyText = pixelText(this, tx, INFO.y + 29, '', { color: ui.money });
+    const barX = INFO.x + INFO.w - 9;
+    const barY = INFO.y + 5;
+    this.staminaBarH = INFO.h - 10;
+    this.add.rectangle(barX - 1, barY - 1, 6, this.staminaBarH + 2, toColor(ui.border)).setOrigin(0);
+    this.add.rectangle(barX, barY, 4, this.staminaBarH, toColor(ui.innerBorder)).setOrigin(0);
+    this.staminaBar = this.add.rectangle(barX, barY + this.staminaBarH, 4, this.staminaBarH, toColor(ui.staminaFull)).setOrigin(0, 1);
 
     // ---- 底部工具栏 ----
-    this.buildToolbar(res);
+    this.buildToolbar(W, H);
 
-    // ---- 对话框 ----
-    this.dialogBg = this.add.rectangle(0, 0, 100, 100, SETTINGS.colors.dialogBg, 0.92).setOrigin(0).setStrokeStyle(2, 0xc9a86a);
-    this.dialogText = this.add
-      .text(0, 0, '', { fontFamily: font(), fontSize: '20px', color: SETTINGS.colors.dialogText, wordWrap: { width: 100, useAdvancedWrap: true } })
-      .setResolution(res);
-    this.dialog = this.add.container(0, 0, [this.dialogBg, this.dialogText]).setVisible(false).setDepth(50);
-    this.dialogBg.setInteractive().on('pointerdown', () => this.closeDialog());
+    // ---- 对话框（工具栏上面） ----
+    const dx = Math.round((W - DIALOG.w) / 2);
+    const dy = H - 2 - (SLOT + BAR_PAD * 2) - 2 - DIALOG.h;
+    const dialogBg = this.add.graphics();
+    drawPanel(dialogBg, 0, 0, DIALOG.w, DIALOG.h);
+    this.dialogText = pixelText(this, 6, 4, '', { wrap: DIALOG.w - 12 });
+    const hit = this.add.zone(0, 0, DIALOG.w, DIALOG.h).setOrigin(0).setInteractive();
+    hit.on('pointerdown', () => this.closeDialog());
+    this.dialog = this.add.container(dx, dy, [dialogBg, this.dialogText, hit]).setVisible(false).setDepth(50);
 
     // ---- 鼠标 / 手指 ----
     new PointerControls(this, this.touch);
     if (this.touch) {
       const cfg = SETTINGS.touch;
       const ev = this.game.events;
-      this.touchButtons = [
-        makeRoundButton(this, t('buttons.action'), cfg.actionButtonRadius, font(), () => ev.emit(INPUT_EVENTS.action, 'smart')),
-        makeRoundButton(this, t('buttons.bag'), cfg.smallButtonRadius, font(), () => ev.emit(INPUT_EVENTS.bag)),
-        makeRoundButton(this, t('buttons.menu'), cfg.smallButtonRadius, font(), () => ev.emit(INPUT_EVENTS.menu)),
-      ];
+      const [action, bag, menu] = (this.touchButtons = [
+        makeRoundButton(this, t('buttons.action'), cfg.actionButtonRadius, () => ev.emit(INPUT_EVENTS.action, 'smart')),
+        makeRoundButton(this, t('buttons.bag'), cfg.smallButtonRadius, () => ev.emit(INPUT_EVENTS.bag)),
+        makeRoundButton(this, t('buttons.menu'), cfg.smallButtonRadius, () => ev.emit(INPUT_EVENTS.menu)),
+      ]);
+      const ax = W - cfg.actionButtonRadius - 4;
+      const ay = H - cfg.actionButtonRadius - 4;
+      action.setPosition(ax, ay);
+      bag.setPosition(ax - cfg.actionButtonRadius - cfg.smallButtonRadius - 4, ay + 4);
+      menu.setPosition(W - cfg.smallButtonRadius - 4, cfg.smallButtonRadius + 4);
     }
-
-    this.layout();
-    this.scale.on('resize', this.layout, this);
 
     // ---- 接收指令 ----
     const ev = this.game.events;
@@ -102,6 +121,7 @@ export class HudScene extends Phaser.Scene {
       [INPUT_EVENTS.toolSlot, (i: number) => !this.busy() && this.selectTool(i)],
       [INPUT_EVENTS.nav, (dir: 'up' | 'down') => this.menu?.move(dir === 'up' ? -1 : 1)],
       [INPUT_EVENTS.tap, (x: number, y: number) => this.onTap(x, y)],
+      [INPUT_EVENTS.debugMemory, () => (gameState.memoryMode = !gameState.memoryMode)],
       [UI_EVENTS.say, (key: string, params?: Record<string, string | number>) => this.say(key, params)],
       [UI_EVENTS.showMenu, (opts: MenuOption[]) => this.openMenu(opts)],
     ];
@@ -109,7 +129,7 @@ export class HudScene extends Phaser.Scene {
     this.events.once('shutdown', () => {
       for (const [name, fn] of handlers) ev.off(name, fn);
       this.closeMenu();
-      this.scale.off('resize', this.layout, this);
+      this.touchButtons = [];
     });
   }
 
@@ -119,11 +139,11 @@ export class HudScene extends Phaser.Scene {
     this.dateText.setText(clock.dateText());
     this.timeText.setText(clock.timeText());
     this.moneyText.setText(t('hud.money', { amount: gameState.cash, unit: localName(itemsData.currency.name) }));
-    this.staminaText.setText(t('hud.stamina', { value: gameState.stamina, max: gameState.maxStamina }));
-    this.staminaBar.width = 120 * (gameState.stamina / gameState.maxStamina);
-    this.toolSlots.forEach((slot, i) =>
-      slot.setStrokeStyle(i === gameState.toolIndex ? 3 : 1, i === gameState.toolIndex ? SETTINGS.colors.toolSelected : 0xffffff, i === gameState.toolIndex ? 1 : 0.4),
-    );
+    const ratio = Math.max(0, Math.min(1, gameState.stamina / gameState.maxStamina));
+    this.staminaBar.height = Math.round(this.staminaBarH * ratio);
+    this.staminaBar.setFillStyle(toColor(ratio <= 0.25 ? SETTINGS.ui.staminaLow : SETTINGS.ui.staminaFull));
+    const x = this.toolSlotX[gameState.toolIndex];
+    if (x !== undefined) this.toolCursor.setX(x - 1);
   }
 
   // ---------------- 操作分配 ----------------
@@ -173,9 +193,9 @@ export class HudScene extends Phaser.Scene {
         o.run();
       },
     }));
-    this.menu = new ListMenu(this, all, { title, width: 220 });
-    const { width, height } = this.scale;
-    this.menu.centerAt(width / 2, Math.max(this.menu.container.height / 2 + 16, height / 2 - this.menu.container.height / 2 - 24));
+    this.menu = new ListMenu(this, all, { title, width: 120 });
+    const { gameWidth: W, gameHeight: H } = SETTINGS;
+    this.menu.centerAt(W / 2, Math.min(H / 2, H - 30 - this.menu.container.height / 2));
     this.syncBusy();
   }
 
@@ -203,12 +223,20 @@ export class HudScene extends Phaser.Scene {
           label: t('menu.backToTitle'),
           run: () => this.openMenu([{ label: t('menu.yes'), run: () => this.backToTitle() }], t('menu.backConfirm')),
         },
+        // 测试用（settings.ts 的 debugMenu 改成 false 就没有了）
+        ...(SETTINGS.debugMenu
+          ? [
+              { label: t('menu.debugSkipTime'), run: () => gameState.clock && (gameState.clock.minutes += 180) },
+              { label: t('menu.debugMemory'), run: () => (gameState.memoryMode = !gameState.memoryMode) },
+            ]
+          : []),
       ],
       t('menu.title'),
     );
   }
 
   private backToTitle() {
+    gameState.memoryMode = false;
     this.scene.stop('Farm');
     this.scene.start('Title');
   }
@@ -219,59 +247,36 @@ export class HudScene extends Phaser.Scene {
 
   // ---------------- 工具栏 ----------------
 
-  private buildToolbar(res: number) {
-    const size = 52;
-    const gap = 6;
-    const items: Phaser.GameObjects.GameObject[] = [];
+  /** 底部正中一排格子，每格放工具图标；当前拿着的那格有橘色框 */
+  private buildToolbar(W: number, H: number) {
+    const n = gameState.tools.length;
+    const w = BAR_PAD * 2 + n * SLOT + (n - 1) * SLOT_GAP;
+    const h = BAR_PAD * 2 + SLOT;
+    const x0 = Math.round((W - w) / 2);
+    const y0 = H - 2 - h;
+    const g = this.add.graphics().setDepth(40);
+    drawPanel(g, x0, y0, w, h);
     gameState.tools.forEach((id, i) => {
-      const x = i * (size + gap);
-      const slot = this.add.rectangle(x, 0, size, size, 0x000000, 0.45).setOrigin(0);
-      slot.setInteractive().on('pointerdown', () => !this.busy() && this.selectTool(i));
-      const name = localName(itemsData.items.find((it) => it.id === id)?.name);
-      const label = this.add
-        .text(x + size / 2, size / 2 + 4, name, { fontFamily: font(), fontSize: '14px', color: '#ffffff', align: 'center', wordWrap: { width: size - 4 } })
-        .setOrigin(0.5)
-        .setResolution(res);
-      const num = this.add.text(x + 4, 2, String(i + 1), { fontFamily: font(), fontSize: '11px', color: '#c9bfa8' }).setResolution(res);
-      items.push(slot, label, num);
-      this.toolSlots.push(slot);
+      const x = x0 + BAR_PAD + i * (SLOT + SLOT_GAP);
+      const y = y0 + BAR_PAD;
+      this.toolSlotX.push(x);
+      g.fillStyle(toColor(SETTINGS.ui.innerBorder)).fillRect(x, y, SLOT, SLOT);
+      const slot = this.add.zone(x, y, SLOT, SLOT).setOrigin(0).setInteractive().setDepth(41);
+      slot.on('pointerdown', () => !this.busy() && this.selectTool(i));
+      const key = `icon_${id}`;
+      if (this.textures.exists(key)) this.add.image(x + SLOT / 2, y + SLOT / 2, key).setDepth(41);
+      else pixelText(this, x + SLOT / 2, y + SLOT / 2, this.itemName(id).slice(0, 1)).setOrigin(0.5).setDepth(41);
     });
-    this.toolbar = this.add.container(0, 0, items).setDepth(40);
-    this.toolbar.setSize(gameState.tools.length * (size + gap) - gap, size);
+    // 当前工具的框：画在 (0,0)，每帧挪到选中的那格
+    this.toolCursor = this.add.graphics().setDepth(42).setY(y0 + BAR_PAD - 1);
+    drawFrame(this.toolCursor, 0, 0, SLOT + 2, SLOT + 2, toColor(SETTINGS.ui.toolSelected));
+  }
+
+  private itemName(id: string) {
+    return localName(itemsData.items.find((it) => it.id === id)?.name);
   }
 
   private selectTool(i: number) {
     if (i < gameState.tools.length) gameState.toolIndex = i;
-  }
-
-  // ---------------- 摆放位置 ----------------
-
-  /** 按屏幕大小摆放（横竖屏切换、窗口变大小时都会重新摆） */
-  private layout() {
-    const { width, height } = this.scale;
-    // 工具栏：底部正中
-    const tbW = this.toolbar.width;
-    this.toolbar.setPosition((width - tbW) / 2, height - 52 - 12);
-
-    // 对话框：工具栏上面
-    const w = Math.min(720, width - 260);
-    const h = 96;
-    const x = (width - w) / 2;
-    const y = height - 52 - 12 - h - 12;
-    this.dialogBg.setPosition(x, y).setSize(w, h);
-    this.dialogBg.input?.hitArea.setTo(0, 0, w, h);
-    this.dialogText.setPosition(x + 18, y + 14).setWordWrapWidth(w - 36, true);
-
-    // 手机按钮：右下角
-    if (this.touchButtons.length) {
-      const cfg = SETTINGS.touch;
-      const margin = 24;
-      const [action, bag, menu] = this.touchButtons;
-      const ax = width - margin - cfg.actionButtonRadius - 10;
-      const ay = height - margin - cfg.actionButtonRadius - 10;
-      action.setPosition(ax, ay);
-      bag.setPosition(ax - cfg.actionButtonRadius - cfg.smallButtonRadius - 18, ay + 10);
-      menu.setPosition(width - margin - cfg.smallButtonRadius, margin + cfg.smallButtonRadius + 40);
-    }
   }
 }

@@ -12,8 +12,8 @@ type Dict = { [key: string]: string | Dict };
 const LANGUAGES: Record<string, { dict: Dict; font: string }> = {
   zh: {
     dict: zh as unknown as Dict,
-    // 中文用系统自带字体：Mac/iPhone 是苹方，Windows 是微软雅黑
-    font: '"PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif',
+    // 中文用像素字体 Fusion Pixel 12px（文件在 public/assets/fonts/，离线也能用）；万一没加载上，退回系统字体
+    font: '"FusionPixel", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
   },
   // en: { dict: en as unknown as Dict, font: '"Georgia", serif' },
 };

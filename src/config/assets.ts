@@ -1,0 +1,89 @@
+/**
+ * 素材清单：游戏用到哪些图、每张多大、缺图时用什么颜色的色块代替。
+ * ================================================================
+ *  图片由整理脚本（npm run art）从 art_raw/ 生成，放在 public/assets/ 里。
+ *  游戏启动时先找真图；找不到的，就按这里写的大小和颜色画一个占位色块。
+ *  所以没有图也能玩，图到了自动换上，不用改代码。
+ *
+ *  颜色写调色板里的名字（见 src/config/palette.json），例如 'leaf' 是草绿。
+ *  shape 是占位色块的样子（只是为了占位时好认）：
+ *    full = 整格填满；object = 地上的小东西（留点边）；char = 人物（头 + 身子，带一个点表示朝向）；
+ *    tree = 树（树冠 + 树干）；lantern = 灯笼（杆子 + 灯）；building = 房子（墙 + 屋顶 + 门）；icon = 图标
+ */
+import type { PaletteName } from './palette';
+
+export interface AssetSpec {
+  /** 每格宽、高（像素） */
+  w: number;
+  h: number;
+  /** 每格叫什么（顺序和 tools/art_rules.json 一样）。单张图写一个名字就行 */
+  frames: string[];
+  /** 占位色块的颜色：一个颜色 = 每格都用它；一串 = 每格各用各的 */
+  color: PaletteName | PaletteName[];
+  shape: 'full' | 'object' | 'char' | 'tree' | 'lantern' | 'building' | 'icon';
+}
+
+const DIRS = ['down', 'left', 'right', 'up'];
+
+export const ASSETS: Record<string, AssetSpec> = {
+  // ---- 人物 ----
+  /** 主角站立：下、左、右、上 */
+  player_stand: { w: 16, h: 32, frames: DIRS, color: 'leaf', shape: 'char' },
+
+  // ---- 地面 ----
+  /** 农田地面：草地、黄土、锄过的地、浇过水的地、小路、篱笆 */
+  tiles_farm: {
+    w: 16, h: 16,
+    frames: ['grass', 'dirt', 'tilled', 'watered', 'path', 'fence'],
+    color: ['leaf', 'ochreLight', 'ochre', 'brown', 'paperDark', 'brownDark'],
+    shape: 'full',
+  },
+  /** 水塘（第一批素材里没有，先一直用色块） */
+  tiles_water: { w: 16, h: 16, frames: ['water'], color: 'indigo', shape: 'full' },
+
+  // ---- 地上的东西 ----
+  debris_weed: { w: 16, h: 16, frames: ['main'], color: 'leafDark', shape: 'object' },
+  debris_rock: { w: 16, h: 16, frames: ['main'], color: 'stone', shape: 'object' },
+  debris_stump: { w: 16, h: 16, frames: ['main'], color: 'ochre', shape: 'object' },
+  debris_fire: { w: 16, h: 16, frames: ['main'], color: 'ink', shape: 'object' },
+  prop_tree: { w: 16, h: 32, frames: ['main'], color: 'leafDark', shape: 'tree' },
+  prop_lantern: { w: 16, h: 32, frames: ['main'], color: 'vermilion', shape: 'lantern' },
+
+  // ---- 房子 ----
+  house_straw_hut: { w: 48, h: 48, frames: ['main'], color: 'ochreLight', shape: 'building' },
+
+  // ---- 图标（工具栏、背包） ----
+  icon_hoe: { w: 16, h: 16, frames: ['main'], color: 'ochre', shape: 'icon' },
+  icon_bucket: { w: 16, h: 16, frames: ['main'], color: 'teal', shape: 'icon' },
+  icon_sickle: { w: 16, h: 16, frames: ['main'], color: 'ash', shape: 'icon' },
+  icon_axe: { w: 16, h: 16, frames: ['main'], color: 'vermilion', shape: 'icon' },
+  icon_pickaxe: { w: 16, h: 16, frames: ['main'], color: 'stone', shape: 'icon' },
+  icon_mantou: { w: 16, h: 16, frames: ['main'], color: 'paper', shape: 'icon' },
+  icon_bok_choy_seed: { w: 16, h: 16, frames: ['main'], color: 'leafLight', shape: 'icon' },
+  icon_radish_seed: { w: 16, h: 16, frames: ['main'], color: 'skin', shape: 'icon' },
+  icon_bok_choy: { w: 16, h: 16, frames: ['main'], color: 'leaf', shape: 'icon' },
+  icon_radish: { w: 16, h: 16, frames: ['main'], color: 'mist', shape: 'icon' },
+  icon_plant_ash: { w: 16, h: 16, frames: ['main'], color: 'ash', shape: 'icon' },
+};
+
+/**
+ * 地图上的地面名字 → 用哪张图的哪一格。
+ * 地图字符用哪种地面，在 src/world/farmMap.ts 的 TILE_TYPES 里写。
+ */
+export const GROUND_TILES: Record<string, { texture: string; frame: string }> = {
+  grass: { texture: 'tiles_farm', frame: 'grass' },
+  dirt: { texture: 'tiles_farm', frame: 'dirt' },
+  tilled: { texture: 'tiles_farm', frame: 'tilled' },
+  watered: { texture: 'tiles_farm', frame: 'watered' },
+  path: { texture: 'tiles_farm', frame: 'path' },
+  fence: { texture: 'tiles_farm', frame: 'fence' },
+  water: { texture: 'tiles_water', frame: 'water' },
+};
+
+/** 某张图里某一格是第几格（找不到就是第 0 格） */
+export function frameIndex(texture: string, frame: string): number {
+  return Math.max(0, ASSETS[texture]?.frames.indexOf(frame) ?? 0);
+}
+
+/** 有走路动画图（player_walk）时：每个方向一行，每行 5 格 = 站立 + 走路 4 格 */
+export const WALK_SHEET = { framesPerDir: 5, dirs: DIRS };

@@ -10,6 +10,8 @@
  */
 import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
+import { toColor } from '../config/palette';
+import { pixelText } from '../ui/pixelUi';
 
 /** 指令名称。游戏里用 game.events.on(INPUT_EVENTS.xxx, ...) 来接收。 */
 export const INPUT_EVENTS = {
@@ -27,6 +29,8 @@ export const INPUT_EVENTS = {
   nav: 'input:nav',
   /** 点了屏幕（鼠标或手指）。参数：屏幕坐标 x, y */
   tap: 'input:tap',
+  /** （测试用）切换回忆模式 */
+  debugMemory: 'input:debugMemory',
 } as const;
 
 /** 触屏摇杆的当前方向，由 TouchControls 写入，范围 -1 ~ 1 */
@@ -54,6 +58,7 @@ export class KeyboardControls {
     bind(SETTINGS.keys.cancel, INPUT_EVENTS.cancel);
     bind(SETTINGS.keys.bag, INPUT_EVENTS.bag);
     bind(SETTINGS.keys.menu, INPUT_EVENTS.menu);
+    if (SETTINGS.debugMenu) bind(SETTINGS.keys.debugMemory, INPUT_EVENTS.debugMemory);
     bind(SETTINGS.keys.up, INPUT_EVENTS.nav, 'up');
     bind(SETTINGS.keys.down, INPUT_EVENTS.nav, 'down');
     SETTINGS.keys.toolSlots.forEach((name, i) => bind([name], INPUT_EVENTS.toolSlot, i));
@@ -93,8 +98,12 @@ export class PointerControls {
     let downY = 0;
 
     // 摇杆的样子（只在手机上出现）
-    const base = scene.add.circle(0, 0, cfg.joystickRadius, 0xffffff, 0.15).setStrokeStyle(2, 0xffffff, 0.4).setDepth(100).setVisible(false);
-    const knob = scene.add.circle(0, 0, cfg.joystickRadius * 0.45, 0xffffff, 0.45).setDepth(101).setVisible(false);
+    const base = scene.add
+      .circle(0, 0, cfg.joystickRadius, toColor(SETTINGS.ui.panel), 0.2)
+      .setStrokeStyle(1, toColor(SETTINGS.ui.panel), 0.5)
+      .setDepth(100)
+      .setVisible(false);
+    const knob = scene.add.circle(0, 0, Math.round(cfg.joystickRadius * 0.45), toColor(SETTINGS.ui.panel), 0.5).setDepth(101).setVisible(false);
     if (touch) scene.input.addPointer(2); // 允许同时按住摇杆和点别处
 
     scene.input.on('pointerdown', (p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
@@ -149,20 +158,18 @@ export class PointerControls {
 }
 
 /** 做一个圆形触屏按钮（手机右下角的「使用」「背包」「菜单」） */
-export function makeRoundButton(scene: Phaser.Scene, label: string, radius: number, fontFamily: string, onPress: () => void) {
+export function makeRoundButton(scene: Phaser.Scene, label: string, radius: number, onPress: () => void) {
   const alpha = SETTINGS.touch.buttonAlpha;
-  const circle = scene.add.circle(0, 0, radius, 0x000000, alpha).setStrokeStyle(2, 0xffffff, 0.6);
-  const text = scene.add
-    .text(0, 0, label, { fontFamily, fontSize: `${Math.round(radius * 0.55)}px`, color: '#ffffff' })
-    .setOrigin(0.5)
-    .setResolution(window.devicePixelRatio || 1);
+  const fill = toColor(SETTINGS.ui.panel);
+  const circle = scene.add.circle(0, 0, radius, fill, alpha).setStrokeStyle(1, toColor(SETTINGS.ui.border), 0.8);
+  const text = pixelText(scene, 0, 0, label).setOrigin(0.5);
   const c = scene.add.container(0, 0, [circle, text]).setDepth(100).setSize(radius * 2, radius * 2);
   c.setInteractive(new Phaser.Geom.Circle(0, 0, radius), Phaser.Geom.Circle.Contains);
   c.on('pointerdown', () => {
-    circle.setFillStyle(0xffffff, 0.35);
+    circle.setFillStyle(toColor(SETTINGS.ui.innerBorder), 0.9);
     onPress();
   });
-  const release = () => circle.setFillStyle(0x000000, alpha);
+  const release = () => circle.setFillStyle(fill, alpha);
   c.on('pointerup', release);
   c.on('pointerout', release);
   return c;

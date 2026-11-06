@@ -5,7 +5,8 @@
  */
 import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
-import { font, t } from '../locales/i18n';
+import { t } from '../locales/i18n';
+import { pixelText } from '../ui/pixelUi';
 import { isTouchDevice } from '../input/Controls';
 import { ListMenu, type MenuOption } from '../ui/ListMenu';
 import { pickTextFile } from '../ui/fileTransfer';
@@ -26,43 +27,27 @@ export class TitleScene extends Phaser.Scene {
   }
 
   create() {
-    const res = window.devicePixelRatio || 1;
+    const { gameWidth: W, gameHeight: H } = SETTINGS;
+    const ui = SETTINGS.ui;
     this.menu = undefined;
-    this.title = this.add
-      .text(0, 0, t('game.title'), { fontFamily: font(), fontSize: '64px', color: SETTINGS.colors.hudText })
-      .setOrigin(0.5)
-      .setResolution(res);
-    this.sub = this.add
-      .text(0, 0, t('game.subtitle'), { fontFamily: 'Georgia, serif', fontSize: '20px', color: '#c9bfa8' })
-      .setOrigin(0.5)
-      .setResolution(res);
-    this.status = this.add
-      .text(0, 0, '', { fontFamily: font(), fontSize: '16px', color: '#e8c872', align: 'center' })
-      .setOrigin(0.5)
-      .setResolution(res);
-    const press = this.add
-      .text(0, 0, t('game.pressToStart'), { fontFamily: font(), fontSize: '18px', color: '#c9bfa8' })
-      .setOrigin(0.5)
-      .setResolution(res);
+    this.cameras.main.setBackgroundColor(ui.titleBg);
+    // 游戏名：12 像素的字放大 3 倍，保持像素方块
+    this.title = pixelText(this, W / 2, 34, t('game.title'), { color: ui.titleText }).setOrigin(0.5).setScale(3);
+    this.sub = pixelText(this, W / 2, 60, t('game.subtitle'), { color: ui.titleSubText }).setOrigin(0.5);
+    this.status = pixelText(this, W / 2, 76, '', { color: SETTINGS.ui.toolSelected, align: 'center' }).setOrigin(0.5);
+    const press = pixelText(this, W / 2, needsAddToHomeTip() ? 104 : 124, t('game.pressToStart'), { color: ui.titleSubText }).setOrigin(0.5);
     this.tweens.add({ targets: press, alpha: 0.3, duration: 900, yoyo: true, repeat: -1 });
 
     // iPhone / iPad 的 Safari、还没添加到主屏幕：提示添加（离线能玩、存档不容易被系统清掉）
     this.homeTip = needsAddToHomeTip()
-      ? this.add
-          .text(0, 0, `${t('game.addToHomeTip')}\n${t('game.addToHomeHow')}`, {
-            fontFamily: font(), fontSize: '14px', color: '#c9bfa8', align: 'center', lineSpacing: 4,
-          })
-          .setOrigin(0.5, 1)
-          .setResolution(res)
+      ? pixelText(this, W / 2, H - 3, `${t('game.addToHomeTip')}\n${t('game.addToHomeHow')}`, {
+          color: ui.titleSubText,
+          align: 'center',
+          wrap: W - 16,
+        }).setOrigin(0.5, 1)
       : undefined;
 
-    this.layout(press);
-    const onResize = () => this.layout(press);
-    this.scale.on('resize', onResize);
-    this.events.once('shutdown', () => {
-      this.scale.off('resize', onResize);
-      this.menu?.destroy();
-    });
+    this.events.once('shutdown', () => this.menu?.destroy());
 
     // 先「按任意键/点一下」，再出菜单（浏览器要先有一次操作，键盘和声音才能用）
     let started = false;
@@ -70,27 +55,22 @@ export class TitleScene extends Phaser.Scene {
       if (started) return;
       started = true;
       press.destroy();
+      this.homeTip?.destroy();
+      this.homeTip = undefined;
       void this.firstMenu();
     };
     this.input.keyboard?.once('keydown', begin);
     this.input.once('pointerdown', begin);
   }
 
-  private layout(press?: Phaser.GameObjects.Text) {
-    const { width, height } = this.scale;
-    this.title.setPosition(width / 2, height * 0.2);
-    this.sub.setPosition(width / 2, height * 0.2 + 52);
-    this.status.setPosition(width / 2, height * 0.2 + 90);
-    if (press?.active) press.setPosition(width / 2, height * 0.7);
-    this.menu?.centerAt(width / 2, height * 0.62);
-    this.homeTip?.setPosition(width / 2, height - 12).setWordWrapWidth(width - 32);
-  }
-
   /** 换一个菜单显示 */
   private show(options: MenuOption[], title?: string, onCancel?: () => void) {
     this.menu?.destroy();
-    this.menu = new ListMenu(this, options, { title, width: 280, ownKeys: true, onCancel });
-    this.layout();
+    this.menu = new ListMenu(this, options, { title, width: 120, ownKeys: true, onCancel });
+    // 菜单放在游戏名下面；太高放不下时往上挪，别超出画面
+    const h = this.menu.container.height;
+    const top = Math.max(2, Math.min(86, SETTINGS.gameHeight - 4 - h));
+    this.menu.centerAt(SETTINGS.gameWidth / 2, top + h / 2);
   }
 
   private say(text: string) {
@@ -177,6 +157,7 @@ export class TitleScene extends Phaser.Scene {
   private startGame(slot: number, save: SaveData | null) {
     resetGameState(slot, save);
     this.scene.start('Farm');
+    this.scene.launch('Atmosphere');
     this.scene.launch('Hud', { touch: isTouchDevice() });
   }
 }

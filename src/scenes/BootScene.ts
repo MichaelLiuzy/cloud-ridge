@@ -1,101 +1,109 @@
 /**
- * 启动场景：在没有正式美术之前，用代码画出占位的地块和小人图片。
- * 等美术素材到了，这里会改成加载图片文件（放在 public/assets/ 里）。
- * 颜色在 src/config/settings.ts 的 colors 里改。
+ * 启动场景：读美术素材。
+ *  1. 读 public/assets/manifest.json（整理脚本 npm run art 生成的清单），把里面的图都读进来。
+ *  2. src/config/assets.ts 里列的图，如果没有真图，就画一个同样大小的占位色块（颜色取调色板）。
+ * 所以图没到也能玩；图到了（运行整理脚本后）会自动换上。
  */
 import Phaser from 'phaser';
-import { SETTINGS } from '../config/settings';
+import { ASSETS, type AssetSpec } from '../config/assets';
+import { PALETTE, toColor, type PaletteName } from '../config/palette';
+
+/** manifest.json 的格式（由 tools/art.mjs 生成） */
+interface ArtManifest {
+  textures: Record<string, { file: string; frameWidth: number; frameHeight: number; frames: string[] }>;
+}
 
 export class BootScene extends Phaser.Scene {
   constructor() {
     super('Boot');
   }
 
+  preload() {
+    // 清单可能不存在（还没有任何图），读不到也没关系
+    this.load.json('art-manifest', 'assets/manifest.json');
+  }
+
   create() {
-    const s = SETTINGS.tileSize;
-    const c = SETTINGS.colors;
+    const manifest = this.cache.json.get('art-manifest') as ArtManifest | undefined;
+    const textures = manifest?.textures ?? {};
+    for (const [key, info] of Object.entries(textures)) {
+      this.load.spritesheet(key, `assets/${info.file}`, { frameWidth: info.frameWidth, frameHeight: info.frameHeight });
+    }
+    this.load.once('complete', () => {
+      this.makePlaceholders();
+      this.scene.start('Title');
+    });
+    this.load.start();
+  }
+
+  /** 给缺图的素材画占位色块 */
+  private makePlaceholders() {
     const g = this.add.graphics();
-
-    /** 画一张图并存起来，名字叫 key */
-    const bake = (key: string, w: number, h: number, draw: () => void) => {
+    for (const [key, spec] of Object.entries(ASSETS)) {
+      if (this.textures.exists(key)) continue;
       g.clear();
-      draw();
-      g.generateTexture(key, w, h);
-    };
-
-    // ---- 地面 ----
-    bake('grass', s, s, () => {
-      g.fillStyle(c.grass).fillRect(0, 0, s, s);
-      g.fillStyle(c.grassDark).fillRect(s * 0.2, s * 0.3, 2, 4).fillRect(s * 0.7, s * 0.65, 2, 4);
-    });
-    bake('grassDark', s, s, () => {
-      g.fillStyle(c.grassDark).fillRect(0, 0, s, s);
-      g.fillStyle(c.grass).fillRect(s * 0.3, s * 0.5, 2, 3);
-    });
-    bake('path', s, s, () => {
-      g.fillStyle(c.path).fillRect(0, 0, s, s);
-      g.fillStyle(0x000000, 0.08).fillRect(s * 0.25, s * 0.6, 3, 2).fillRect(s * 0.7, s * 0.2, 2, 2);
-    });
-    bake('tilled', s, s, () => {
-      g.fillStyle(c.tilled).fillRect(0, 0, s, s);
-      g.fillStyle(0x000000, 0.18);
-      for (let y = 4; y < s; y += 8) g.fillRect(2, y, s - 4, 2);
-    });
-    bake('watered', s, s, () => {
-      g.fillStyle(c.watered).fillRect(0, 0, s, s);
-      g.fillStyle(0x000000, 0.2);
-      for (let y = 4; y < s; y += 8) g.fillRect(2, y, s - 4, 2);
-    });
-    bake('water', s, s, () => {
-      g.fillStyle(c.water).fillRect(0, 0, s, s);
-      g.fillStyle(0xffffff, 0.25).fillRect(s * 0.2, s * 0.35, s * 0.3, 2).fillRect(s * 0.55, s * 0.7, s * 0.25, 2);
-    });
-
-    // ---- 地上的东西（画在草地上面）----
-    bake('tree', s, s, () => {
-      g.fillStyle(c.treeTrunk).fillRect(s * 0.42, s * 0.6, s * 0.16, s * 0.4);
-      g.fillStyle(c.tree).fillCircle(s / 2, s * 0.42, s * 0.42);
-    });
-    bake('rock', s, s, () => {
-      g.fillStyle(c.rock).fillEllipse(s / 2, s * 0.6, s * 0.7, s * 0.5);
-      g.fillStyle(0xffffff, 0.2).fillEllipse(s * 0.4, s * 0.5, s * 0.25, s * 0.12);
-    });
-    bake('weed', s, s, () => {
-      g.fillStyle(c.weed);
-      g.fillTriangle(s * 0.2, s * 0.85, s * 0.3, s * 0.3, s * 0.4, s * 0.85);
-      g.fillTriangle(s * 0.4, s * 0.85, s * 0.5, s * 0.2, s * 0.6, s * 0.85);
-      g.fillTriangle(s * 0.6, s * 0.85, s * 0.72, s * 0.35, s * 0.8, s * 0.85);
-    });
-    bake('stump', s, s, () => {
-      g.fillStyle(c.stump).fillRect(s * 0.25, s * 0.45, s * 0.5, s * 0.4);
-      g.fillStyle(0xc8a070).fillEllipse(s / 2, s * 0.45, s * 0.5, s * 0.2);
-    });
-    bake('fireDebris', s, s, () => {
-      g.fillStyle(c.fireDebris).fillRect(s * 0.1, s * 0.55, s * 0.8, s * 0.12);
-      g.fillStyle(0x221c1a).fillRect(s * 0.3, s * 0.35, s * 0.12, s * 0.5);
-      g.fillStyle(0x6a3a2a).fillRect(s * 0.55, s * 0.45, s * 0.25, s * 0.15);
-    });
-    bake('fence', s, s, () => {
-      g.fillStyle(c.fence).fillRect(s * 0.42, s * 0.15, s * 0.16, s * 0.8);
-      g.fillRect(0, s * 0.35, s, s * 0.1).fillRect(0, s * 0.62, s, s * 0.1);
-    });
-
-    // ---- 主角：四个朝向各一张 ----
-    const drawPlayer = (facing: 'down' | 'up' | 'left' | 'right') => {
-      g.fillStyle(0x000000, 0.2).fillEllipse(s / 2, s * 0.92, s * 0.55, s * 0.16); // 影子
-      g.fillStyle(c.playerBody).fillRoundedRect(s * 0.28, s * 0.45, s * 0.44, s * 0.45, 4); // 衣服
-      g.fillStyle(c.playerSkin).fillCircle(s / 2, s * 0.32, s * 0.2); // 头
-      g.fillStyle(c.playerHair);
-      if (facing === 'up') g.fillCircle(s / 2, s * 0.3, s * 0.2);
-      else g.fillRect(s * 0.3, s * 0.12, s * 0.4, s * 0.1); // 头发
-      g.fillStyle(0x222222);
-      if (facing === 'down') g.fillRect(s * 0.4, s * 0.32, 2, 3).fillRect(s * 0.57, s * 0.32, 2, 3);
-      if (facing === 'left') g.fillRect(s * 0.36, s * 0.32, 2, 3);
-      if (facing === 'right') g.fillRect(s * 0.62, s * 0.32, 2, 3);
-    };
-    for (const f of ['down', 'up', 'left', 'right'] as const) bake(`player-${f}`, s, s, () => drawPlayer(f));
-
+      spec.frames.forEach((_, i) => drawPlaceholder(g, spec, i, i * spec.w));
+      g.generateTexture(key, spec.w * spec.frames.length, spec.h);
+      // 切成一格一格（和真图的精灵表一样，按第几格取）
+      const tex = this.textures.get(key);
+      spec.frames.forEach((_, i) => tex.add(i, 0, i * spec.w, 0, spec.w, spec.h));
+    }
     g.destroy();
-    this.scene.start('Title');
+  }
+}
+
+/** 画第 i 格占位图，左上角在 (ox, 0) */
+function drawPlaceholder(g: Phaser.GameObjects.Graphics, spec: AssetSpec, i: number, ox: number) {
+  const name: PaletteName = Array.isArray(spec.color) ? spec.color[i] ?? spec.color[0] : spec.color;
+  const c = toColor(PALETTE[name]);
+  const ink = toColor(PALETTE.outline);
+  const { w, h } = spec;
+  const rect = (x: number, y: number, rw: number, rh: number, color: number) => g.fillStyle(color).fillRect(ox + x, y, rw, rh);
+
+  switch (spec.shape) {
+    case 'full':
+      rect(0, 0, w, h, c);
+      break;
+    case 'object':
+      rect(2, h - 11, w - 4, 10, ink);
+      rect(3, h - 10, w - 6, 8, c);
+      break;
+    case 'icon':
+      rect(2, 2, w - 4, h - 4, ink);
+      rect(3, 3, w - 6, h - 6, c);
+      break;
+    case 'tree':
+      rect(6, h - 12, 4, 12, toColor(PALETTE.brown)); // 树干
+      rect(1, 2, w - 2, h - 14, ink);
+      rect(2, 3, w - 4, h - 16, c); // 树冠
+      break;
+    case 'lantern':
+      rect(7, 8, 2, h - 8, toColor(PALETTE.brownDark)); // 杆子
+      rect(3, 2, 10, 12, ink);
+      rect(4, 3, 8, 10, c); // 灯笼
+      rect(6, 5, 4, 6, toColor(PALETTE.candle)); // 里面的火
+      break;
+    case 'building': {
+      const roofH = Math.round(h * 0.4);
+      rect(3, roofH, w - 6, h - roofH, ink);
+      rect(4, roofH, w - 8, h - roofH - 1, c); // 墙
+      rect(0, 2, w, roofH, ink);
+      rect(1, 3, w - 2, roofH - 2, toColor(PALETTE.ochre)); // 屋顶
+      rect(w / 2 - 5, h - 14, 10, 14, toColor(PALETTE.brownDark)); // 门
+      rect(w - 15, roofH + 6, 8, 6, toColor(PALETTE.ink)); // 窗
+      break;
+    }
+    case 'char': {
+      // 身子 + 头；用一个深色小点表示朝向（下 左 右 上）
+      const dir = ['down', 'left', 'right', 'up'][i] ?? 'down';
+      rect(3, 12, 10, 20, ink);
+      rect(4, 13, 8, 18, c);
+      rect(3, 1, 10, 12, ink);
+      rect(4, 2, 8, 10, toColor(dir === 'up' ? PALETTE.brownDark : PALETTE.skin));
+      rect(4, 2, 8, 3, toColor(PALETTE.brownDark)); // 头发
+      const eye = { down: [7, 7], left: [4, 7], right: [10, 7], up: [-1, -1] }[dir]!;
+      if (eye[0] >= 0) rect(eye[0], eye[1], 2, 2, ink);
+      break;
+    }
   }
 }

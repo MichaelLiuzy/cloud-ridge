@@ -2,11 +2,12 @@
  * 小菜单（一列选项）：床边菜单、点东西弹出的菜单、标题画面、存档位选择都用它。
  *  - 键盘：上下键（或 W S）选，回车确认，Esc 取消
  *  - 鼠标 / 手指：直接点选项
- * 颜色在 src/config/settings.ts 的 colors 里（dialogBg、menuHighlight）。
+ * 样子（框、颜色）在 src/config/settings.ts 的 ui 里改。
  */
 import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
-import { font } from '../locales/i18n';
+import { toColor } from '../config/palette';
+import { drawPanel, pixelText } from './pixelUi';
 
 export interface MenuOption {
   label: string;
@@ -15,15 +16,19 @@ export interface MenuOption {
   disabled?: boolean;
 }
 
+/** 每一行多高、框的内边距（像素，按 320×180 的画面算） */
+const ROW_H = 16;
+const PAD = 4;
+
 export class ListMenu {
   container: Phaser.GameObjects.Container;
   private rows: Phaser.GameObjects.Rectangle[] = [];
-  private labels: Phaser.GameObjects.Text[] = [];
   private index = 0;
   private keyHandler?: (e: KeyboardEvent) => void;
 
   /**
    * @param title   菜单上方的标题（可以不写）
+   * @param width   菜单宽度（像素）；不写就按最长的选项自动定
    * @param ownKeys true = 菜单自己听键盘（标题画面用）；false = 由别人调用 move / choose
    */
   constructor(
@@ -31,36 +36,45 @@ export class ListMenu {
     private options: MenuOption[],
     opts: { title?: string; width?: number; ownKeys?: boolean; onCancel?: () => void } = {},
   ) {
-    const res = window.devicePixelRatio || 1;
-    const touch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    const rowH = touch ? 44 : 38;
-    const w = opts.width ?? 200;
-    const items: Phaser.GameObjects.GameObject[] = [];
-    let top = 0;
+    const ui = SETTINGS.ui;
+    const maxW = SETTINGS.gameWidth - 16;
+    // 先把字写出来，量一下多宽
+    const labels = options.map((opt) => pixelText(scene, 0, 0, opt.label, { color: opt.disabled ? ui.textDim : ui.text }));
+    let widest = Math.max(0, ...labels.map((l) => l.width));
     if (opts.title) {
-      const title = scene.add
-        .text(w / 2, 0, opts.title, { fontFamily: font(), fontSize: '18px', color: SETTINGS.colors.hudText, align: 'center', wordWrap: { width: w + 120 } })
-        .setOrigin(0.5, 0)
-        .setResolution(res);
-      items.push(title);
-      top = title.height + 10;
+      // 标题尽量一行放下（太长了才换行）
+      const probe = pixelText(scene, 0, 0, opts.title);
+      widest = Math.max(widest, probe.width - 4);
+      probe.destroy();
+    }
+    const w = Math.min(maxW, Math.max(opts.width ?? 0, Math.ceil(widest) + PAD * 2 + 8));
+    let top = PAD;
+    const items: Phaser.GameObjects.GameObject[] = [];
+    const bg = scene.add.graphics();
+    items.push(bg);
+    let titleText: Phaser.GameObjects.Text | undefined;
+    if (opts.title) {
+      titleText = pixelText(scene, w / 2, top, opts.title, { wrap: w - PAD * 2 - 4, align: 'center' }).setOrigin(0.5, 0);
+      top += Math.ceil(titleText.height) + 3;
     }
     options.forEach((opt, i) => {
-      const y = top + i * rowH;
-      const row = scene.add.rectangle(0, y, w, rowH, SETTINGS.colors.dialogBg, 0.95).setOrigin(0).setStrokeStyle(1, 0xc9a86a, 0.5);
+      const y = top + i * ROW_H;
+      const row = scene.add.rectangle(PAD, y, w - PAD * 2, ROW_H, toColor(ui.highlight), 0).setOrigin(0);
       row.setInteractive().on('pointerdown', () => this.choose(i));
       row.on('pointerover', () => this.highlight(i));
-      const label = scene.add
-        .text(16, y + rowH / 2, opt.label, { fontFamily: font(), fontSize: '17px', color: SETTINGS.colors.dialogText })
-        .setOrigin(0, 0.5)
-        .setResolution(res)
-        .setAlpha(opt.disabled ? 0.4 : 1);
-      items.push(row, label);
+      labels[i].setPosition(PAD + 4, Math.round(y + (ROW_H - labels[i].height) / 2));
+      items.push(row, labels[i]);
       this.rows.push(row);
-      this.labels.push(label);
     });
+    const h = top + options.length * ROW_H + PAD;
+    drawPanel(bg, 0, 0, w, h);
+    if (titleText) {
+      items.push(titleText);
+      // 标题和选项之间画一条细线
+      bg.fillStyle(toColor(ui.innerBorder)).fillRect(PAD, top - 2, w - PAD * 2, 1);
+    }
     this.container = scene.add.container(0, 0, items).setDepth(60);
-    this.container.setSize(w, top + options.length * rowH);
+    this.container.setSize(w, h);
     this.highlight(Math.max(0, options.findIndex((o) => !o.disabled)));
 
     if (opts.ownKeys) {
@@ -100,7 +114,7 @@ export class ListMenu {
 
   private highlight(i: number) {
     this.index = i;
-    this.rows.forEach((r, j) => r.setFillStyle(j === i ? SETTINGS.colors.menuHighlight : SETTINGS.colors.dialogBg, 0.95));
+    this.rows.forEach((r, j) => r.setFillStyle(toColor(SETTINGS.ui.highlight), j === i ? 1 : 0));
   }
 
   destroy() {

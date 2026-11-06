@@ -13,18 +13,30 @@
 
 export const SETTINGS = {
   // ---------------- 画面 ----------------
-  /** 一个地图格子多大（像素）。美术定稿后可能会改成 16 或 32。 */
-  tileSize: 32,
-  /** 屏幕上竖着大约能看到几格地图。数字越小，画面放得越大。 */
-  tilesVisibleVertically: 11,
-  /** 游戏最外面的背景色（地图外面露出来的部分）。 */
-  backgroundColor: '#1d2b24',
+  /**
+   * 游戏画面的「原始大小」（像素）。整张画面先按这个大小画，再整数倍放大铺满屏幕
+   * （Mac 一般放大 4 倍，iPhone 横屏 2~3 倍），放不满的地方留黑边。这是美术规范定的，一般不改。
+   */
+  gameWidth: 320,
+  gameHeight: 180,
+  /** 一个地图格子多大（像素）。美术规范定的 16，一般不改。 */
+  tileSize: 16,
+  /** 地图外面露出来的地方的颜色 */
+  backgroundColor: '#1E1A1F',
 
   // ---------------- 主角 ----------------
-  /** 主角走路速度（每秒走多少像素）。32 像素 = 一格。 */
-  playerSpeed: 110,
+  /** 主角走路速度（每秒走多少像素）。16 像素 = 一格。 */
+  playerSpeed: 56,
   /** 点了远处的东西时，自动走过去的速度（一般和走路一样） */
-  autoWalkSpeed: 110,
+  autoWalkSpeed: 56,
+  /** 走路时身体上下颠动几像素（没有走路动画图时用） */
+  walkBobPixels: 1,
+  /** 颠动快慢：每秒颠几下 */
+  walkBobPerSecond: 8,
+  /** 有走路动画图（player_walk.png）时，每秒播几帧 */
+  walkFrameRate: 8,
+  /** 用工具时，工具图标在面前挥一下要多久（毫秒） */
+  toolSwingMs: 220,
   /** 斜着走时是否和直走一样快（true = 一样快，更自然）。 */
   normalizeDiagonal: true,
 
@@ -48,6 +60,8 @@ export const SETTINGS = {
     bag: ['Q'],
     /** 打开菜单（先没做） */
     menu: ['M'],
+    /** （测试用）切换回忆模式：画面去色、只有火光保留颜色 */
+    debugMemory: ['F8'],
     /**
      * 切换工具：按 1~9 选工具栏第几格。
      * 小菜单打开时，上面的 up/down（W S 或方向键上下）用来移动选项，action（回车）确认。
@@ -56,58 +70,59 @@ export const SETTINGS = {
   },
 
   // ---------------- 触屏（iPhone） ----------------
+  /** 下面的大小都按 320×180 的原始画面算，屏幕上看到的会放大 2~3 倍 */
   touch: {
     /** 摇杆底盘的半径（像素）。手指拖多远算「推到底」。 */
-    joystickRadius: 60,
+    joystickRadius: 22,
     /** 手指只是轻轻碰一下、没超过这个距离时不走路（防误触）。 */
-    joystickDeadZone: 8,
+    joystickDeadZone: 3,
     /** 手指按下又很快抬起、几乎没移动，算作「点一下」而不是摇杆（毫秒） */
     tapMaxMs: 280,
     /** 右下角「使用」大按钮的半径（按一下 = 对面前那一格做最合适的事） */
-    actionButtonRadius: 46,
+    actionButtonRadius: 16,
     /** 背包、菜单小按钮的半径 */
-    smallButtonRadius: 28,
+    smallButtonRadius: 13,
     /** 按钮透明度：0 完全透明，1 完全不透明 */
     buttonAlpha: 0.55,
   },
 
-  // ---------------- 颜色（占位美术用） ----------------
+  // ---------------- 界面颜色 ----------------
   /**
-   * 现在还没有正式美术，地图和人物先用色块代替。
-   * 颜色写法是 0x 加六位十六进制，和网页颜色 #RRGGBB 一样，比如 0xff0000 是红色。
+   * 对话框、物品栏、体力条、时辰框都用代码画（美术规范定的）。
+   * 颜色写法和网页一样：#RRGGBB。最好从 src/config/palette.json 的 24 色里挑。
+   * 地图、人物没有图时的占位色块颜色在 src/config/assets.ts 里改。
    */
-  colors: {
-    grass: 0x6f9a4f,
-    grassDark: 0x5f8a42,
-    path: 0xc8a97a,
-    tilled: 0x7a5534,
-    /** 浇过水的田（颜色深一点） */
-    watered: 0x4f3622,
-    water: 0x4a7fa8,
-    tree: 0x2f5a35,
-    treeTrunk: 0x5a3d24,
-    rock: 0x8f8f8a,
-    weed: 0x4f7a2f,
-    stump: 0x7a5a3a,
-    fireDebris: 0x3a3330,
-    fence: 0xa07a50,
-    hutWall: 0xb89a6a,
-    hutRoof: 0x8a6a3a,
-    /** 主角衣服颜色 */
-    playerBody: 0x3f5f8f,
-    playerSkin: 0xf0d0a8,
-    playerHair: 0x2a2020,
-    /** 对话框底色和文字颜色 */
-    dialogBg: 0x1d2b24,
-    dialogText: '#f3ead7',
+  ui: {
+    /** 框的底色（米白） */
+    panel: '#EFE4C8',
+    /** 框的 1 像素外边 */
+    border: '#3B3540',
+    /** 框里面再一圈（旧纸色） */
+    innerBorder: '#D9C59A',
+    /** 框里的字 */
+    text: '#3B3540',
+    /** 灰掉的字（不能选的选项） */
+    textDim: '#8A8B8C',
     /** 小菜单里当前选中那一项的底色 */
-    menuHighlight: 0x6a5a30,
-    /** 工具栏里当前拿着的工具的边框颜色 */
-    toolSelected: 0xe8c872,
-    hudText: '#f3ead7',
+    highlight: '#D9C59A',
+    /** 工具栏里当前拿着的工具的框 */
+    toolSelected: '#D97B3A',
+    /** 钱的颜色 */
+    money: '#9C6B3E',
+    /** 体力条：满 / 低 */
+    staminaFull: '#6F8A4C',
+    staminaLow: '#A8402F',
+    /** 标题画面：背景和字 */
+    titleBg: '#1E1A1F',
+    titleText: '#EFE4C8',
+    titleSubText: '#B89A64',
   },
+  /** 字体：像素字体 Fusion Pixel（文件在 public/assets/fonts/），12 像素 */
+  fontSize: 12,
 
   // ---------------- 调试 ----------------
   /** 打开后会显示碰撞框，方便检查哪里走不过去。正式玩时保持 false。 */
   debugPhysics: false,
+  /** 菜单里显示「测试」选项（时间快进、回忆模式）。正式给朋友玩时改成 false。 */
+  debugMenu: true,
 };
