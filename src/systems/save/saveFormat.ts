@@ -6,7 +6,7 @@
  *  读档时会一步一步升级，所以很早以前的存档也能继续玩。
  */
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 /** 存档里存了什么 */
 export interface SaveData {
@@ -44,7 +44,16 @@ export interface SaveData {
  * 例子（以后加了「天气」字段时）：
  *   1: (old) => ({ ...old, weather: 'sunny', saveVersion: 2 }),
  */
-const MIGRATIONS: Record<number, (old: any) => any> = {};
+const MIGRATIONS: Record<number, (old: any) => any> = {
+  // 1 → 2：画面从 32 像素一格改成 16 像素一格（美术规范），主角位置改成按脚底算；草棚门口加了一盏灯笼
+  1: (old) => {
+    const cx = Math.floor(old.player.x / 32);
+    const cy = Math.floor((old.player.y + 9.6) / 32);
+    const farm: string[] = [...old.farm];
+    if (farm[4]?.[3] === '.') farm[4] = farm[4].slice(0, 3) + 'L' + farm[4].slice(4);
+    return { ...old, saveVersion: 2, farm, player: { ...old.player, x: cx * 16 + 8, y: cy * 16 + 12 } };
+  },
+};
 
 /** 把任意版本的存档升级到最新。认不出来的返回 null。 */
 export function migrate(raw: unknown): SaveData | null {

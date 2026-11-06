@@ -3,9 +3,15 @@
  *  - 地图在 src/world/farmMap.ts 里画
  *  - 「对什么东西能做什么」在 src/world/actions.ts
  *  - 走路速度在 src/config/settings.ts
+ *  - 用哪张图、缺图时的色块在 src/config/assets.ts
+ *
+ * 主角的位置 = 脚底中间那一点。图片从脚底往上画（16×32），所以站在树前面时会盖住树根。
+ * 所有东西按脚底的 y 排前后：越靠下越在前面。
  */
 import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
+import { GROUND_TILES, WALK_SHEET, frameIndex } from '../config/assets';
+import { PALETTE, toColor } from '../config/palette';
 import { FARM_MAP, TILE_TYPES } from '../world/farmMap';
 import { PLAIN_ACTIONS, TOOL_ACTIONS, type ToolAction } from '../world/actions';
 import { KeyboardControls } from '../input/Controls';
@@ -29,11 +35,34 @@ interface TileView {
   body?: Phaser.Physics.Arcade.Sprite;
 }
 
+/** 夜里会亮的地方（灯笼、窗户）。x, y 是世界坐标；fire 是火光类的图（回忆模式里保留颜色） */
+export interface LightSpot {
+  x: number;
+  y: number;
+  radius: number;
+  fire?: Phaser.GameObjects.Image;
+}
+
+/** 站立图里每个朝向是第几格（顺序：下 左 右 上） */
+const DIR_FRAME: Record<Facing, number> = { down: 0, left: 1, right: 2, up: 3 };
+/** 碰撞框（脚下那一小块）的宽高 */
+const FEET_W = 10;
+const FEET_H = 6;
+
 /** 这些地块是「地面」，人可以站上去，菜单里会有「走到这里」 */
 const GROUND_KINDS = ['grass', 'grassDark', 'path', 'tilled', 'watered'];
 
 export class FarmScene extends Phaser.Scene {
-  private player!: Phaser.Physics.Arcade.Sprite;
+  /** 看不见的「脚」：负责碰撞和移动 */
+  private feet!: Phaser.GameObjects.Zone;
+  /** 看得见的主角图片，每帧跟着脚走（走路时上下颠一颠） */
+  private sprite!: Phaser.GameObjects.Sprite;
+  private shadow!: Phaser.GameObjects.Ellipse;
+  private moving = false;
+  /** 有没有真正的走路动画图（player_walk.png） */
+  private hasWalkSheet = false;
+  /** 夜里会亮的地方，昼夜色层场景会来读 */
+  lightSpots: LightSpot[] = [];
   private controls!: KeyboardControls;
   private facing: Facing = 'down';
   private doorTile: Cell = { x: 0, y: 0 };
@@ -50,11 +79,14 @@ export class FarmScene extends Phaser.Scene {
   }
 
   create() {
-    const s = SETTINGS.tileSize;
     // 读档时用存档里的地图（开垦、浇水情况都在里面），新游戏用 farmMap.ts 里的
     const load = gameState.pendingLoad;
     gameState.pendingLoad = null;
     this.grid = (load ? load.farm : FARM_MAP).map((row) => [...row]);
+    this.views = [];
+    this.lightSpots = [];
+    this.route = [];
+    this.onArrive = undefined;
     const rows = this.grid.length;
     const cols = Math.max(...this.grid.map((r) => r.length));
     this.solids = this.physics.add.staticGroup();
@@ -65,37 +97,40 @@ export class FarmScene extends Phaser.Scene {
     this.grid.forEach((row, ty) => {
       this.views[ty] = [];
       row.forEach((ch, tx) => {
-        if (ch === 'P') spawn = this.cellCenter({ x: tx, y: ty });
+        if (ch === 'P') spawn = this.cellFeet({ x: tx, y: ty });
         if (ch === 'D') this.doorTile = { x: tx, y: ty };
         if (ch === 'H') hutTiles.push({ x: tx, y: ty });
-        this.views[ty][tx] = { ground: this.add.image(0, 0, 'grass') };
+        this.views[ty][tx] = { ground: this.add.image(0, 0, 'tiles_farm', 0).setOrigin(0).setDepth(0) };
         this.refreshTile(tx, ty);
       });
     });
-    if (hutTiles.length) this.drawHut(hutTiles);
+    if (hutTiles.length) this.placeHut(hutTiles);
 
     // ---- 主角 ----
-    this.player = this.physics.add.sprite(spawn.x, spawn.y, 'player-down');
-    // 碰撞框只算脚下那一小块，这样走在树前面时头可以盖住树根，更自然
-    this.player.body!.setSize(s * 0.5, s * 0.3).setOffset(s * 0.25, s * 0.65);
-    this.player.setCollideWorldBounds(true);
-    this.physics.add.collider(this.player, this.solids);
+    this.feet = this.add.zone(spawn.x, spawn.y - FEET_H / 2, FEET_W, FEET_H);
+    this.physics.add.existing(this.feet);
+    this.feetBody().setCollideWorldBounds(true);
+    this.physics.add.collider(this.feet, this.solids);
+    this.shadow = this.add.ellipse(0, 0, 12, 4, toColor(PALETTE.ink), 0.3).setDepth(1);
+    this.sprite = this.add.sprite(0, 0, 'player_stand', 0).setOrigin(0.5, 1);
+    this.setupWalkAnims();
     if (load) {
-      this.player.setPosition(load.player.x, load.player.y);
+      this.setFeet(load.player.x, load.player.y);
       this.facing = (load.player.facing as Facing) ?? 'down';
-      this.player.setTexture(`player-${this.facing}`);
     }
+    this.showStanding();
+    this.syncSprite();
+    // 物理移动算完之后再把图片挪过去，镜头和人物就不会差一帧
+    this.events.on('postupdate', this.syncSprite, this);
 
     // ---- 镜头 ----
+    const s = SETTINGS.tileSize;
     this.physics.world.setBounds(0, 0, cols * s, rows * s);
     const cam = this.cameras.main;
     cam.setBounds(0, 0, cols * s, rows * s);
     cam.setBackgroundColor(SETTINGS.backgroundColor);
-    cam.startFollow(this.player, true, 0.15, 0.15);
-    cam.roundPixels = true;
-    const fitZoom = () => cam.setZoom(this.scale.height / (SETTINGS.tilesVisibleVertically * s));
-    fitZoom();
-    this.scale.on('resize', fitZoom);
+    cam.startFollow(this.feet, true, 0.2, 0.2);
+    cam.setRoundPixels(true);
     if (SETTINGS.debugPhysics) this.physics.world.createDebugGraphic();
 
     // ---- 操作（界面场景先处理，没被对话框/菜单拦下才轮到这里）----
@@ -127,10 +162,12 @@ export class FarmScene extends Phaser.Scene {
       ev.off(UI_EVENTS.worldUseTool, this.useToolFacing, this);
       ev.off(UI_EVENTS.worldSmart, this.smartFacing, this);
       ev.off(UI_EVENTS.worldTap, this.tapScreen, this);
-      this.scale.off('resize', fitZoom);
+      this.events.off('postupdate', this.syncSprite, this);
+      this.lightSpots = [];
       document.removeEventListener('visibilitychange', onHide);
       window.removeEventListener('pagehide', onHide);
       gameState.snapshot = null;
+      this.scene.stop('Atmosphere');
       this.input.keyboard?.removeAllKeys(true);
     });
   }
@@ -152,12 +189,101 @@ export class FarmScene extends Phaser.Scene {
     }
 
     const speed = (this.route.length ? SETTINGS.autoWalkSpeed : SETTINGS.playerSpeed) * slow;
-    this.player.setVelocity(x * speed, y * speed);
-    if (x !== 0 || y !== 0) {
+    this.feetBody().setVelocity(x * speed, y * speed);
+    this.moving = x !== 0 || y !== 0;
+    if (this.moving) {
       this.facing = Math.abs(x) > Math.abs(y) ? (x > 0 ? 'right' : 'left') : y > 0 ? 'down' : 'up';
-      this.player.setTexture(`player-${this.facing}`);
+      if (this.hasWalkSheet) this.sprite.anims.play(`walk-${this.facing}`, true);
+      else this.sprite.setFrame(DIR_FRAME[this.facing]);
+    } else {
+      this.showStanding();
     }
-    this.player.setDepth(this.player.y + 1);
+  }
+
+  // =================================================================
+  //  主角的图：站立 / 走路颠动 / 走路动画 / 工具挥动
+  // =================================================================
+
+  private feetBody() {
+    return this.feet.body as Phaser.Physics.Arcade.Body;
+  }
+
+  /** 脚底中间的位置 */
+  private feetPos() {
+    return { x: this.feet.x, y: this.feet.y + FEET_H / 2 };
+  }
+
+  private setFeet(x: number, y: number) {
+    this.feet.setPosition(x, y - FEET_H / 2);
+    this.feetBody().reset(x, y - FEET_H / 2);
+  }
+
+  /** 每帧：图片和影子跟着脚走；走路时（没有走路动画图的话）上下颠 1 像素 */
+  private syncSprite() {
+    const { x, y } = this.feetPos();
+    const px = Math.round(x);
+    const py = Math.round(y);
+    let bob = 0;
+    if (this.moving && !this.hasWalkSheet) {
+      const step = Math.floor((this.time.now / 1000) * SETTINGS.walkBobPerSecond * 2);
+      bob = step % 2 === 0 ? -SETTINGS.walkBobPixels : 0;
+    }
+    this.sprite.setPosition(px, py + bob).setDepth(py);
+    this.shadow.setPosition(px, py - 1);
+  }
+
+  private showStanding() {
+    if (this.hasWalkSheet) {
+      this.sprite.anims.stop();
+      this.sprite.setTexture('player_walk', DIR_FRAME[this.facing] * WALK_SHEET.framesPerDir);
+    } else {
+      this.sprite.setTexture('player_stand', DIR_FRAME[this.facing]);
+    }
+  }
+
+  /** 如果有 player_walk.png（每个方向 5 格：站立 + 走 4 格），就做成走路动画 */
+  private setupWalkAnims() {
+    this.hasWalkSheet = this.textures.exists('player_walk');
+    if (!this.hasWalkSheet) return;
+    WALK_SHEET.dirs.forEach((dir, row) => {
+      const key = `walk-${dir}`;
+      if (this.anims.exists(key)) return;
+      const first = row * WALK_SHEET.framesPerDir + 1;
+      this.anims.create({
+        key,
+        frames: this.anims.generateFrameNumbers('player_walk', { start: first, end: first + 3 }),
+        frameRate: SETTINGS.walkFrameRate,
+        repeat: -1,
+      });
+    });
+  }
+
+  /** 用工具时，把工具图标在人物面前挥一下（原型期代替动作图） */
+  private swingTool(tool: string) {
+    const key = `icon_${tool}`;
+    if (!this.textures.exists(key)) return;
+    const { x, y } = this.feetPos();
+    // 每个朝向：图标放哪、从什么角度挥到什么角度、在人物前面还是后面
+    const poses: Record<Facing, { dx: number; dy: number; from: number; to: number; front: boolean; flip: boolean }> = {
+      down: { dx: 4, dy: -8, from: -60, to: 50, front: true, flip: false },
+      up: { dx: -4, dy: -22, from: 60, to: -50, front: false, flip: true },
+      left: { dx: -6, dy: -12, from: 60, to: -50, front: true, flip: true },
+      right: { dx: 6, dy: -12, from: -60, to: 50, front: true, flip: false },
+    };
+    const p = poses[this.facing];
+    const icon = this.add
+      .image(Math.round(x + p.dx), Math.round(y + p.dy), key)
+      .setOrigin(p.flip ? 0.8 : 0.2, 0.8)
+      .setFlipX(p.flip)
+      .setAngle(p.from)
+      .setDepth(y + (p.front ? 1 : -1));
+    this.tweens.add({
+      targets: icon,
+      angle: p.to,
+      duration: SETTINGS.toolSwingMs,
+      ease: 'Quad.easeOut',
+      onComplete: () => icon.destroy(),
+    });
   }
 
   // =================================================================
@@ -249,6 +375,7 @@ export class FarmScene extends Phaser.Scene {
     // 顺手把工具栏切到这把工具上
     const idx = gameState.tools.indexOf(rule.tool);
     if (idx >= 0) gameState.toolIndex = idx;
+    this.swingTool(rule.tool);
     if (rule.turnsInto) this.setTile(cell, rule.turnsInto);
     if (rule.doneHint) this.say(rule.doneHint);
     this.spendStamina((timeData.stamina.costs as Record<string, number>)[rule.cost] ?? 0);
@@ -271,7 +398,7 @@ export class FarmScene extends Phaser.Scene {
       savedAt: new Date().toISOString(),
       slot: gameState.slot,
       clock: { seasonIndex: c.seasonIndex, day: c.day, minutes: c.minutes },
-      player: { x: Math.round(this.player.x), y: Math.round(this.player.y), facing: this.facing },
+      player: { x: Math.round(this.feetPos().x), y: Math.round(this.feetPos().y), facing: this.facing },
       cash: gameState.cash,
       stamina: gameState.stamina,
       maxStamina: gameState.maxStamina,
@@ -336,10 +463,10 @@ export class FarmScene extends Phaser.Scene {
     this.grid.forEach((row, y) => row.forEach((ch, x) => ch === 'O' && this.setTile({ x, y }, 'o')));
     this.route = [];
     this.onArrive = undefined;
-    const door = this.cellCenter(this.doorTile);
-    this.player.setPosition(door.x, door.y);
+    const door = this.cellFeet(this.doorTile);
+    this.setFeet(door.x, door.y);
     this.facing = 'down';
-    this.player.setTexture('player-down');
+    this.showStanding();
   }
 
   // =================================================================
@@ -376,11 +503,12 @@ export class FarmScene extends Phaser.Scene {
 
   /** 每帧：朝路线上的下一格走，返回移动方向 */
   private followRoute(): { x: number; y: number } {
-    const next = this.cellCenter(this.route[0]);
-    const dx = next.x - this.player.x;
-    const dy = next.y - this.player.y;
-    if (Math.hypot(dx, dy) < 3) {
-      this.player.setPosition(next.x, next.y);
+    const next = this.cellFeet(this.route[0]);
+    const here = this.feetPos();
+    const dx = next.x - here.x;
+    const dy = next.y - here.y;
+    if (Math.hypot(dx, dy) < 1.5) {
+      this.setFeet(next.x, next.y);
       this.route.shift();
       if (!this.route.length) {
         const done = this.onArrive;
@@ -398,15 +526,17 @@ export class FarmScene extends Phaser.Scene {
   //  地图小工具
   // =================================================================
 
-  private cellCenter(c: Cell) {
+  /** 站在某一格时，脚底应该在哪（格子正中偏下） */
+  private cellFeet(c: Cell) {
     const s = SETTINGS.tileSize;
-    return { x: c.x * s + s / 2, y: c.y * s + s / 2 };
+    return { x: c.x * s + s / 2, y: c.y * s + s - 4 };
   }
 
   /** 主角站在哪一格（按脚的位置算） */
   private playerCell(): Cell {
     const s = SETTINGS.tileSize;
-    return { x: Math.floor(this.player.x / s), y: Math.floor((this.player.y + s * 0.3) / s) };
+    const { x, y } = this.feetPos();
+    return { x: Math.floor(x / s), y: Math.floor((y - 3) / s) };
   }
 
   private facingCell(): Cell {
@@ -423,7 +553,7 @@ export class FarmScene extends Phaser.Scene {
     const dx = target.x - here.x;
     const dy = target.y - here.y;
     this.facing = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up';
-    this.player.setTexture(`player-${this.facing}`);
+    this.showStanding();
   }
 
   private kindAt(c: Cell) {
@@ -446,25 +576,30 @@ export class FarmScene extends Phaser.Scene {
     this.refreshTile(c.x, c.y);
   }
 
-  /** 按地图字符重画一格 */
+  /** 按地图字符重画一格：地面 + 上面的东西 + 碰撞块 + 灯光 */
   private refreshTile(tx: number, ty: number) {
+    const s = SETTINGS.tileSize;
     const ch = this.grid[ty][tx];
     const view = this.views[ty][tx];
     const info = TILE_TYPES[ch] ?? TILE_TYPES['.'];
-    const { x: px, y: py } = this.cellCenter({ x: tx, y: ty });
-    const groundKinds = ['path', 'tilled', 'watered', 'water', 'grassDark'];
-    view.ground.setPosition(px, py).setTexture(groundKinds.includes(info.kind) ? info.kind : 'grass');
+    const ground = GROUND_TILES[info.ground] ?? GROUND_TILES.grass;
+    view.ground.setPosition(tx * s, ty * s).setTexture(ground.texture, frameIndex(ground.texture, ground.frame));
 
+    // 树、石头这些东西：脚底对齐格子底边，按 y 排前后（下面的挡住上面的）
+    if (view.object) this.lightSpots = this.lightSpots.filter((l) => l.fire !== view.object);
     view.object?.destroy();
     view.object = undefined;
-    if (!GROUND_KINDS.includes(info.kind) && !['hut', 'water'].includes(info.kind)) {
-      // 树、石头这些东西画在草地上面，按 y 排前后（下面的挡住上面的）
-      view.object = this.add.image(px, py, info.kind).setDepth(py);
+    if (info.object) {
+      const bottom = (ty + 1) * s;
+      view.object = this.add.image(tx * s + s / 2, bottom, info.object, 0).setOrigin(0.5, 1).setDepth(bottom);
+      if (info.light) {
+        this.lightSpots.push({ x: tx * s + s / 2, y: bottom - 22, radius: 30, fire: info.fire ? view.object : undefined });
+      }
     }
 
     if (info.solid && !view.body) {
-      view.body = this.solids.create(px, py, undefined) as Phaser.Physics.Arcade.Sprite;
-      view.body.setVisible(false).setSize(SETTINGS.tileSize, SETTINGS.tileSize).refreshBody();
+      view.body = this.solids.create(tx * s + s / 2, ty * s + s / 2, undefined) as Phaser.Physics.Arcade.Sprite;
+      view.body.setVisible(false).setSize(s, s).refreshBody();
     } else if (!info.solid && view.body) {
       view.body.destroy();
       view.body = undefined;
@@ -479,21 +614,16 @@ export class FarmScene extends Phaser.Scene {
     this.game.events.emit(UI_EVENTS.say, key, params);
   }
 
-  /** 把连在一起的 H 画成一座草棚（占位画法） */
-  private drawHut(tiles: Cell[]) {
+  /** 在连在一起的 H 上放一座草棚（图片底边对齐 H 的底边，屋顶可以伸出去）。窗户夜里会亮。 */
+  private placeHut(tiles: Cell[]) {
     const s = SETTINGS.tileSize;
-    const c = SETTINGS.colors;
     const minX = Math.min(...tiles.map((t) => t.x));
     const maxX = Math.max(...tiles.map((t) => t.x));
-    const minY = Math.min(...tiles.map((t) => t.y));
     const maxY = Math.max(...tiles.map((t) => t.y));
-    const x = minX * s;
-    const y = minY * s;
-    const w = (maxX - minX + 1) * s;
-    const h = (maxY - minY + 1) * s;
-    const g = this.add.graphics().setDepth(y + h);
-    g.fillStyle(c.hutWall).fillRect(x + 4, y + h * 0.4, w - 8, h * 0.6);
-    g.fillStyle(c.hutRoof).fillTriangle(x - 6, y + h * 0.48, x + w / 2, y - s * 0.5, x + w + 6, y + h * 0.48);
-    g.fillStyle(0x3a2a1a).fillRect(x + w / 2 - s * 0.3, y + h - s * 0.75, s * 0.6, s * 0.75); // 门
+    const cx = ((minX + maxX + 1) / 2) * s;
+    const bottom = (maxY + 1) * s;
+    const key = `house_${gameState.house}`;
+    const hut = this.add.image(cx, bottom, this.textures.exists(key) ? key : 'house_straw_hut', 0).setOrigin(0.5, 1).setDepth(bottom);
+    this.lightSpots.push({ x: cx + hut.width / 2 - 11, y: bottom - hut.height * 0.45, radius: 20 });
   }
 }

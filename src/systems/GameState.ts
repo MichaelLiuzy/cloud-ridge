@@ -31,6 +31,8 @@ function freshState() {
     clues: [] as string[],
     /** 界面正忙（对话框或小菜单开着），这时主角不能走、时间暂停 */
     uiBusy: false,
+    /** 回忆模式：画面去色、叠一层黛青，只有火光保留颜色（剧情回忆时用，不存档） */
+    memoryMode: false,
     /** 进农场时要读进来的存档（新游戏为 null） */
     pendingLoad: null as SaveData | null,
     /** 由农场场景提供：把现在的样子打包成存档 */
