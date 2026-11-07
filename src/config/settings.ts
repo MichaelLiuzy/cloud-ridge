@@ -74,6 +74,8 @@ export const SETTINGS = {
     menu: ['M'],
     /** （测试用）切换回忆模式：画面去色、只有火光保留颜色 */
     debugMemory: ['F8'],
+    /** 收起 / 展开左上角的时辰框 */
+    foldInfo: ['H'],
     /**
      * 切换工具：按 1~9 选工具栏第几格。
      * 小菜单打开时，上面的 up/down（W S 或方向键上下）用来移动选项，action（回车）确认。
@@ -181,6 +183,11 @@ export const SETTINGS = {
     },
     /** 体力条（在时辰框第二行右边，「体力」两个字后面）：长、粗 */
     staminaBar: { w: 44, h: 5 },
+    /**
+     * 时辰框可以收起（按 keys.foldInfo 或点框右边的小箭头）：
+     * arrowW 框右边箭头那一条多宽；tabW、tabH 收起后左上角小标签的宽高（上面写钟点，放不下就只写箭头）；slideMs 滑动多久（毫秒）
+     */
+    infoFold: { arrowW: 10, tabW: 64, tabH: 18, slideMs: 200 },
     /** 鼠标移到体力条上（手机上点一下）弹出的「81/100」小提示：手机上几毫秒后自动消失 */
     staminaTipMs: 2000,
     /** 右上角齿轮（设置）、笔记本按钮的大小 */
@@ -224,6 +231,7 @@ export const SETTINGS = {
     autoAdvanceSec: 4,
     musicVolume: 70,
     sfxVolume: 70,
+    infoFolded: false,
   },
 
   // ---------------- 开场过场 ----------------

@@ -20,6 +20,8 @@ export interface Prefs {
   /** 音乐、音效音量：0 ~ 100 */
   musicVolume: number;
   sfxVolume: number;
+  /** 左上角时辰框收起来了没有 */
+  infoFolded: boolean;
 }
 
 const KEY = 'cloud-ridge-prefs';

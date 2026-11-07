@@ -74,7 +74,7 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
 | 按键（比如把背包改成 B） | `src/config/settings.ts` | `keys` 里的 `bag: ['Q']` 改成 `['B']`；所有界面（背包、设置、数量框、对话）都认这里的键，背包里整理 / 丢弃 / 上锁 / 吃 / 放进箱子、翻页也在这里（`bagSort`、`bagDiscard`……），按钮上的字母跟着变 |
 | 手机摇杆、按钮大小和透明度 | `src/config/settings.ts` | `touch` |
 | 对话框、物品栏、时辰框的颜色 | `src/config/settings.ts` | `ui` |
-| 左上角时辰框（日期星期 / 时辰 / 天气 / 节日 / 钱和体力）的位置、大小、内边距，体力条的长和粗 | `src/config/settings.ts` | `ui.infoBox`、`ui.staminaBar`；钟点格式在 `src/locales/zh.ts` 的 `hud.clock` |
+| 左上角时辰框（日期星期 / 时辰 / 天气 / 节日 / 钱和体力）的位置、大小、内边距，体力条的长和粗 | `src/config/settings.ts` | `ui.infoBox`、`ui.staminaBar`；钟点格式在 `src/locales/zh.ts` 的 `hud.clock`。收起：键 `keys.foldInfo`（默认 H），收起后小标签的大小、滑动快慢在 `ui.infoFold` |
 | 水面波光多久换一次 | `src/config/settings.ts` | `waterShimmerMs` |
 | 没有图时占位色块的颜色和样子 | `src/config/assets.ts` | 每张图的 `color`、`shape` |
 | 27 色调色板 | `src/config/palette.json` | `colors` |

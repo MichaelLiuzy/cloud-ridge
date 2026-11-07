@@ -30,6 +30,7 @@ import { TOOLBAR_SLOTS, hasItem, itemName } from '../systems/inventory';
 import { drawItemSlot } from '../ui/itemSlot';
 import { wrapText } from '../ui/richText';
 import type { MenuTabId } from '../data/menuTabs';
+import { loadPrefs, setPref } from '../systems/prefs';
 import { gameState } from '../systems/GameState';
 import { ListMenu, type MenuOption } from '../ui/ListMenu';
 import { QuantityPicker } from '../ui/QuantityPicker';
@@ -68,6 +69,13 @@ export class HudScene extends Phaser.Scene {
   private staminaTip?: Phaser.GameObjects.Container;
   private staminaTipTimer?: Phaser.Time.TimerEvent;
   private infoKey = '';
+  /** 时辰框整体（收起时往左滑出去）、框右边的收起箭头、收起后左上角的小标签 */
+  private infoLayer!: Phaser.GameObjects.Container;
+  private foldArrow!: Phaser.GameObjects.Text;
+  private foldTab!: Phaser.GameObjects.Container;
+  private foldTabText!: Phaser.GameObjects.Text;
+  /** 时辰框现在多宽（含箭头那一条） */
+  private infoW = 0;
   /** 界面大小变了但正忙着（对话、菜单），等空下来再重新排版 */
   private relayoutPending = false;
 
@@ -140,6 +148,23 @@ export class HudScene extends Phaser.Scene {
     this.staminaHit.on('pointerdown', () => this.touch && this.showStaminaTip(ui.staminaTipMs));
     this.infoKey = '';
     this.staminaTip = undefined;
+    // 收起箭头（在框的右边）和收起后的小标签（左上角）
+    const fold = ui.infoFold;
+    this.foldArrow = pixelText(this, 0, 0, '◀', { color: ui.textDim2, size: ui.smallFontSize }).setOrigin(0.5);
+    const arrowHit = this.add.zone(0, 0, fold.arrowW, box.h).setOrigin(0).setInteractive();
+    arrowHit.on('pointerdown', () => this.toggleInfo());
+    this.foldArrow.setData('hit', arrowHit);
+    this.infoLayer = this.add.container(0, 0, [
+      this.infoBg, this.infoMoney, this.dateText, this.timeText, this.clockText, this.weatherText, this.tagsText,
+      this.moneyText, this.staminaLabel, this.staminaHit, this.foldArrow, arrowHit,
+      ...[this.purseIcon, this.staminaIcon].filter((x): x is Phaser.GameObjects.Image => !!x),
+    ]);
+    const tabG = this.add.graphics();
+    drawPanel(tabG, 0, 0, fold.tabW, fold.tabH);
+    this.foldTabText = pixelText(this, fold.tabW / 2, fold.tabH / 2, '', { color: ui.text }).setOrigin(0.5);
+    const tabHit = this.add.zone(0, 0, fold.tabW, fold.tabH).setOrigin(0).setInteractive();
+    tabHit.on('pointerdown', () => this.toggleInfo());
+    this.foldTab = this.add.container(box.x, box.y, [tabG, this.foldTabText, tabHit]).setVisible(loadPrefs().infoFolded);
 
     // ---- 底部工具栏 ----
     this.buildToolbar(W, H);
@@ -197,6 +222,7 @@ export class HudScene extends Phaser.Scene {
       [INPUT_EVENTS.nav, (dir: 'up' | 'down') => (this.picker ? this.picker.nudge(dir) : this.menu?.move(dir === 'up' ? -1 : 1))],
       [INPUT_EVENTS.tap, (x: number, y: number) => this.onTap(x, y)],
       [INPUT_EVENTS.debugMemory, () => (gameState.memoryMode = !gameState.memoryMode)],
+      [INPUT_EVENTS.foldInfo, () => this.toggleInfo()],
       [UI_EVENTS.say, (key: string, params?: Record<string, string | number>) => this.say(key, params)],
       [UI_EVENTS.showMenu, (opts: MenuOption[], title?: string) => this.openMenu(opts, title)],
       [VIEW_EVENTS.changed, () => this.relayout()],
@@ -328,10 +354,19 @@ export class HudScene extends Phaser.Scene {
     const labelW = this.staminaIcon ? 8 : Math.ceil(this.staminaLabel.width);
     const moneyW = 9 + Math.ceil(this.moneyText.width) + 10 + labelW + 4 + bar.w + box.padding * 2;
     const w = Math.max(box.w, rowsW, moneyW);
+    const fold = ui.infoFold;
     const h = Math.max(box.h, y - box.y - box.textNudgeY + box.padding - 2);
     // 底板
     this.infoBg.clear();
-    drawPanel(this.infoBg, box.x, box.y, w, h);
+    drawPanel(this.infoBg, box.x, box.y, w + fold.arrowW, h);
+    this.infoW = w + fold.arrowW;
+    // 收起箭头：框右边那一条，竖着居中
+    this.foldArrow.setPosition(box.x + w + fold.arrowW / 2 - 1, box.y + h / 2);
+    (this.foldArrow.getData('hit') as Phaser.GameObjects.Zone).setPosition(box.x + w - 2, box.y).setSize(fold.arrowW + 2, h);
+    // 收起后的小标签：钟点 + ▶（放不下就只有 ▶）
+    this.foldTabText.setText(`${hourText} ▶`);
+    if (this.foldTabText.width > fold.tabW - 6) this.foldTabText.setText('▶');
+    if (loadPrefs().infoFolded && !this.tweens.isTweening(this.infoLayer)) this.infoLayer.x = this.foldedX();
     const g = this.infoMoney.clear();
     drawWeatherIcon(g, box.x + box.padding, row3 + 7, weather);
     const money = toColor(ui.money);
@@ -350,6 +385,27 @@ export class HudScene extends Phaser.Scene {
     this.staminaHit.setPosition(this.staminaLabel.x - 2, rowY - 1).setSize(bx + bar.w + 2 - this.staminaLabel.x + 2, 16);
     this.staminaHit.input?.hitArea.setTo(0, 0, this.staminaHit.width, this.staminaHit.height);
     if (this.staminaTip) this.showStaminaTip();
+  }
+
+  /** 收起时时辰框滑到哪（整个框滑出屏幕左边） */
+  private foldedX() {
+    return -(SETTINGS.ui.infoBox.x + this.infoW + 2);
+  }
+
+  /** 收起 / 展开时辰框（记在这台设备上） */
+  private toggleInfo() {
+    const folded = !loadPrefs().infoFolded;
+    setPref('infoFolded', folded);
+    this.hideStaminaTip();
+    if (!folded) this.foldTab.setVisible(false);
+    this.tweens.killTweensOf(this.infoLayer);
+    this.tweens.add({
+      targets: this.infoLayer,
+      x: folded ? this.foldedX() : 0,
+      duration: SETTINGS.ui.infoFold.slideMs,
+      ease: 'Quad.easeOut',
+      onComplete: () => this.foldTab.setVisible(folded),
+    });
   }
 
   /** 体力条旁边弹出「81/100」。ms = 几毫秒后自动收起（手机）；不写就一直显示到鼠标移开 */

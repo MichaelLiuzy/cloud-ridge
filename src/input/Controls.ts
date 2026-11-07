@@ -37,6 +37,8 @@ export const INPUT_EVENTS = {
   tap: 'input:tap',
   /** （测试用）切换回忆模式 */
   debugMemory: 'input:debugMemory',
+  /** 收起 / 展开时辰框 */
+  foldInfo: 'input:foldInfo',
 } as const;
 
 /** 触屏摇杆的当前方向，由 TouchControls 写入，范围 -1 ~ 1 */
@@ -64,6 +66,7 @@ export class KeyboardControls {
     bind(SETTINGS.keys.cancel, INPUT_EVENTS.cancel);
     bind(SETTINGS.keys.bag, INPUT_EVENTS.bag);
     bind(SETTINGS.keys.menu, INPUT_EVENTS.menu);
+    bind(SETTINGS.keys.foldInfo, INPUT_EVENTS.foldInfo);
     if (SETTINGS.debugMenu) bind(SETTINGS.keys.debugMemory, INPUT_EVENTS.debugMemory);
     bind(SETTINGS.keys.up, INPUT_EVENTS.nav, 'up');
     bind(SETTINGS.keys.down, INPUT_EVENTS.nav, 'down');
