@@ -73,8 +73,7 @@ VAR is_touch = false
 }
 累了就回草棚歇着。床边能存一存今天的进度，不睡也行。 #speaker:zhou
 （操作：点草棚，选「睡觉」会结束这一天并存档；选「存档（不睡）」只存档。） #learn:save
-// 草稿
-对了，这个本子你拿着。记不住的事，就写下来。 #speaker:zhou #mood:smile
+对了，这个本子你拿着。想不起来的事、新学会的事，都记在上头。 #speaker:zhou #mood:smile
 （你拿到了笔记本。） #give:notebook #learned:got_notebook
 { is_touch:
     （操作：点「背包」打开菜单，里面有背包、笔记本和地图，点上面的栏目名切换。） #learn:menu
