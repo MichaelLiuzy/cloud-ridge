@@ -425,9 +425,9 @@ export class GameMenuScene extends Phaser.Scene {
     const i = this.hover ?? this.slot;
     const s = slotAt(i);
     const item = s ? itemInfo(s.id) : undefined;
-    // 水桶：名字后面写还有多少水
+    // 工具名字后面写「（工具）」；水桶再写还有多少水
     const water = s?.id === 'bucket' ? `　${t('bag.water', { n: gameState.water, max: TIME.stamina.bucket.capacity })}` : '';
-    const line = s ? localName(item?.name) + (isTool(s.id) ? (water || `（${t('bag.tool')}）`) : `  ${t('bag.count', { n: s.n })}`) : t('bag.empty');
+    const line = s ? localName(item?.name) + (isTool(s.id) ? `（${t('bag.tool')}）${water}` : `  ${t('bag.count', { n: s.n })}`) : t('bag.empty');
     const name = pixelText(this, x, y, line);
     info.add(name);
     if (s?.locked) {
@@ -884,7 +884,7 @@ export class GameMenuScene extends Phaser.Scene {
     let y = box.y + pad;
     c.add(pixelText(this, x, y, t(`letters.${m.id}.title`), { color: ui.money, title: true }));
     y += LINE_H + 6;
-    const runs: Run[] = parseClueMarks(fillNames(t(`letters.${m.id}.body`))).map((p) => {
+    const runs: Run[] = parseClueMarks(fillNames(t(`letters.${m.id}.body`, m.params))).map((p) => {
       if (p.clue && canGetClue(p.clue)) {
         giveClue(p.clue);
         return { text: p.text, color: ui.clueText, mark: ui.clueMark };

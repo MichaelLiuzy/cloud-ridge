@@ -64,7 +64,7 @@ export type NpcId =
   | 'fan' | 'que' | 'shen' | 'daoist' | 'soldier';
 
 /** 会花体力的动作 */
-export type StaminaAction = 'hoe' | 'water' | 'plant' | 'harvest' | 'cut_grass' | 'chop_wood' | 'chop_small_tree' | 'chop_tree' | 'mine_rock';
+export type StaminaAction = 'hoe' | 'water' | 'plant' | 'harvest' | 'cut_grass' | 'chop_wood' | 'chop_small_tree' | 'chop_tree' | 'mine_rock' | 'flatten';
 
 /** 重建老宅的阶段 id */
 export type HouseStageId = 'clear_ruins' | 'timber_frame' | 'tiled_roof' | 'courtyard';
@@ -126,10 +126,8 @@ export interface TimeTable {
     bucket: { capacity: number; perWater: number };
   };
   sleep: { beforeMidnightRestore: number; afterMidnightRestore: number };
-  faint: {
-    lateNight: { hour: number; nextDayStamina: number; fee: number; wakeAt: string; event: string };
-    exhausted: { nextDayStamina: number; fee: number; feeMaxFractionOfCash: number; wakeAt: string };
-  };
+  /** 晕倒：收现金的几成、最多多少文，第二天醒来体力几点 */
+  faint: { feeFraction: number; feeMax: number; nextDayStamina: number };
   /** 饿肚子：前一天一整天没吃东西，第二天醒来体力最多是 nextDayStamina（点数，不是比例） */
   hunger: { nextDayStamina: number };
   weather: {

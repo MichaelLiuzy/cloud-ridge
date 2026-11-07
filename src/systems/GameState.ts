@@ -92,6 +92,8 @@ function freshState() {
     menuOpen: false,
     /** 界面正忙（对话框或小菜单开着），这时主角不能走、时间暂停 */
     uiBusy: false,
+    /** 刚晕倒、收了多少钱（只在换到第二天的那一下有值，医馆来信用；不存档） */
+    faintFee: null as number | null,
     /** 回忆模式：画面去色、叠一层黛青，只有火光保留颜色（剧情回忆时用，不存档） */
     memoryMode: false,
     /** 进农场时要读进来的存档（新游戏为 null） */

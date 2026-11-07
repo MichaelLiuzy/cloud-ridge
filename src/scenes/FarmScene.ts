@@ -550,8 +550,17 @@ export class FarmScene extends Phaser.Scene {
     this.game.events.emit(UI_EVENTS.showMenu, options.map(wrap));
   }
 
-  private doToolAction(rule: HeldAction, cell: Cell) {
+  private doToolAction(rule: HeldAction, cell: Cell, confirmed = false) {
     const bucket = timeData.stamina.bucket;
+    // 填平种着东西的田：先问一次
+    const crop = gameState.crops[cellKey(cell)];
+    if (rule.id === 'flatten' && crop && !crop.dead && !confirmed) {
+      const name = localName(cropInfo(crop.crop).name);
+      const what = cropLook(crop) === 'seed' ? t('msg.flattenSeed', { name }) : name;
+      const ok = { label: t('msg.flattenYes'), run: () => this.doToolAction(rule, cell, true) };
+      return this.game.events.emit(UI_EVENTS.showMenu, [ok], t('msg.flattenAsk', { what })); // 小菜单自带「算了」
+    }
+    if (rule.id === 'flatten' && crop) this.clearCrop(cell);
     if (rule.id === 'water' && gameState.water < bucket.perWater) return this.say('msg.bucketEmpty');
     // 老宅废墟里的东西：清掉后是地基，算清了一样
     const ruin = TILE_TYPES[this.grid[cell.y][cell.x]]?.ruin;
@@ -883,20 +892,15 @@ export class FarmScene extends Phaser.Scene {
   /** 昏倒：late = 熬到凌晨两点，exhausted = 体力用完（数值见 time.ts 的 faint） */
   private faint(reason: 'late' | 'exhausted') {
     if (this.scene.isActive('Night')) return;
+    // 收现金的一成（有封顶），第二天在家醒来、体力固定；医馆的信第二天早上寄到（letters.ts 的 when.fainted）
     const run = () => {
-      let day: { news: News[]; summary: WeekSummary | null };
-      const told: News[] = [];
-      if (reason === 'late') {
-        day = this.startNewDay(timeData.faint.lateNight.nextDayStamina);
-        told.push(['msg.lateNightFaint']);
-      } else {
-        const f = timeData.faint.exhausted;
-        const fee = Math.min(f.fee, Math.floor(gameState.cash * f.feeMaxFractionOfCash));
-        spend(fee);
-        day = this.startNewDay(f.nextDayStamina);
-        told.push(['msg.exhaustedFaint', { fee }]);
-      }
-      return { told: [...told, ...day.news], summary: day.summary };
+      const f = timeData.faint;
+      const fee = Math.max(0, Math.min(f.feeMax, Math.floor(gameState.cash * f.feeFraction)));
+      spend(fee);
+      gameState.faintFee = fee;
+      const day = this.startNewDay(0, Math.min(f.nextDayStamina, gameState.maxStamina));
+      gameState.faintFee = null;
+      return { told: [[reason === 'late' ? 'msg.lateNightFaint' : 'msg.exhaustedFaint'] as News, ...day.news], summary: day.summary };
     };
     // 不是周日：和以前一样，直接到第二天（没有睡觉过场）
     if (!isLastDayOfWeek(gameState.clock!.day)) {
@@ -915,8 +919,9 @@ export class FarmScene extends Phaser.Scene {
   /**
    * 进入新的一天。返回早上要告诉玩家的事（作物冻死、木匠修好了、收货筐结算……），
    * 以及本周总结（刚过完的是周日才有，不然是 null）。
+   * staminaRatio：体力回到上限的几成；fixedStamina：晕倒后体力直接是这么多（不看吃没吃）。
    */
-  private startNewDay(staminaRatio: number): { news: News[]; summary: WeekSummary | null } {
+  private startNewDay(staminaRatio: number, fixedStamina?: number): { news: News[]; summary: WeekSummary | null } {
     const news: News[] = [];
     const clock = gameState.clock!;
     const ended = { month: clock.month, day: clock.day };
@@ -956,8 +961,8 @@ export class FarmScene extends Phaser.Scene {
     const sold = settleBasket();
     if (sold > 0) news.push(['msg.basketSold', { total: sold }]);
     // 体力：睡觉 / 昏倒按比例回；昨天一整天没吃东西，最多只有 hunger.nextDayStamina（取最低的那个）
-    let stamina = Math.round(gameState.maxStamina * staminaRatio);
-    if (!gameState.ateToday && stamina > timeData.hunger.nextDayStamina) {
+    let stamina = fixedStamina ?? Math.round(gameState.maxStamina * staminaRatio);
+    if (fixedStamina === undefined && !gameState.ateToday && stamina > timeData.hunger.nextDayStamina) {
       stamina = timeData.hunger.nextDayStamina;
       news.push(['msg.hungry', { n: stamina }]);
     }

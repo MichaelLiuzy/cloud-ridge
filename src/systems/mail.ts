@@ -16,6 +16,8 @@ export interface MailEntry {
   read: boolean;
   items: Record<string, number>;
   money: number;
+  /** 信里要填的数（比如晕倒收了多少钱 {fee}） */
+  params?: Record<string, number>;
 }
 
 export function letterInfo(id: string) {
@@ -33,6 +35,8 @@ function ready(l: Letter) {
   if (w.event && !eventHappened(w.event)) return false;
   if (w.affection && (gameState.affection[w.affection.npc] ?? 0) < w.affection.points) return false;
   if (w.chapter && !chapterStarted(w.chapter)) return false;
+  const fee = gameState.faintFee;
+  if (w.fainted && (fee === null || (w.fainted === 'paid') !== fee > 0)) return false;
   return true;
 }
 
@@ -41,8 +45,9 @@ export function sendLetter(id: string) {
   const l = letterInfo(id);
   const c = gameState.clock!;
   if (!l) return;
-  gameState.mail.unshift({ id, month: c.month, day: c.day, read: false, items: { ...l.items }, money: l.money ?? 0 });
-  if (!l.debugOnly) gameState.mailSent.push(id);
+  const params = l.when.fainted ? { fee: gameState.faintFee ?? 0 } : undefined;
+  gameState.mail.unshift({ id, month: c.month, day: c.day, read: false, items: { ...l.items }, money: l.money ?? 0, params });
+  if (!l.debugOnly && !l.repeat) gameState.mailSent.push(id);
 }
 
 /** 早上 6 点：寄到了几封新信 */

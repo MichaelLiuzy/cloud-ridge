@@ -29,7 +29,7 @@ Mac 和手机用同一套规则：**想干什么就直接点那个东西**。只
 
 **测试用：** 按 M 打开设置，最下面「测试……」里有「时间快进 3 小时」（看傍晚和夜里）和「回忆模式 开 / 关」（画面去色，只有灯笼保留颜色）。
 Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/config/settings.ts` 里的 `debugMenu` 改成 `false`。
-每件事花体力，体力用完或熬到凌晨两点会昏倒，第二天在草棚醒来（数值都在 `src/data/time.ts`）。
+每件事花体力，体力用完或熬到凌晨两点会晕倒，第二天在家里醒来，医馆来信收一笔钱（数值都在 `src/data/time.ts`）。
 
 ### 存档
 
@@ -86,7 +86,7 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
 | 游戏名 | `src/locales/zh.ts` | `game.title` |
 | 农场地图（树、石头、田放在哪） | `src/world/farmMap.ts` | 用字符画的地图，文件开头有字符对照表 |
 | 拿着什么点什么就做什么（水桶点田 = 浇水、种子点锄好的地 = 播种、熟了的菜点一下就收……）、做完变成什么、花多少体力 | `src/world/actions.ts` | `HELD_ACTIONS`（每条都有中文注释，从上往下用第一条对得上的） |
-| 每件事花多少体力、体力多少算「累」 | `src/data/time.ts` | `stamina` |
+| 每件事花多少体力、体力多少算「累」 | `src/data/time.ts` | `stamina`（用镐把田填平是 `stamina.costs.flatten`） |
 | 一天过多快 | `src/data/time.ts` | `clock.realSecondsPerGameHour`（现实几秒 = 游戏一小时） |
 | 作物生长天数、播种时节、耐不耐寒 | `src/data/crops.ts` | 每种作物的 `growDays`、`sowWindows`、`frostHardy`、`perennial`（价格见下一行） |
 | 月份、节气表、赶集日、节日表、霜降和冻土规则 | `src/data/time.ts` | `calendar` 里的 `solarTerms`、`marketDays`、`festivals`、`farmingRules` |
@@ -121,6 +121,7 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
 | 设置菜单里有哪些项目、顺序 | `src/data/settingsMenu.ts` | `SETTINGS_MENU`（文件开头有写法说明；名字在 `src/locales/zh.ts` 的 `settings.items`） |
 | 每样食物吃一个回复多少体力、物品说明 | `src/data/items.ts` | 食物的 `stamina`、`desc` |
 | 一整天没吃东西，第二天醒来体力最多多少 | `src/data/time.ts` | `hunger.nextDayStamina`（现在 80） |
+| 晕倒：收现金的几成、最多收多少、第二天体力 | `src/data/time.ts` | `faint.feeFraction`（0.1）、`faint.feeMax`（200）、`faint.nextDayStamina`（80）；医馆来信的字在 `src/locales/zh.ts` 的 `letters.clinic_faint` |
 | 天气概率、每月 1 日的天气、下雨算不算浇水 | `src/data/time.ts` | `weather.chances`、`weather.firstDayOfMonth`、`weather.rainWatersCrops` |
 | 刚种下的种子画在格子的什么高度 | `src/config/settings.ts` | `seedOffsetY`（从格子底边往上挪几像素，0 = 贴底） |
 | 睡觉过场：变暗、停留、天亮各多久，字的颜色 | `src/config/settings.ts` | `sleepCutscene` |

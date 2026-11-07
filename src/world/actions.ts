@@ -75,6 +75,8 @@ export const HELD_ACTIONS: HeldAction[] = [
   { id: 'chop', item: 'axe', on: ['bigTree'], turnsInto: '.', cost: 'chop_tree', drop: { item: 'wood', amount: [10, 12], extra: { item: 'tree_seed', chance: 0.3 } } },
   // 镐点石头：敲掉，得石块
   { id: 'mine', item: 'pickaxe', on: ['rock'], turnsInto: '.', cost: 'mine_rock', drop: { item: 'stone', amount: [3, 5] } },
+  // 镐点田：填平成普通地；种着东西（没枯）先问一次，作物不退回（熟了的菜会先被上面第一条收走）
+  { id: 'flatten', item: 'pickaxe', on: ['tilled', 'watered'], crop: ['none', 'growing', 'dead'], turnsInto: '.', cost: 'flatten' },
 ];
 
 /** 手上拿着 item（类型 type），对着 kind 地块、作物状态 crop：用哪条规则（没有返回 undefined） */

@@ -32,7 +32,11 @@ export interface Letter {
     event?: StoryEventId;
     affection?: { npc: NpcId; points: number };
     chapter?: ChapterId;
+    /** 晕倒后的第二天早上：paid = 收了钱，free = 身上没钱、没收（信里用 {fee} 写收了多少） */
+    fainted?: 'paid' | 'free';
   };
+  /** 每次条件满足都寄一封（晕倒的信）；不写 = 一辈子只寄一次 */
+  repeat?: boolean;
   /** 测试用：只能用测试菜单寄，不会自己寄来 */
   debugOnly?: boolean;
 }
@@ -41,5 +45,8 @@ export const LETTERS: Letter[] = [
   // 周里正的问候：正月十七早上到，附小白菜种子 5 包
   { id: 'zhou_greeting', from: 'zhou', items: { bok_choy_seed: 5 }, when: { date: { month: 1, day: 17 } } },
   // 测试用：测试菜单「寄一封测试信」，附 1 个馒头和 10 文
+  // 晕倒后第二天，医馆的大夫来信（每次晕倒都寄）
+  { id: 'clinic_faint', from: 'doctor', when: { fainted: 'paid' }, repeat: true },
+  { id: 'clinic_faint_free', from: 'doctor', when: { fainted: 'free' }, repeat: true },
   { id: 'debug_test', from: 'unknown', items: { mantou: 1 }, money: 10, when: {}, debugOnly: true },
 ];

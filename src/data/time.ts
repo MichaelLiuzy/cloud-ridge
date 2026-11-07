@@ -150,30 +150,19 @@ export const TIME: TimeTable = {
       chop_small_tree: 5,  // 砍小树
       chop_tree: 6,  // 砍大树
       mine_rock: 4,
+      flatten: 2,  // 用镐把田填平成普通地
     },
     bucket: { capacity: 100, perWater: 7 },  // 水桶：装满 100 点水，浇一格用 7 点（满桶能浇 14 格）。对着池塘用水桶一次加满
   },
   sleep: { beforeMidnightRestore: 1.0, afterMidnightRestore: 0.9 },  // 睡觉
   // 饿肚子：某一天从早上醒来到睡着（或昏倒）一口东西都没吃，第二天醒来体力最多只有这么多（点数）。
-  // 和上面的睡觉、下面的昏倒规则一起算时，取最低的那个。吃东西回复多少体力在 items.ts 每样食物的 stamina
+  // 和上面的睡觉规则一起算时取最低的那个；晕倒后不看这条（固定是 faint.nextDayStamina）。吃东西回复多少体力在 items.ts 每样食物的 stamina
   hunger: { nextDayStamina: 80 },
-  // 昏倒
+  // 晕倒（凌晨两点到了、或者体力用完）：第二天早上在家里醒来，医馆来信说明收了多少钱
   faint: {
-    // 熬到凌晨两点昏倒
-    lateNight: {
-      hour: 26,  // 几点昏倒（还没做，改了暂时没效果）；实际用的是上面 clock.dayEndHour
-      nextDayStamina: 0.7,  // 第二天体力剩多少（0.7 = 70%）
-      fee: 0,  // 被送回去要付多少文（还没做，改了暂时没效果）
-      wakeAt: "home",  // 在哪醒来（还没做，改了暂时没效果）
-      event: "night_watchman_escort",  // 触发的剧情事件（还没做，改了暂时没效果）
-    },
-    // 体力用完昏倒
-    exhausted: {
-      nextDayStamina: 0.5,
-      fee: 50,  // 收多少文
-      feeMaxFractionOfCash: 0.1,  // 最多收身上钱的几成（0.1 = 10%）
-      wakeAt: "clinic",  // （还没做，改了暂时没效果）现在在家醒来
-    },
+    feeFraction: 0.1,  // 收身上现金的几成（0.1 = 10%，向下取整）
+    feeMax: 200,  // 最多收多少文
+    nextDayStamina: 80,  // 第二天醒来的体力（点数；不管前一天吃没吃，上限比这还低就是上限）
   },
   // 天气
   weather: {
