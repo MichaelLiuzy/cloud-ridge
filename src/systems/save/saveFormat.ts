@@ -96,6 +96,48 @@ export interface SaveData {
 }
 
 /**
+ * 原样存进存档、读档时原样拷回来的字段（名字在游戏状态和存档里一样）。
+ * 新加一样要存档的东西：在 GameState.ts 的 freshState()、上面的 SaveData 和这里各加一处就行。
+ * 不在这里的特殊字段：clock（时钟对象）、npcs.affection（状态里叫 affection）、saveVersion / savedAt / slot、farm / player。
+ */
+export const SAVED_KEYS = [
+  'cash',
+  'stamina',
+  'maxStamina',
+  'ateToday',
+  'weather',
+  'week',
+  'metNpcs',
+  'water',
+  'plantedTrees',
+  'drops',
+  'debrisDay',
+  'mail',
+  'mailSent',
+  'lanternOff',
+  'houseStage',
+  'ruinsCleared',
+  'build',
+  'diaryFound',
+  'pickup',
+  'basket',
+  'hutIsShed',
+  'storage',
+  'crops',
+  'slots',
+  'selected',
+  'keyItems',
+  'flags',
+  'quests',
+  'clues',
+  'playerName',
+  'chapter',
+  'notebook',
+  'prologue',
+] as const;
+export type SavedKey = (typeof SAVED_KEYS)[number];
+
+/**
  * 升级步骤：MIGRATIONS[n] 把版本 n 的存档变成版本 n+1。
  * 原型期的旧存档（第 15 版以前）已经不再支持（用户 2026-11-07 定），读不出来就当这个存档位是空的。
  * 以后正式给人玩了，再改存档格式时在这里加一步。

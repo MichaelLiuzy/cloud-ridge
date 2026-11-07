@@ -6,7 +6,7 @@
 import { START as startData } from '../data/start';
 import { HOUSING as housingData } from '../data/housing';
 import { Clock } from './Clock';
-import type { SaveData } from './save/saveFormat';
+import { SAVED_KEYS, type SaveData } from './save/saveFormat';
 import type { PlantedCrop } from './farming/crops';
 import { addItem, emptySlots, isTool, itemInfo, type Slot } from './inventory';
 import { emptyWeek, type WeekStats } from './weekStats';
@@ -109,42 +109,8 @@ export function resetGameState(slot: number, load: SaveData | null = null) {
   gameState.clock = new Clock();
   if (load) {
     Object.assign(gameState.clock, load.clock);
-    Object.assign(gameState, {
-      cash: load.cash,
-      houseStage: load.houseStage,
-      ruinsCleared: load.ruinsCleared,
-      build: load.build ? { ...load.build } : null,
-      diaryFound: [...load.diaryFound],
-      pickup: { ...load.pickup },
-      basket: { ...load.basket },
-      hutIsShed: load.hutIsShed,
-      storage: load.storage.map((x) => (x ? { ...x } : null)),
-      crops: JSON.parse(JSON.stringify(load.crops)),
-      maxStamina: load.maxStamina,
-      stamina: load.stamina,
-      ateToday: load.ateToday,
-      weather: load.weather,
-      week: JSON.parse(JSON.stringify(load.week)),
-      metNpcs: [...load.metNpcs],
-      water: load.water,
-      plantedTrees: [...load.plantedTrees],
-      drops: JSON.parse(JSON.stringify(load.drops)),
-      debrisDay: load.debrisDay,
-      mail: JSON.parse(JSON.stringify(load.mail)),
-      mailSent: [...load.mailSent],
-      lanternOff: load.lanternOff,
-      slots: load.slots.map((x) => (x ? { ...x } : null)),
-      selected: load.selected,
-      keyItems: { ...load.keyItems },
-      affection: { ...load.npcs.affection },
-      flags: { ...load.flags },
-      quests: { ...load.quests },
-      clues: [...load.clues],
-      playerName: load.playerName,
-      chapter: load.chapter,
-      notebook: { controls: [...load.notebook.controls], learned: [...load.notebook.learned] },
-      prologue: load.prologue,
-    });
+    for (const k of SAVED_KEYS) Object.assign(gameState, { [k]: structuredClone(load[k]) });
+    gameState.affection = { ...load.npcs.affection };
   }
   normalizeChest();
 }

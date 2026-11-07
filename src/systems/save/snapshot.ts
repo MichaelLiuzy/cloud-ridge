@@ -6,7 +6,7 @@
 import { SETTINGS } from '../../config/settings';
 import { gameState } from '../GameState';
 import { FARM_MAP } from '../../world/farmMap';
-import { SAVE_VERSION, type SaveData } from './saveFormat';
+import { SAVED_KEYS, SAVE_VERSION, type SaveData, type SavedKey } from './saveFormat';
 
 /** 除了地图和主角位置以外，存档里的其他东西 */
 export function stateFields(): Omit<SaveData, 'farm' | 'player'> {
@@ -16,40 +16,8 @@ export function stateFields(): Omit<SaveData, 'farm' | 'player'> {
     savedAt: new Date().toISOString(),
     slot: gameState.slot,
     clock: { month: c.month, day: c.day, minutes: c.minutes },
-    cash: gameState.cash,
-    stamina: gameState.stamina,
-    maxStamina: gameState.maxStamina,
-    ateToday: gameState.ateToday,
-    weather: gameState.weather,
-    week: JSON.parse(JSON.stringify(gameState.week)),
-    metNpcs: [...gameState.metNpcs],
-    water: gameState.water,
-    plantedTrees: [...gameState.plantedTrees],
-    drops: JSON.parse(JSON.stringify(gameState.drops)),
-    debrisDay: gameState.debrisDay,
-    mail: JSON.parse(JSON.stringify(gameState.mail)),
-    mailSent: [...gameState.mailSent],
-    lanternOff: gameState.lanternOff,
-    houseStage: gameState.houseStage,
-    ruinsCleared: gameState.ruinsCleared,
-    build: gameState.build ? { ...gameState.build } : null,
-    diaryFound: [...gameState.diaryFound],
-    pickup: { ...gameState.pickup },
-    basket: { ...gameState.basket },
-    hutIsShed: gameState.hutIsShed,
-    storage: gameState.storage.map((x) => (x ? { ...x } : null)),
-    crops: JSON.parse(JSON.stringify(gameState.crops)),
-    slots: gameState.slots.map((x) => (x ? { ...x } : null)),
-    selected: gameState.selected,
-    keyItems: { ...gameState.keyItems },
     npcs: { affection: { ...gameState.affection } },
-    flags: { ...gameState.flags },
-    quests: { ...gameState.quests },
-    clues: [...gameState.clues],
-    playerName: gameState.playerName,
-    chapter: gameState.chapter,
-    notebook: { controls: [...gameState.notebook.controls], learned: [...gameState.notebook.learned] },
-    prologue: gameState.prologue,
+    ...(Object.fromEntries(SAVED_KEYS.map((k) => [k, structuredClone(gameState[k])])) as Pick<SaveData, SavedKey>),
   };
 }
 
