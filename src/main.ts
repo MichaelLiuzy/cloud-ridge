@@ -66,10 +66,44 @@ async function start() {
 
   // 方便调试：在浏览器控制台里可以用 __game、__gameState 看游戏状态
   Object.assign(window, { __game: game, __gameState: gameState });
+  gameRef = game;
+  // 回到标题画面时，如果有新版本在等，就换上
+  game.events.on(TITLE_SHOWN, applyUpdateIfSafe);
+}
+
+/**
+ * 更新：网上有新版本时，手机 / 电脑上存的旧版本不会自己马上换掉。
+ *  - 每次打开、从后台切回来、开着的时候每半小时，都去看一下有没有新版本；
+ *  - 有新版本：在标题画面就立刻刷新换上；在玩的时候先不动，等回到标题画面再换（不会丢进度）。
+ */
+export const TITLE_SHOWN = 'title:shown';
+let gameRef: Phaser.Game | null = null;
+let updateWaiting = false;
+let updateSW: ((reload?: boolean) => Promise<void>) | null = null;
+
+function applyUpdateIfSafe() {
+  if (!updateWaiting || !updateSW) return;
+  // 游戏还没开始画（还在读图）或者在标题画面：可以换
+  const atTitle = !gameRef || gameRef.scene.isActive('Title') || gameRef.scene.isActive('Boot');
+  if (atTitle) void updateSW(true);
 }
 
 void start();
 
 // 离线功能：第一次打开后把游戏存到手机/电脑里，之后没网也能玩
 // （嵌在别的网页里预览时不注册，因为那里不支持）
-if (window.top === window.self) registerSW({ immediate: true });
+if (window.top === window.self) {
+  updateSW = registerSW({
+    immediate: true,
+    onNeedRefresh() {
+      updateWaiting = true;
+      applyUpdateIfSafe();
+    },
+    onRegisteredSW(_url, reg) {
+      if (!reg) return;
+      const check = () => void reg.update().catch(() => {});
+      setInterval(check, 30 * 60 * 1000);
+      document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && check());
+    },
+  });
+}

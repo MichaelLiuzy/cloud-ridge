@@ -29,6 +29,8 @@ export class TitleScene extends Phaser.Scene {
   }
 
   create() {
+    // 告诉入口：现在在标题画面，有新版本可以换（见 src/main.ts）
+    this.game.events.emit('title:shown');
     const { gameWidth: W, gameHeight: H } = SETTINGS;
     const ui = SETTINGS.ui;
     this.menu = undefined;

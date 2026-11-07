@@ -52,7 +52,7 @@ export default defineConfig({
     inkPlugin(),
     // PWA：让游戏可以「添加到主屏幕」并离线游玩
     VitePWA({
-      registerType: 'autoUpdate',
+      // 有新版本时不马上刷新（玩到一半会丢进度），由 src/main.ts 决定什么时候换：在标题画面就换
       includeAssets: ['icons/*.png'],
       manifest: {
         name: '云岭',
@@ -75,6 +75,10 @@ export default defineConfig({
         // 打开预览页时不要被离线缓存换成游戏首页
         navigateFallbackDenylist: [/art_preview/],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        // 只有文件名里带指纹的程序文件（index-xxxxxxxx.js）才当作「永远不变」。
+        // 美术图和 manifest.json 也放在 assets/ 里，但文件名不变、内容会变：
+        // 不写这一行的话，手机 / 电脑第一次存下的旧图会一直用下去，新图（比如周里正的头像）永远出不来。
+        dontCacheBustURLsMatching: /-[A-Za-z0-9_-]{8}\.(js|css)$/,
       },
     }),
   ],
