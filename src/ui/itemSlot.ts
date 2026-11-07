@@ -14,7 +14,7 @@ export function drawItemSlot(scene: Phaser.Scene, into: Phaser.GameObjects.Conta
   const ui = SETTINGS.ui;
   const key = `icon_${slot.id}`;
   const icon = scene.textures.exists(key)
-    ? scene.add.image(x + size / 2, y + size / 2, key).setScale(ui.iconScale)
+    ? scene.add.image(x + size / 2, y + size / 2, key).setScale(size >= 16 * ui.iconScale ? ui.iconScale : 1) // 格子太小（开着箱子时）就按原大小画
     : pixelText(scene, x + size / 2, y + size / 2, localName(itemInfo(slot.id)?.name).slice(0, 1)).setOrigin(0.5);
   icon.setAlpha(alpha);
   into.add(icon);

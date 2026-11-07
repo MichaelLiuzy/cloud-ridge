@@ -11,6 +11,7 @@
 import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
 import { toColor } from '../config/palette';
+import { uiSize } from '../config/view';
 import { pixelText } from '../ui/pixelUi';
 
 /** 指令名称。游戏里用 game.events.on(INPUT_EVENTS.xxx, ...) 来接收。 */
@@ -85,7 +86,7 @@ export class KeyboardControls {
 /**
  * 鼠标 / 手指「点一下」：
  *  - 电脑上：鼠标点哪就是点哪。
- *  - 手机上：左半屏按住拖动是摇杆，快速轻点才算「点」；右半屏按下就算点。
+ *  - 手机上：左半屏按住拖动是摇杆；在哪儿都是快速轻点（抬手时）才算「点」，按住不放是长按（看说明，见 HudScene）。
  * 点到按钮、工具栏、小菜单这些界面时，不算点地图（由按钮自己处理）。
  */
 export class PointerControls {
@@ -111,8 +112,8 @@ export class PointerControls {
 
     scene.input.on('pointerdown', (p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
       if (over.length > 0) return; // 点在界面上了
-      if (touch && p.x < scene.scale.width / 2 && stickId === null) {
-        // 左半屏：先当作摇杆，抬手时如果很快、没怎么动，再算作「点」
+      if (touch && stickId === null) {
+        // 手机：先记下来（左半屏当作摇杆），抬手时如果很快、没怎么动，再算作「点」
         stickId = p.id;
         downAt = p.downTime;
         downX = ui(p).x;
@@ -125,7 +126,7 @@ export class PointerControls {
     });
 
     scene.input.on('pointermove', (p: Phaser.Input.Pointer) => {
-      if (p.id !== stickId) return;
+      if (p.id !== stickId || downX >= uiSize().w / 2) return; // 右半屏不当摇杆
       const dx = ui(p).x - base.x;
       const dy = ui(p).y - base.y;
       const dist = Math.hypot(dx, dy);

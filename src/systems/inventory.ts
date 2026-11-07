@@ -6,11 +6,14 @@
  *  - 同一种东西可以叠在一格里，最多 SETTINGS.inventory.stackMax 个；工具不叠放。
  *  - 「重要物品」（笔记本、烧焦的纸）不占格子，记在 gameState.keyItems 里。
  *  - 上锁的东西不能丢、不能卖；移动时锁跟着走。
+ *  - 格子编号从 36 起是箱子里的格子（gameState.storage，见 src/systems/home/storage.ts），
+ *    这样背包和箱子之间拖来拖去、丢弃、上锁都用同一套函数。
  * 别的地方加减东西都用这里的函数，不要直接改 gameState.slots。
  */
 import { ITEMS } from '../data/items';
 import { SETTINGS } from '../config/settings';
 import { gameState } from './GameState';
+import { localName } from '../locales/i18n';
 
 export interface Slot {
   id: string;
@@ -38,6 +41,21 @@ export function isKeyItem(id: string) {
 /** 一格最多叠几个 */
 export function stackMax(id: string) {
   return isTool(id) ? 1 : SETTINGS.inventory.stackMax;
+}
+
+/** 第 i 格：0 ~ 35 是身上（工具栏 + 背包），36 起是箱子 */
+export function slotAt(i: number): Slot | null {
+  return (i < ALL_SLOTS ? gameState.slots[i] : gameState.storage[i - ALL_SLOTS]) ?? null;
+}
+
+function setSlotAt(i: number, s: Slot | null) {
+  if (i < ALL_SLOTS) gameState.slots[i] = s;
+  else gameState.storage[i - ALL_SLOTS] = s;
+}
+
+/** 能不能放进箱子：工具和重要物品（笔记本、纸片）不放 */
+export function canStore(id: string) {
+  return !isTool(id) && !isKeyItem(id);
 }
 
 export function emptySlots(): (Slot | null)[] {
@@ -158,11 +176,11 @@ export function removeItem(id: string, n = 1, opts: { skipLocked?: boolean } = {
 
 /** 从某一格拿走 n 个（用掉手上的种子、丢弃） */
 export function takeFromSlot(i: number, n = 1) {
-  const s = gameState.slots[i];
+  const s = slotAt(i);
   if (!s) return 0;
   const k = Math.min(n, s.n);
   s.n -= k;
-  if (s.n <= 0) gameState.slots[i] = null;
+  if (s.n <= 0) setSlotAt(i, null);
   return k;
 }
 
@@ -178,28 +196,61 @@ export function heldItem(): string | undefined {
 
 /**
  * 把 from 格的东西移到 to 格：to 是空的就移过去；同一种能叠就叠上去（叠不下的留在原格）；
- * 不同的东西就两格交换。锁跟着东西走。
+ * 不同的东西就两格交换。锁跟着东西走。工具不能进箱子（这时不动，返回 false）。
  */
 export function moveSlot(from: number, to: number) {
-  if (from === to) return;
-  const a = gameState.slots[from];
-  const b = gameState.slots[to];
-  if (!a) return;
+  const a = slotAt(from);
+  const b = slotAt(to);
+  if (from === to || !a) return false;
+  if ((to >= ALL_SLOTS && !canStore(a.id)) || (b && from >= ALL_SLOTS && !canStore(b.id))) return false;
   if (b && b.id === a.id && b.n < stackMax(a.id)) {
     const k = Math.min(a.n, stackMax(a.id) - b.n);
     b.n += k;
     b.locked = b.locked || a.locked;
     a.n -= k;
-    if (a.n <= 0) gameState.slots[from] = null;
-    return;
+    if (a.n <= 0) setSlotAt(from, null);
+    return true;
   }
-  gameState.slots[from] = b;
-  gameState.slots[to] = a;
+  setSlotAt(from, b);
+  setSlotAt(to, a);
+  return true;
+}
+
+/**
+ * 整理：list 里从 from 格起，按类别（settings.ts 的 inventory.sortOrder）、再按名字排好，
+ * 同一种东西叠到一起（上锁的和没上锁的分开叠，锁跟着东西走），前面不留空格。
+ */
+export function sortSlots(list: (Slot | null)[], from = 0) {
+  const order = SETTINGS.inventory.sortOrder as readonly string[];
+  const rank = (id: string) => {
+    const i = order.indexOf(itemInfo(id)?.type ?? '');
+    return i < 0 ? order.length : i;
+  };
+  // 先把同一种（锁的状态也一样）的数量加起来
+  const total = new Map<string, Slot>();
+  for (const s of list.slice(from)) {
+    if (!s) continue;
+    const key = `${s.id}|${s.locked ? 1 : 0}`;
+    const t = total.get(key);
+    if (t) t.n += s.n;
+    else total.set(key, { ...s });
+  }
+  const name = (id: string) => localName(itemInfo(id)?.name) || id;
+  const sorted = [...total.values()].sort((a, b) => rank(a.id) - rank(b.id) || name(a.id).localeCompare(name(b.id), 'zh') || Number(!!a.locked) - Number(!!b.locked));
+  let i = from;
+  for (const s of sorted) {
+    for (let left = s.n; left > 0; ) {
+      const k = Math.min(left, stackMax(s.id));
+      list[i++] = s.locked ? { id: s.id, n: k, locked: true } : { id: s.id, n: k };
+      left -= k;
+    }
+  }
+  while (i < list.length) list[i++] = null;
 }
 
 /** 能不能丢：空格、工具、上锁的都不能。返回不能丢的原因（语言文件的 key），能丢返回 null */
 export function whyCantDiscard(i: number): string | null {
-  const s = gameState.slots[i];
+  const s = slotAt(i);
   if (!s) return 'bag.nothing';
   if (isTool(s.id)) return 'bag.cantDiscardTool';
   if (s.locked) return 'bag.cantDiscardLocked';
@@ -207,7 +258,7 @@ export function whyCantDiscard(i: number): string | null {
 }
 
 export function toggleLock(i: number) {
-  const s = gameState.slots[i];
+  const s = slotAt(i);
   if (s) s.locked = !s.locked;
 }
 

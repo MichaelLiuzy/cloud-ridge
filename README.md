@@ -19,10 +19,10 @@ Mac 和手机用同一套规则：**想干什么就直接点那个东西**。只
 | | Mac（键盘） | Mac（鼠标） | iPhone（触屏，请横屏） |
 |---|---|---|---|
 | 走路 | W A S D 或方向键 | 点地面 →「走到这里」 | 左半边屏幕按住拖动（摇杆） |
-| 做事 | 回车 = 查看 / 交互；空格 = 用手上的东西 | 点那个东西（手上的东西用得上就直接做，不弹菜单） | 轻点那个东西；或按右下「使用」对面前一格 |
+| 做事 | 回车 = 交互；空格 = 用手上的东西（面前那一格的说明写在工具栏上面） | 点那个东西（手上的东西用得上就直接做，不弹菜单） | 轻点那个东西；或按右下「使用」对面前一格 |
 | 小菜单 | 上下键选，回车确认，Esc 取消 | 点选项，点外面取消 | 点选项，点外面取消 |
 | 换手上的东西 | 数字键 1~9 | 点底部工具栏 | 点底部工具栏 |
-| 背包 | Q；方向键选格，回车拿起 / 放下，X 丢弃，L 上锁 | 拖动换位置，点按钮丢弃、上锁 | 「背包」按钮；点一样东西再点另一格就移过去 |
+| 背包 | Q；方向键选格，Shift+方向键带着东西走，X 丢弃，L 上锁，E 吃，R 整理 | 停在格子上看说明，单击选中，拖动换位置 | 「背包」按钮；点一下选中，按住拖动换位置 |
 | 设置 | Esc 或 M | 右上角齿轮 | 右上角齿轮 |
 
 现在能做的事：锄头开垦草地、水桶浇田、拿着种子点锄好的地播种、镰刀割草、斧头砍树桩和火灾残骸。
@@ -103,7 +103,6 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
 | 杂货铺上门收货：几颗心解锁、开通要多少钱 | `src/data/services.ts` | `pickup.unlockHearts`、`pickup.fee`（掌柜的台词在 `prologue.ink` 的 `pickup_offer`） |
 | 周里正交给你的开局物资 | `src/data/start.ts` | `cash`、`inventory` |
 | 好感度：每颗心多少点、最多几颗心 | `src/data/affection.ts` | `pointsPerHeart`、`maxHearts` |
-| 草棚（柴房）箱子能放几种东西 | `src/data/housing.ts` | `hut.storageSlots` |
 | 开场过场：有几格、顺序、每格用哪张图和什么效果 | `src/data/cutscenes.ts` | `CUTSCENES.opening`（每格的字在 `src/locales/zh.ts` 的 `cutscene`） |
 | 医馆对话、周里正教学、所有剧情台词 | `src/story/zh/prologue.ink` | 文件开头有写法说明：`#speaker:` 谁说、`<<clue:id=字>>` 标黄字、`@fan` 写人名 |
 | 人物名字（周里正、老范……） | `src/locales/zh.ts` | `names` |
@@ -126,6 +125,11 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
 | 每周总结显示哪几项、顺序 | `src/data/weekSummary.ts` | `WEEK_SUMMARY_ITEMS`（每句话的写法在 `src/locales/zh.ts` 的 `weekSummary`） |
 | 星期、天气、赶集日在界面上的叫法 | `src/locales/zh.ts` | `calendar.weekdays`、`weather`、`calendar.market` |
 | Q 菜单日历的文字（图例、说明） | `src/locales/zh.ts` | `calendarTab` |
+| 鼠标停在地图上多久弹出说明、手机长按多久、说明框多宽 | `src/config/settings.ts` | `ui.hoverTip`（`delayMs`、`longPressMs`、`maxW`） |
+| 地图上每样东西的说明文字 | `src/locales/zh.ts` | `hint` |
+| 背包、箱子「整理」的类别顺序 | `src/config/settings.ts` | `inventory.sortOrder` |
+| 箱子每页几行几格 | `src/config/settings.ts` | `inventory.chestRows`、`inventory.chestCols` |
+| 点一下就做的事（拿着什么点什么、熟了的菜点一下就收） | `src/world/actions.ts` | `HELD_ACTIONS` |
 | 设置项的默认值（文字速度、界面大小、音量……） | `src/config/settings.ts` | `prefsDefaults`；四档文字速度各多快在 `textSpeedMs` |
 
 > 改错了，打包会报错（比如数字写成了文字、物品 id 拼错）。看报错信息里的文件名和行号，或者直接告诉编程窗口。

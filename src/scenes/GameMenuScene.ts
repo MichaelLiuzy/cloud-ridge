@@ -3,6 +3,7 @@
  *  - 顶部一排栏目（背包 / 笔记本 / 日历 / 地图，栏目表在 src/data/menuTabs.ts）。
  *    Tab 切到下一栏，Shift+Tab 切回上一栏；手机上直接点栏目名。
  *  - Q 或 Esc 关闭；右上角的 ✕ 也能关。
+ *  - 点草棚里的箱子也是打开这里（chest = true）：只有背包一栏，左边多出箱子的格子。
  *  - 打开时游戏时间暂停（gameState.menuOpen = true，农场场景看到它就停）。
  * 背包格子的行列数在 src/config/settings.ts 的 bag 里。
  */
@@ -17,7 +18,9 @@ import { isTouchDevice } from '../input/Controls';
 import { localName, t } from '../locales/i18n';
 import { fillNames } from '../story/text';
 import { gameState } from '../systems/GameState';
-import { ALL_SLOTS, TOOLBAR_SLOTS, hasItem, isTool, itemInfo, moveSlot, takeFromSlot, toggleLock, whyCantDiscard } from '../systems/inventory';
+import { ALL_SLOTS, TOOLBAR_SLOTS, canStore, hasItem, isTool, itemInfo, moveSlot, slotAt, sortSlots, takeFromSlot, toggleLock, whyCantDiscard } from '../systems/inventory';
+import { CHEST_PAGE, normalizeChest, transferSlot } from '../systems/home/storage';
+import { shopSellPrice } from '../systems/economy/shop';
 import { drawItemSlot, drawLock } from '../ui/itemSlot';
 import { ListMenu } from '../ui/ListMenu';
 import { QuantityPicker } from '../ui/QuantityPicker';
@@ -44,10 +47,16 @@ export class GameMenuScene extends Phaser.Scene {
   private content!: Phaser.GameObjects.Container;
   /** 打开后一小会儿不理按键（免得打开菜单的那下 Q 又把它关掉） */
   private openedAt = 0;
-  /** 背包：光标在第几格（0 ~ 8 是工具栏，9 ~ 35 是背包） */
+  /** 背包：选中第几格（0 ~ 8 是工具栏，9 ~ 35 是背包，36 起是箱子） */
   private slot = 0;
-  /** 拿起来、正要挪的是第几格（没拿是 null） */
-  private held: number | null = null;
+  /** 鼠标停在第几格（没停在格子上是 null）：说明先显示这一格 */
+  private hover: number | null = null;
+  /** 开着箱子；箱子看到第几页 */
+  private chest = false;
+  private page = 0;
+  /** 说明那块：画在哪、一层（鼠标移来移去时只重画这一层） */
+  private infoBox = { x: 0, y: 0, w: 0 };
+  private info?: Phaser.GameObjects.Container;
   /** 背包底下显示的一句话（丢掉了、不能丢的原因……） */
   private note = '';
   /** 数量框、确认框开着：这时背包不理按键和点击 */
@@ -70,10 +79,13 @@ export class GameMenuScene extends Phaser.Scene {
     super('GameMenu');
   }
 
-  create(data: { tab?: MenuTabId }) {
-    this.tab = data?.tab ?? 'bag';
+  create(data: { tab?: MenuTabId; chest?: boolean }) {
+    this.chest = !!data?.chest;
+    this.tab = this.chest ? 'bag' : (data?.tab ?? 'bag');
     this.slot = gameState.selected;
-    this.held = null;
+    this.hover = null;
+    this.page = 0;
+    normalizeChest();
     this.note = '';
     this.modal = undefined;
     this.picker = undefined;
@@ -88,7 +100,7 @@ export class GameMenuScene extends Phaser.Scene {
     ({ w: W, h: H } = uiSize());
     AREA = { x: 8, y: 28, w: W - 16, h: H - 34 };
     // 界面大小变了（转屏）：重新打开
-    const relayout = () => this.scene.restart({ tab: this.tab });
+    const relayout = () => this.scene.restart({ tab: this.tab, chest: this.chest });
     this.game.events.on(VIEW_EVENTS.changed, relayout);
     this.events.once('shutdown', () => {
       this.game.events.off(VIEW_EVENTS.changed, relayout);
@@ -144,23 +156,20 @@ export class GameMenuScene extends Phaser.Scene {
         return;
       }
       if (this.modal) return;
-      if (e.key === 'Tab') return this.switchTab(e.shiftKey ? -1 : 1);
-      // 背包里拿着东西时，Esc 先放回去
-      if (is(keys.cancel, e) && this.tab === 'bag' && this.held !== null) {
-        this.held = null;
-        this.note = '';
-        return this.redraw();
-      }
+      if (e.key === 'Tab' && !this.chest) return this.switchTab(e.shiftKey ? -1 : 1);
       if (is(keys.bag, e) || is(keys.cancel, e)) return this.close();
       if (this.tab === 'bag') {
-        if (is(keys.action, e)) return this.bagPick(this.slot);
+        if (is(keys.action, e)) return this.select(this.slot);
+        if (e.key === 'r' || e.key === 'R') return this.sort(this.slot >= ALL_SLOTS);
+        if ((e.key === 'f' || e.key === 'F') && this.chest) return this.transfer();
+        if ((e.key === '[' || e.key === ']') && this.chest) return this.flipPage(e.key === ']' ? 1 : -1);
         if (e.key === 'x' || e.key === 'X') return this.discard();
         if (e.key === 'l' || e.key === 'L') return this.lock();
         if (e.key === 'e' || e.key === 'E') return this.eat();
       }
       if (this.tab === 'calendar' && (e.key === '[' || e.key === ']')) return this.flipMonth(e.key === ']' ? 1 : -1);
       const dir = is(keys.up, e) ? 'up' : is(keys.down, e) ? 'down' : is(keys.left, e) ? 'left' : is(keys.right, e) ? 'right' : null;
-      if (dir) this.nav(dir);
+      if (dir) this.nav(dir, e.shiftKey);
     };
     kb.on('keydown', onKey);
     this.events.once('shutdown', () => {
@@ -169,17 +178,27 @@ export class GameMenuScene extends Phaser.Scene {
     });
   }
 
-  private nav(dir: 'up' | 'down' | 'left' | 'right') {
+  /** 方向键。背包里：移到那个方向最近的一格；按住 Shift 就把选中的东西也带过去 */
+  private nav(dir: 'up' | 'down' | 'left' | 'right', shift = false) {
     if (this.tab === 'bag') {
-      const cols = TOOLBAR_SLOTS;
-      const step = { up: -cols, down: cols, left: -1, right: 1 }[dir];
-      const next = this.slot + step;
-      // 左右到头不换行，上下到头不动
-      if (next < 0 || next >= ALL_SLOTS) return;
-      if ((dir === 'left' || dir === 'right') && Math.floor(next / cols) !== Math.floor(this.slot / cols)) return;
-      this.slot = next;
-      if (this.held === null) this.note = '';
-      this.redraw();
+      const c = (i: number) => {
+        const r = this.cellRect(i);
+        return { x: r.x + r.size / 2, y: r.y + r.size / 2 };
+      };
+      const here = c(this.slot);
+      const [ax, ay] = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[dir];
+      let best = -1;
+      let bestScore = Infinity;
+      for (const i of this.visibleCells()) {
+        const p = c(i);
+        const along = (p.x - here.x) * ax + (p.y - here.y) * ay;
+        const side = Math.abs((p.x - here.x) * ay + (p.y - here.y) * ax);
+        if (along <= 1 || side > along * 2) continue;
+        if (along + side * 2 < bestScore) [best, bestScore] = [i, along + side * 2];
+      }
+      if (best < 0) return;
+      if (shift && slotAt(this.slot)) return this.moveTo(this.slot, best);
+      this.select(best);
     } else if (this.tab === 'notebook') {
       if (dir === 'up' || dir === 'down') this.scrollBy(dir === 'down' ? LINE_H : -LINE_H);
       else this.switchSection(dir === 'right' ? 1 : -1);
@@ -241,7 +260,8 @@ export class GameMenuScene extends Phaser.Scene {
     this.tabBar.removeAll(true);
     const ui = SETTINGS.ui;
     let x = 8;
-    for (const tab of MENU_TABS) {
+    const tabs = this.chest ? [{ id: 'bag' as MenuTabId, label: 'chest.tab' }] : MENU_TABS;
+    for (const tab of tabs) {
       const label = pixelText(this, 0, 0, t(tab.label));
       const w = Math.ceil(label.width) + 12;
       const g = this.add.graphics();
@@ -271,116 +291,157 @@ export class GameMenuScene extends Phaser.Scene {
     this.tabBar.add([close, hit]);
   }
 
-  // ---------------- 背包 ----------------
+  // ---------------- 背包（和箱子共用）----------------
+  //  格子编号：0 ~ 8 工具栏，9 ~ 35 背包，36 起是箱子（见 src/systems/inventory.ts 的 slotAt）。
+  //  鼠标停在一格上：看说明；单击：选中这一格（下面出现能做的事）；拖动：才换位置。
 
-  /** 第 i 格画在哪（上面一排是工具栏，空一点再是背包 3 行） */
+  /** 这一页能看到哪些格子 */
+  private visibleCells() {
+    const list = [...Array(ALL_SLOTS).keys()];
+    if (this.chest) for (let k = 0; k < CHEST_PAGE; k++) list.push(ALL_SLOTS + this.page * CHEST_PAGE + k);
+    return list;
+  }
+
+  /**
+   * 第 i 格画在哪。
+   *  - 背包：上面一排是工具栏，空一点再是背包 3 行，放在正中。
+   *  - 开着箱子：左边是箱子这一页（6 行 × 9 格），右边是身上的东西；格子小一点才放得下。
+   */
   private cellRect(i: number) {
-    const S = SETTINGS.bag.slotSize;
     const gap = 2;
-    const sep = 8;
+    const sep = 6;
     const cols = TOOLBAR_SLOTS;
+    const S = this.chest ? Math.min(SETTINGS.bag.slotSize, Math.floor((AREA.w - 24) / (cols * 2)) - gap) : SETTINGS.bag.slotSize;
     const gridW = cols * S + (cols - 1) * gap;
-    const x0 = Math.round((W - gridW) / 2);
-    const y0 = AREA.y + 4;
+    const y0 = AREA.y + (this.chest ? 22 : 4);
+    if (i >= ALL_SLOTS) {
+      const k = (i - ALL_SLOTS) % CHEST_PAGE;
+      return { x: AREA.x + 4 + (k % cols) * (S + gap), y: y0 + Math.floor(k / cols) * (S + gap), size: S };
+    }
+    const x0 = this.chest ? AREA.x + AREA.w - 4 - gridW : Math.round((W - gridW) / 2);
     const row = Math.floor(i / cols);
     return { x: x0 + (i % cols) * (S + gap), y: y0 + row * (S + gap) + (row >= 1 ? sep : 0), size: S };
   }
 
   /** 界面坐标 (x, y) 落在第几格（没落在格子上返回 -1） */
   private cellAt(x: number, y: number) {
-    for (let i = 0; i < ALL_SLOTS; i++) {
+    return this.visibleCells().find((i) => {
       const r = this.cellRect(i);
-      if (x >= r.x && x < r.x + r.size && y >= r.y && y < r.y + r.size) return i;
-    }
-    return -1;
+      return x >= r.x && x < r.x + r.size && y >= r.y && y < r.y + r.size;
+    }) ?? -1;
+  }
+
+  /** 画一个小按钮，返回它右边的 x */
+  private button(x: number, y: number, label: string, enabled: boolean, run: () => void, into = this.content) {
+    const ui = SETTINGS.ui;
+    const txt = pixelText(this, 0, 0, label, { color: enabled ? ui.text : ui.textDim });
+    const w = Math.ceil(txt.width) + 12;
+    const bg = this.add.graphics();
+    bg.fillStyle(toColor(ui.highlight), enabled ? 1 : 0.4).fillRect(x, y, w, 18);
+    drawFrame(bg, x, y, w, 18, toColor(enabled ? ui.border : ui.innerBorder));
+    txt.setPosition(x + 6, y + 3);
+    const hit = this.add.zone(x, y, w, 18).setOrigin(0).setInteractive();
+    hit.on('pointerdown', () => !this.modal && enabled && run());
+    into.add([bg, txt, hit]);
+    return x + w + 4;
   }
 
   private drawBag() {
     const ui = SETTINGS.ui;
-    const rows = ALL_SLOTS / TOOLBAR_SLOTS;
+    const keys = !this.touch;
     const g = this.add.graphics();
     this.content.add(g);
-    for (let i = 0; i < ALL_SLOTS; i++) {
+    for (const i of this.visibleCells()) {
       const { x, y, size: S } = this.cellRect(i);
-      g.fillStyle(toColor(i === this.held ? ui.highlight : ui.innerBorder)).fillRect(x, y, S, S);
+      g.fillStyle(toColor(i === this.slot ? ui.highlight : ui.innerBorder)).fillRect(x, y, S, S);
       drawFrame(g, x, y, S, S, toColor(i === this.slot ? ui.toolSelected : ui.border));
-      // 拿起来的那格画淡一点
-      drawItemSlot(this, this.content, x, y, S, gameState.slots[i], i === this.held ? 0.4 : 1);
+      drawItemSlot(this, this.content, x, y, S, slotAt(i));
       const hit = this.add.zone(x, y, S, S).setOrigin(0).setInteractive();
       hit.on('pointerdown', (p: Phaser.Input.Pointer) => {
         if (this.modal) return;
         const at = this.cameras.main.getWorldPoint(p.x, p.y);
         this.press = { i, x: at.x, y: at.y, dragging: false };
       });
+      hit.on('pointerover', () => this.setHover(i));
+      hit.on('pointerout', () => this.hover === i && this.setHover(null));
       this.content.add(hit);
     }
-    // 左边写「工具栏」「背包」
+    // 格子旁边的字和「整理」按钮
     const r0 = this.cellRect(0);
-    const r1 = this.cellRect(TOOLBAR_SLOTS);
-    this.content.add(pixelText(this, r0.x - 6, r0.y + r0.size / 2, t('bag.toolbarLabel'), { color: ui.textDim2 }).setOrigin(1, 0.5));
-    this.content.add(pixelText(this, r1.x - 6, r1.y + r1.size / 2, t('bag.bagLabel'), { color: ui.textDim2 }).setOrigin(1, 0.5));
-
-    // 底下：选中的东西叫什么、有几个；说明或提示；按钮
-    const last = this.cellRect(ALL_SLOTS - 1);
-    const left = this.cellRect((rows - 1) * TOOLBAR_SLOTS);
-    let y = last.y + last.size + 6;
-    const sel = gameState.slots[this.slot];
-    const info = sel ? itemInfo(sel.id) : undefined;
-    let line = t('bag.empty');
-    if (sel) {
-      const extra = isTool(sel.id) ? `（${t('bag.tool')}）` : `  ${t('bag.count', { n: sel.n })}`;
-      line = localName(info?.name) + extra;
+    const r9 = this.cellRect(TOOLBAR_SLOTS);
+    const sortKey = keys ? ' R' : '';
+    if (this.chest) {
+      const c0 = this.cellRect(ALL_SLOTS + this.page * CHEST_PAGE);
+      const pages = gameState.storage.length / CHEST_PAGE;
+      const head = pixelText(this, c0.x, AREA.y + 3, t('chest.title', { page: this.page + 1, pages }), { color: ui.textDim2 });
+      this.content.add(head);
+      let bx = c0.x + Math.ceil(head.width) + 6;
+      bx = this.button(bx, AREA.y, '◀', this.page > 0, () => this.flipPage(-1));
+      bx = this.button(bx, AREA.y, '▶', this.page < pages - 1, () => this.flipPage(1));
+      this.button(bx + 4, AREA.y, t('bag.sort') + sortKey, true, () => this.sort(true));
+      this.content.add(pixelText(this, r0.x, AREA.y + 3, t('bag.bagLabel'), { color: ui.textDim2 }));
+      this.button(r0.x + 40, AREA.y, t('bag.sort') + sortKey, true, () => this.sort(false));
+    } else {
+      this.content.add(pixelText(this, r0.x - 6, r0.y + r0.size / 2, t('bag.toolbarLabel'), { color: ui.textDim2 }).setOrigin(1, 0.5));
+      this.content.add(pixelText(this, r9.x - 6, r9.y + r9.size / 2, t('bag.bagLabel'), { color: ui.textDim2 }).setOrigin(1, 0.5));
+      const last = this.cellRect(TOOLBAR_SLOTS * 2 - 1);
+      this.button(last.x + last.size + 6, last.y + (last.size - 18) / 2, t('bag.sort') + sortKey, true, () => this.sort(false));
     }
-    const nameText = pixelText(this, left.x, y, line);
-    this.content.add(nameText);
-    if (sel?.locked) {
-      const lg = this.add.graphics();
-      drawLock(lg, left.x + Math.ceil(nameText.width) + 6, y + 2);
-      this.content.add([lg, pixelText(this, left.x + Math.ceil(nameText.width) + 16, y, t('bag.locked'), { color: ui.textDim2 })]);
-    }
-    y += LINE_H + 2;
-    // 第二行：刚做的事 / 不能丢的原因 / 物品说明
-    const why = sel ? whyCantDiscard(this.slot) : null;
-    const second = this.note || (why && sel ? t(why) : '') || (info?.desc ? localName(info.desc) : '');
-    if (second) this.content.add(pixelText(this, left.x, y, second, { color: ui.textDim2, wrap: last.x + last.size - left.x }));
-    y += LINE_H * 2 + 4;
 
-    // 按钮：丢弃（工具、上锁的、空格是灰的）、上锁 / 解锁
-    let bx = left.x;
-    const button = (label: string, enabled: boolean, run: () => void) => {
-      const txt = pixelText(this, 0, 0, label, { color: enabled ? ui.text : ui.textDim });
-      const w = Math.ceil(txt.width) + 14;
-      const bg = this.add.graphics();
-      bg.fillStyle(toColor(ui.highlight), enabled ? 1 : 0.4).fillRect(bx, y, w, 18);
-      drawFrame(bg, bx, y, w, 18, toColor(enabled ? ui.border : ui.innerBorder));
-      txt.setPosition(bx + 7, y + 3);
-      const hit = this.add.zone(bx, y, w, 18).setOrigin(0).setInteractive();
-      hit.on('pointerdown', () => !this.modal && run());
-      this.content.add([bg, txt, hit]);
-      bx += w + 6;
-    };
-    const keys = !this.touch;
-    button(t('bag.discard') + (keys ? ' X' : ''), !!sel && !why, () => this.discard());
-    button((sel?.locked ? t('bag.unlock') : t('bag.lock')) + (keys ? ' L' : ''), !!sel, () => this.lock());
-    if (sel && isFood(sel.id)) button(t('bag.eat') + (keys ? ' E' : ''), true, () => this.eat());
-    // 操作提示 / 拿起来了
-    const held = this.held !== null ? gameState.slots[this.held] : null;
-    const hint = held
-      ? t(this.touch ? 'bag.pickedTouch' : 'bag.picked', { name: localName(itemInfo(held.id)?.name) })
-      : t(this.touch ? 'bag.touchHint' : 'bag.keyHint');
-    this.content.add(pixelText(this, bx + 6, y + 3, hint, { color: held ? ui.text : ui.textDim }));
+    // 底下：说明（鼠标停着的那格，没有就是选中的那格），再下面是选中那格能做的事
+    const bottom = Math.max(...this.visibleCells().map((i) => this.cellRect(i).y + this.cellRect(i).size));
+    const left = this.chest ? AREA.x + 4 : this.cellRect(TOOLBAR_SLOTS * 3).x;
+    this.infoBox = { x: left, y: bottom + 6, w: (this.chest ? AREA.x + AREA.w - 4 : this.cellRect(ALL_SLOTS - 1).x + r0.size) - left };
+    this.info = this.add.container(0, 0);
+    this.content.add(this.info);
+    this.drawInfo();
+    const sel = slotAt(this.slot);
+    const why = whyCantDiscard(this.slot);
+    let bx = left;
+    const by = Math.min(this.infoBox.y + LINE_H * 3 + 6, AREA.y + AREA.h - 20);
+    bx = this.button(bx, by, t('bag.discard') + (keys ? ' X' : ''), !!sel && !why, () => this.discard());
+    bx = this.button(bx, by, (sel?.locked ? t('bag.unlock') : t('bag.lock')) + (keys ? ' L' : ''), !!sel, () => this.lock());
+    if (sel && isFood(sel.id) && this.slot < ALL_SLOTS) bx = this.button(bx, by, t('bag.eat') + (keys ? ' E' : ''), true, () => this.eat());
+    if (sel && this.chest) {
+      const label = this.slot < ALL_SLOTS ? t('chest.put') : t('chest.take');
+      bx = this.button(bx, by, label + (keys ? ' F' : ''), canStore(sel.id), () => this.transfer());
+    }
+    this.content.add(pixelText(this, bx + 4, by + 3, t(this.touch ? 'bag.touchHint' : 'bag.keyHint'), { color: ui.textDim }));
   }
 
-  /** 回车 / 点一下：没拿东西就拿起这一格，拿着东西就放到这一格（交换或叠上去） */
-  private bagPick(i: number) {
-    if (this.held === null) {
-      this.slot = i;
-      if (gameState.slots[i]) this.held = i;
-    } else {
-      if (this.held !== i) moveSlot(this.held, i);
-      this.held = null;
-      this.slot = i;
+  /** 说明：名字和数量（上锁的加小锁）、物品说明或刚做的事、能卖的话今日售价 */
+  private drawInfo() {
+    const info = this.info;
+    if (!info?.active) return;
+    info.removeAll(true);
+    const ui = SETTINGS.ui;
+    const { x, y, w } = this.infoBox;
+    const i = this.hover ?? this.slot;
+    const s = slotAt(i);
+    const item = s ? itemInfo(s.id) : undefined;
+    const line = s ? localName(item?.name) + (isTool(s.id) ? `（${t('bag.tool')}）` : `  ${t('bag.count', { n: s.n })}`) : t('bag.empty');
+    const name = pixelText(this, x, y, line);
+    info.add(name);
+    if (s?.locked) {
+      const lg = this.add.graphics();
+      drawLock(lg, x + Math.ceil(name.width) + 6, y + 2);
+      info.add([lg, pixelText(this, x + Math.ceil(name.width) + 16, y, t('bag.locked'), { color: ui.textDim2 })]);
     }
+    const price = s && gameState.clock ? shopSellPrice(s.id, gameState.clock) : null;
+    if (price != null) info.add(pixelText(this, x + w, y, t('bag.price', { price }), { color: ui.money }).setOrigin(1, 0));
+    const second = (i === this.slot && this.note) || (item?.desc ? localName(item.desc) : '');
+    if (second) info.add(pixelText(this, x, y + LINE_H + 2, second, { color: ui.textDim2, wrap: w }));
+  }
+
+  private setHover(i: number | null) {
+    if (this.hover === i || this.touch) return;
+    this.hover = i;
+    this.drawInfo();
+  }
+
+  /** 选中一格（单击、方向键）。不会动东西 */
+  private select(i: number) {
+    this.slot = i;
     this.note = '';
     this.redraw();
   }
@@ -390,31 +451,68 @@ export class GameMenuScene extends Phaser.Scene {
     if (!this.press || !p.isDown || this.modal) return;
     const at = this.cameras.main.getWorldPoint(p.x, p.y);
     if (!this.press.dragging) {
-      if (Math.hypot(at.x - this.press.x, at.y - this.press.y) < 6 || !gameState.slots[this.press.i]) return;
+      if (Math.hypot(at.x - this.press.x, at.y - this.press.y) < 6 || !slotAt(this.press.i)) return;
       this.press.dragging = true;
-      const S = SETTINGS.bag.slotSize;
+      const S = this.cellRect(this.press.i).size;
       this.ghost = this.add.container(0, 0).setDepth(70);
-      drawItemSlot(this, this.ghost, -S / 2, -S / 2, S, gameState.slots[this.press.i]);
+      drawItemSlot(this, this.ghost, -S / 2, -S / 2, S, slotAt(this.press.i));
     }
     this.ghost?.setPosition(Math.round(at.x), Math.round(at.y));
   }
 
-  /** 松手：拖到另一格就移过去；没拖动就是「点了一下」 */
+  /** 松手：拖到另一格就移过去（同一种就叠上去）；没拖动就是「单击」= 选中 */
   private dragEnd(p: Phaser.Input.Pointer) {
     const press = this.press;
     this.press = null;
     this.ghost?.destroy();
     this.ghost = undefined;
     if (!press || this.modal) return;
-    if (!press.dragging) return this.bagPick(press.i);
+    if (!press.dragging) return this.select(press.i);
     const at = this.cameras.main.getWorldPoint(p.x, p.y);
-    const to = this.cellAt(at.x, at.y);
-    if (to >= 0 && to !== press.i) {
-      moveSlot(press.i, to);
-      this.slot = to;
-    }
-    this.held = null;
+    this.moveTo(press.i, this.cellAt(at.x, at.y));
+  }
+
+  /** 把 from 格的东西挪到 to 格（工具放不进箱子时说一声） */
+  private moveTo(from: number, to: number) {
+    if (to < 0 || to === from) return;
+    const s = slotAt(from);
     this.note = '';
+    if (moveSlot(from, to)) this.slot = to;
+    else if (s) this.note = t('chest.cantStore', { name: localName(itemInfo(s.id)?.name) });
+    normalizeChest();
+    this.redraw();
+  }
+
+  /** 箱子翻页 */
+  private flipPage(delta: number) {
+    const pages = gameState.storage.length / CHEST_PAGE;
+    this.page = Phaser.Math.Clamp(this.page + delta, 0, pages - 1);
+    if (this.slot >= ALL_SLOTS) this.slot = ALL_SLOTS + this.page * CHEST_PAGE;
+    this.redraw();
+  }
+
+  /** 整理：箱子整个排；背包只排下面 27 格，工具栏不动 */
+  private sort(chest: boolean) {
+    if (chest) {
+      sortSlots(gameState.storage);
+      normalizeChest();
+      this.page = 0;
+    } else sortSlots(gameState.slots, TOOLBAR_SLOTS);
+    this.note = '';
+    this.redraw();
+  }
+
+  /** 开着箱子时：选中的那格整格放进箱子 / 拿回身上 */
+  private transfer() {
+    const s = slotAt(this.slot);
+    if (!s) return;
+    const name = localName(itemInfo(s.id)?.name);
+    if (!canStore(s.id)) this.note = t('chest.cantStore', { name });
+    else {
+      const n = transferSlot(this.slot);
+      const toChest = this.slot < ALL_SLOTS;
+      this.note = n > 0 ? t(toChest ? 'chest.putDone' : 'chest.takeDone', { name, n }) : t(toChest ? 'chest.full' : 'msg.bagFull');
+    }
     this.redraw();
   }
 
@@ -426,12 +524,11 @@ export class GameMenuScene extends Phaser.Scene {
       this.note = t(why);
       return this.redraw();
     }
-    const s = gameState.slots[i]!;
+    const s = slotAt(i)!;
     const name = localName(itemInfo(s.id)?.name);
     const confirm = (n: number) =>
       this.confirm(t('bag.discardConfirm', { name, n }), t('bag.discardYes'), () => {
         takeFromSlot(i, n);
-        if (this.held === i && !gameState.slots[i]) this.held = null;
         this.note = t('bag.discarded', { name, n });
         this.redraw();
       });
@@ -449,17 +546,15 @@ export class GameMenuScene extends Phaser.Scene {
 
   /** 吃掉选中那格的一个（只有食物能吃，src/systems/food.ts） */
   private eat() {
-    const s = gameState.slots[this.slot];
-    if (!s) return;
-    const ate = eatFromSlot(this.slot);
+    const ate = this.slot < ALL_SLOTS ? eatFromSlot(this.slot) : null;
+    if (!slotAt(this.slot) && !ate) return;
     this.note = ate ? t('msg.ate', { name: localName(itemInfo(ate.id)?.name), n: ate.gain }) : t('bag.cantEat');
-    if (this.held === this.slot && !gameState.slots[this.slot]) this.held = null;
     this.redraw();
   }
 
   /** 上锁 / 解锁 */
   private lock() {
-    const s = gameState.slots[this.slot];
+    const s = slotAt(this.slot);
     if (!s) return;
     toggleLock(this.slot);
     const name = localName(itemInfo(s.id)?.name);

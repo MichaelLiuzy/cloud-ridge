@@ -57,7 +57,7 @@ export const FARM_MAP: string[] = [
  * 每种字符是什么：
  *  kind   程序用的种类名（工具规则在 src/world/actions.ts 里按它判断）
  *  solid  挡不挡路
- *  hint   对着它「查看」时显示哪句话（语言文件 src/locales/zh.ts 里的名字）
+ *  hint   鼠标停在它上面（手机长按、键盘面朝它）时显示的说明（语言文件 src/locales/zh.ts 里的名字）
  *  ground 脚下画哪种地面（名字见 src/config/assets.ts 的 GROUND_TILES）
  *  object 上面再放什么东西（图片名，见 src/config/assets.ts 的 ASSETS）；没有就不写
  *  light  夜里会不会亮（挖出暖色光圈）

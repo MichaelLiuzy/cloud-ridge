@@ -29,7 +29,7 @@ export function stateFields(): Omit<SaveData, 'farm' | 'player'> {
     pickup: { ...gameState.pickup },
     basket: { ...gameState.basket },
     hutIsShed: gameState.hutIsShed,
-    storage: { ...gameState.storage },
+    storage: gameState.storage.map((x) => (x ? { ...x } : null)),
     crops: JSON.parse(JSON.stringify(gameState.crops)),
     slots: gameState.slots.map((x) => (x ? { ...x } : null)),
     selected: gameState.selected,

@@ -219,8 +219,6 @@ export interface ItemsTable {
 export interface Dwelling {
   /** 体力上限 */
   maxStamina: number;
-  /** 储物格数 */
-  storageSlots: number;
   /** 解锁的家具或功能 */
   unlocks: string[];
 }

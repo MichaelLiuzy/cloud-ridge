@@ -22,13 +22,14 @@ import { CHAPTERS, type ChapterId } from '../data/clues';
 import { localName as nameOf } from '../locales/i18n';
 import { fillNames } from '../story/text';
 import { STORY_EVENTS, debugNextChapter, fireStoryEvent, storyEvents } from '../systems/story/notebook';
-import { FARM_EVENTS } from './FarmScene';
+import { FARM_EVENTS, type FarmScene } from './FarmScene';
 import { debugSetAffection } from '../systems/affection';
 import { AFFECTION } from '../data/affection';
 import { pickupOfferReady, unlockPickup } from '../systems/economy/pickup';
 import { SERVICES } from '../data/services';
 import { TOOLBAR_SLOTS, hasItem } from '../systems/inventory';
 import { drawItemSlot } from '../ui/itemSlot';
+import { wrapText } from '../ui/richText';
 import type { MenuTabId } from '../data/menuTabs';
 import { gameState } from '../systems/GameState';
 import { ListMenu, type MenuOption } from '../ui/ListMenu';
@@ -114,6 +115,12 @@ export class HudScene extends Phaser.Scene {
   private layoutH = 0;
   private touchButtons: Phaser.GameObjects.Container[] = [];
   private touch = false;
+  /** 一格的说明：鼠标停住 / 手机长按时跟着手指的小框，键盘时工具栏上面那一条（settings.ts 的 ui.hoverTip） */
+  private tip!: Phaser.GameObjects.Container;
+  private facingTip!: Phaser.GameObjects.Container;
+  /** 鼠标最后停在哪、什么时候停下的（停在按钮上不算）；手机上按住的那根手指 */
+  private hover: { x: number; y: number; at: number; onUi: boolean } | null = null;
+  private press: { p: Phaser.Input.Pointer; x: number; y: number } | null = null;
 
   constructor() {
     super('Hud');
@@ -165,6 +172,22 @@ export class HudScene extends Phaser.Scene {
     const hit = this.add.zone(0, 0, DIALOG.w, DIALOG.h).setOrigin(0).setInteractive();
     hit.on('pointerdown', () => this.closeDialog());
     this.dialog = this.add.container(dx, dy, [dialogBg, this.dialogText, hit]).setScale(ds).setVisible(false).setDepth(50);
+
+    // ---- 一格的说明（悬停、长按、面前那一格）----
+    this.tip = this.add.container(0, 0).setDepth(55).setVisible(false);
+    this.facingTip = this.add.container(0, 0).setDepth(44).setVisible(false);
+    this.hover = null;
+    this.press = null;
+    this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
+      if (this.touch) return;
+      const at = this.cameras.main.getWorldPoint(p.x, p.y);
+      this.hover = { x: at.x, y: at.y, at: this.time.now, onUi: this.input.hitTestPointer(p).length > 0 };
+    });
+    this.input.on('pointerdown', (p: Phaser.Input.Pointer, over: unknown[]) => {
+      this.hover = null; // 点了就先收起
+      if (this.touch && over.length === 0) this.press = { p, x: p.x, y: p.y };
+    });
+    this.input.on('pointerup', () => (this.press = null));
 
     // ---- 剧情对话框、右上角的齿轮和笔记本 ----
     this.story = new DialogueBox(this);
@@ -234,6 +257,51 @@ export class HudScene extends Phaser.Scene {
     if (sig !== this.toolbarSig) this.buildToolbar(this.layoutW, this.layoutH);
     const x = this.toolSlotX[gameState.selected];
     if (x !== undefined) this.toolCursor?.setX(x - 1);
+    this.refreshTips();
+  }
+
+  /** 一格的说明：鼠标停住一会儿 / 手机按住不放时在旁边弹小框；键盘玩时面前那一格写在工具栏上面 */
+  private refreshTips() {
+    const cfg = SETTINGS.ui.hoverTip;
+    const farm = this.scene.get('Farm') as FarmScene;
+    const idle = !this.busy() && this.scene.isActive('Farm');
+    let text: string | null = null;
+    let at = { x: 0, y: 0 };
+    if (idle && this.hover && !this.hover.onUi && this.time.now - this.hover.at >= cfg.delayMs) {
+      at = this.hover;
+      text = farm.infoAtScreen(at.x, at.y);
+    }
+    const pr = this.press;
+    if (idle && pr && pr.p.isDown && this.time.now - pr.p.downTime >= cfg.longPressMs) {
+      if (Math.hypot(pr.p.x - pr.x, pr.p.y - pr.y) > SETTINGS.touch.joystickDeadZone * VIEW.ui) this.press = null; // 手指动了：是摇杆，不是长按
+      else {
+        at = this.cameras.main.getWorldPoint(pr.x, pr.y);
+        text = farm.infoAtScreen(at.x, at.y);
+      }
+    }
+    this.setTip(this.tip, text, at.x + cfg.offsetX, at.y + cfg.offsetY);
+    // 键盘：面前那一格（手机上不显示，免得挡住）
+    const facing = idle && !this.touch ? farm.infoFacing() : null;
+    const { w: W, h: H } = uiSize();
+    this.setTip(this.facingTip, facing, W / 2, H - 2 - (SLOT() + BAR_PAD * 2) - 4, true);
+  }
+
+  /** 把说明写进小框。center = 以 (x, y) 为底边中点；否则 (x, y) 是左上角（太靠边会挪回屏幕里） */
+  private setTip(box: Phaser.GameObjects.Container, text: string | null, x: number, y: number, center = false) {
+    if (!text) return void box.setVisible(false);
+    if (box.getData('text') !== text) {
+      box.removeAll(true).setData('text', text);
+      const label = pixelText(this, 5, 3, wrapText(text, SETTINGS.ui.hoverTip.maxW).join('\n'));
+      const g = this.add.graphics();
+      drawPanel(g, 0, 0, Math.ceil(label.width) + 10, Math.ceil(label.height) + 6);
+      box.add([g, label]).setSize(Math.ceil(label.width) + 10, Math.ceil(label.height) + 6);
+    }
+    const { w: W, h: H } = uiSize();
+    if (center) {
+      x -= box.width / 2;
+      y -= box.height;
+    }
+    box.setPosition(Math.round(Math.max(2, Math.min(x, W - box.width - 2))), Math.round(Math.max(2, Math.min(y, H - box.height - 2)))).setVisible(true);
   }
 
   /** 工具栏 9 格现在放了什么（变了才重画） */

@@ -10,9 +10,10 @@ import { FARM_MAP, RUIN_TILES } from '../../world/farmMap';
 import type { PlantedCrop } from '../farming/crops';
 import { slotsFromOld, type Slot } from '../inventory';
 import { emptyWeek, type WeekStats } from '../weekStats';
+import { chestFromOld } from '../home/storage';
 import type { Weather } from '../../data/types';
 
-export const SAVE_VERSION = 9;
+export const SAVE_VERSION = 10;
 
 /** 存档里存了什么 */
 export interface SaveData {
@@ -49,8 +50,8 @@ export interface SaveData {
   pickup: { unlocked: boolean };
   /** 草棚是不是已经改成柴房了 */
   hutIsShed: boolean;
-  /** 草棚（柴房）箱子里的东西 */
-  storage: Record<string, number>;
+  /** 草棚（柴房）箱子里的东西：一格一格的，和背包一样（每格放了什么、几个、上锁没有） */
+  storage: (Slot | null)[];
   /** 收货筐里放的东西 */
   basket: Record<string, number>;
   /** 地里种的东西：「x,y」→ 作物 */
@@ -191,6 +192,8 @@ const MIGRATIONS: Record<number, (old: any) => any> = {
     week: emptyWeek(),
     metNpcs: old.prologue === 'done' || old.prologue === 'tutorial' ? ['doctor', 'fan', 'zhou'] : [],
   }),
+  // 9 → 10：箱子从「一种东西一格、数量不限」改成和背包一样的格子（每格最多叠 99 个，超过的拆成几格）
+  9: (old) => ({ ...old, saveVersion: 10, storage: chestFromOld(old.storage ?? {}) }),
 };
 
 /** 把任意版本的存档升级到最新。认不出来的返回 null。 */

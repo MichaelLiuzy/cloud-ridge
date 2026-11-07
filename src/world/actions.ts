@@ -2,10 +2,10 @@
  * 拿着什么、对着什么，就做什么 —— 「顺手」规则表
  * ================================================================
  *  点一格（鼠标、手机轻点）、按空格、按手机「使用」键时，先看手上拿的东西：
- *  能对这一格起作用，就直接做，不弹菜单；没用的话再走「交互」（说话、查看……）。
+ *  能对这一格起作用，就直接做，不弹菜单；没用的话再走「交互」（说话、打开箱子……）。
  *  回车永远是「交互」，空格永远是「用手上的东西」。
  *
- *  每一条规则：手上拿什么（item = 某一样东西，itemType = 某一类，比如所有种子）、
+ *  每一条规则：手上拿什么（item = 某一样东西，itemType = 某一类，比如所有种子；anyItem = 拿什么都行，空手也行）、
  *  对哪种地块（on）、这一格上有没有作物（crop）、做完变成什么、花多少体力。
  *  从上往下找，用第一条对得上的。
  *
@@ -28,6 +28,8 @@ export interface HeldAction {
   item?: string;
   /** 或者：手上拿着哪一类东西（seed 种子、food 食物……） */
   itemType?: string;
+  /** 或者：拿什么都行（空手也行） */
+  anyItem?: boolean;
   /** 对哪些地块有效 */
   on: string[];
   /** 这一格的作物要是什么样子（不写 = 只在没种东西时） */
@@ -41,6 +43,8 @@ export interface HeldAction {
 }
 
 export const HELD_ACTIONS: HeldAction[] = [
+  // 熟了的菜：拿着什么都直接收（点一下就走过去收）
+  { id: 'harvest', anyItem: true, on: ['tilled', 'watered'], crop: ['ripe'], cost: 'harvest' },
   // 锄头点草地：开垦
   { id: 'till', item: 'hoe', on: ['grass', 'grassDark'], turnsInto: 'o', cost: 'hoe' },
   // 水桶点田（没种东西，或者菜正在长）：浇水
@@ -59,9 +63,8 @@ export const HELD_ACTIONS: HeldAction[] = [
 
 /** 手上拿着 item（类型 type），对着 kind 地块、作物状态 crop：用哪条规则（没有返回 undefined） */
 export function heldActionFor(item: string | undefined, type: string | undefined, kind: string, crop: CropState) {
-  if (!item) return undefined;
   return HELD_ACTIONS.find(
-    (a) => (a.item ? a.item === item : a.itemType === type) && a.on.includes(kind) && (a.crop ?? ['none']).includes(crop),
+    (a) => (a.anyItem || (!!item && (a.item ? a.item === item : a.itemType === type))) && a.on.includes(kind) && (a.crop ?? ['none']).includes(crop),
   );
 }
 

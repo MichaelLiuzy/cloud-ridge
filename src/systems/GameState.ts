@@ -12,6 +12,7 @@ import type { PlantedCrop } from './farming/crops';
 import { SETTINGS } from '../config/settings';
 import { addItem, isTool, type Slot } from './inventory';
 import { emptyWeek, type WeekStats } from './weekStats';
+import { normalizeChest } from './home/storage';
 import type { Weather } from '../data/types';
 
 export type PrologueStep = 'opening' | 'clinic' | 'tutorial' | 'done';
@@ -36,8 +37,8 @@ function freshState() {
     pickup: { unlocked: false },
     /** 草棚已经改成柴房了（第 2 阶段修好、搬进老宅以后）：不能再睡觉 */
     hutIsShed: false,
-    /** 草棚（柴房）里那个箱子装了什么（物品 id → 数量） */
-    storage: {} as Record<string, number>,
+    /** 草棚（柴房）里那个箱子：一格一格的，和背包一样（见 src/systems/home/storage.ts） */
+    storage: [] as (Slot | null)[],
     /** 收货筐里放了什么（物品 id → 数量），第二天早上结算 */
     basket: {} as Record<string, number>,
     /** 地里种的东西：「x,y」→ 这一格的作物 */
@@ -103,7 +104,7 @@ export function resetGameState(slot: number, load: SaveData | null = null) {
       pickup: { ...load.pickup },
       basket: { ...load.basket },
       hutIsShed: load.hutIsShed,
-      storage: { ...load.storage },
+      storage: load.storage.map((x) => (x ? { ...x } : null)),
       crops: JSON.parse(JSON.stringify(load.crops)),
       maxStamina: load.maxStamina,
       stamina: load.stamina,
@@ -124,6 +125,7 @@ export function resetGameState(slot: number, load: SaveData | null = null) {
       prologue: load.prologue,
     });
   }
+  normalizeChest();
 }
 
 /**

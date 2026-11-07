@@ -166,6 +166,13 @@ export const SETTINGS = {
     staminaTipMs: 2000,
     /** 右上角齿轮（设置）、笔记本按钮的大小 */
     cornerButton: 24,
+    /**
+     * 地图上一格的说明（以前点「查看」才有）：
+     *  delayMs 鼠标停住多久才弹出；longPressMs 手机上按住多久算长按（松手就收起）；
+     *  maxW 说明框最宽多少（界面像素，超过自动换行）；offsetX / offsetY 框离鼠标多远。
+     *  键盘玩时，面前那一格的说明显示在工具栏上面。
+     */
+    hoverTip: { delayMs: 250, longPressMs: 400, maxW: 170, offsetX: 10, offsetY: 12 },
     /** 标题画面：背景和字 */
     titleBg: '#1E1A1F',
     titleText: '#EFE4C8',
@@ -251,8 +258,17 @@ export const SETTINGS = {
     toolbarSlots: 9,
     /** 背包几格（Q 菜单「背包」里工具栏下面那 3 行） */
     bagSlots: 27,
-    /** 同一种东西一格最多叠几个（工具不叠） */
+    /** 同一种东西一格最多叠几个（工具不叠；箱子也一样） */
     stackMax: 99,
+    /** 箱子每页几行、每行几格。最后一页放满了会自动加一页，页数不限 */
+    chestRows: 6,
+    chestCols: 9,
+    /**
+     * 背包、箱子里「整理」按钮的类别顺序（用 src/data/items.ts 里每样东西的 type）。
+     * tool 工具、seed 种子、crop 作物、food 食物、material 材料、fertilizer 肥料；没写到的类别排在最后。
+     * 同一类里按名字排。背包整理不动工具栏那 9 格。
+     */
+    sortOrder: ['tool', 'seed', 'crop', 'food', 'material', 'fertilizer'],
   },
 
   // ---------------- 调试 ----------------

@@ -20,7 +20,6 @@ export const HOUSING: HousingTable = {
   // 开局住的草棚
   hut: {
     maxStamina: 100,  // 体力上限
-    storageSlots: 12,  // 储物格数
     unlocks: ["bed", "small_chest"],  // 解锁的家具或功能
   },
   // 清废墟
@@ -37,7 +36,6 @@ export const HOUSING: HousingTable = {
       cost: 0,  // 要花多少文
       byCarpenter: false,  // 是不是请木匠来修（这一阶段玩家自己动手）
       maxStamina: 100,  // 修好后体力上限
-      storageSlots: 12,
       unlocks: [],
       learns: [],  // 修好后学会的本事（笔记本「已学会」栏）
     },
@@ -49,7 +47,6 @@ export const HOUSING: HousingTable = {
       cost: 400,
       byCarpenter: true,
       maxStamina: 110,
-      storageSlots: 24,
       unlocks: ["stove", "chest_24"],  // 灶台、箱子 24 格；搬进去住
       learns: ["recipe_veg_porridge", "recipe_radish_soup", "recipe_roast_sweet_potato", "make_plant_ash"],
     },
@@ -61,7 +58,6 @@ export const HOUSING: HousingTable = {
       cost: 3000,
       byCarpenter: true,
       maxStamina: 130,
-      storageSlots: 36,
       unlocks: ["cabinet", "indoor_visits"],  // 储物柜 36 格、客人可以进门拜访
       learns: [],
     },
@@ -73,7 +69,6 @@ export const HOUSING: HousingTable = {
       cost: 8000,
       byCarpenter: true,
       maxStamina: 160,
-      storageSlots: 36,
       unlocks: ["courtyard_wall", "well", "cellar"],  // 院墙、水井、地窖
       learns: [],
     },

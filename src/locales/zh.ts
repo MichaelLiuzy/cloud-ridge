@@ -124,14 +124,13 @@ export const zh = {
     discard: "丢弃",
     lock: "上锁",
     unlock: "解锁",
-    move: "移动",
-    putHere: "放到这里",
-    keyHint: "回车 拿起 / 放下　X 丢弃　L 上锁　E 吃",
+    keyHint: "方向键 选格子（按住 Shift 带着走）　鼠标拖动 换位置",
     eat: "吃一个",
     cantEat: "这个不能吃。",
-    touchHint: "点一样东西拿起来，再点另一格放下",
-    picked: "拿起了{name}，选一格放下（Esc 取消）",
-    pickedTouch: "拿起了{name}，点一格放下",
+    touchHint: "点一下看看，按住拖动换位置",
+    sort: "整理",
+    /** 能卖的东西：今天在镇上卖一个能得多少（赶集日涨价也算上） */
+    price: "今日售价：每个 {price} 文",
     nothing: "这一格是空的。",
     cantDiscardTool: "工具不能丢。",
     cantDiscardLocked: "上了锁的东西不能丢，先解锁。",
@@ -141,6 +140,17 @@ export const zh = {
     discarded: "丢掉了 {n} 个{name}。",
     lockedNow: "{name}上锁了：不能丢，也不能卖。",
     unlockedNow: "{name}解锁了。",
+  },
+  // ===== 箱子（草棚 / 柴房里，和背包一样的格子）=====
+  chest: {
+    tab: "箱子",
+    title: "箱子 第 {page}/{pages} 页",
+    put: "放进箱子",
+    take: "拿出来",
+    putDone: "把 {n} 个{name}放进了箱子。",
+    takeDone: "拿出了 {n} 个{name}。",
+    full: "箱子这一页放不下了。",
+    cantStore: "{name}不能放进箱子。",
   },
   map: {
     placeholder: "地图（待做）",
@@ -250,7 +260,6 @@ export const zh = {
 
   // ===== 小菜单里的选项名字 =====
   action: {
-    look: "查看",
     talk: "说话",
     walk: "走到这里",
     till: "开垦",
@@ -269,14 +278,11 @@ export const zh = {
     basketTake: "把筐里的东西拿回来",
     houseStatus: "看看老宅",
     chest: "打开箱子",
-    chestPut: "放东西进箱子",
-    chestTake: "从箱子里拿",
   },
 
-  // ===== 对着东西「查看」时显示的话 =====
+  // ===== 一格的说明：鼠标停在上面、手机长按、键盘面朝它时显示 =====
   hint: {
     sowHow: "锄好的地。手上拿着种子点这里，就能种下去。",
-    nothing: "这里什么也没有。",
     tilled: "一块开垦好的田地，可以种东西了。",
     grass: "一片野草地。开垦之后就能种菜。",
     weed: "杂草长得乱七八糟，得用镰刀割掉。",
@@ -330,10 +336,6 @@ export const zh = {
     nothingToSell: "身上没有杂货铺收的东西。",
     basketPut: "把 {n} 个{name}放进了收货筐。明天一早结算。",
     taken: "拿回了 {n} 个{name}。",
-    chestTitle: "箱子（{used}/{slots} 格）",
-    chestPut: "把 {n} 个{name}放进了箱子。",
-    chestFull: "箱子满了，最多只能放 {slots} 种东西。",
-    nothingToStore: "身上没有能放进箱子的东西。",
     debugDays: "（测试）过了 {n} 天，今天是{date}。",
     debugToSunday: "（测试）到本周日了，今天是{date}。今晚睡觉会看到本周总结。",
   },
@@ -398,7 +400,6 @@ export const zh = {
   quantity: {
     count: "{n} 个（最多 {max}）",
     askBasket: "放几个{name}进收货筐？",
-    askChest: "放几个{name}进箱子？",
     askTake: "拿回几个{name}？",
     one: "1个",
     half: "一半",
