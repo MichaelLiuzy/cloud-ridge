@@ -1,9 +1,10 @@
 /**
- * 作物：多少天成熟、卖多少钱
+ * 作物：多少天成熟、什么时候能种
  * ================================================================
  *  数值来自设计主管窗口（daily-systems）。可以直接改数字，保存后刷新游戏就生效。
  *  只改冒号右边的值。
- *  常改的：每种作物几天成熟（growDays）、种子价格（seedPrice）、卖多少钱（sellPrice）、哪几个节气能播种（sowWindows）。
+ *  常改的：每种作物几天成熟（growDays）、哪几个节气能播种（sowWindows）。
+ *  价格不在这里：种子和收成的买卖价格都在 src/data/items.ts（seedItem、harvestItem 对应那里的物品）。
  *  每个字段第一次出现时后面有中文说明；完整格式见 types.ts。
  *  改错了 npm run build 会报错，看报错信息或者告诉编程窗口。
  */
@@ -26,13 +27,10 @@ export const CROPS: CropsTable = {
       sowWindows: [["lichun", "guyu"], ["bailu", "shuangjiang"]],  // 哪几段能播种：[起始节气, 结束节气]，含结束节气整整 14 天
       frostHardy: true,  // 耐不耐寒：false 的霜降当天枯死
       seedItem: "bok_choy_seed",  // 种子物品
-      seedPrice: 20,  // 种子价格（文）
       growDays: 6,  // 几天成熟
       regrowDays: null,  // 收完后几天再长出来（null = 收一次就没了）
       harvestItem: "bok_choy",  // 收获得到的物品
       yield: 1,  // 一次收几个
-      sellPrice: 50,  // 卖出价格（文）
-      seedSoldAt: "general_store",  // 种子在哪买
     },
     {
       id: "radish",
@@ -40,13 +38,10 @@ export const CROPS: CropsTable = {
       sowWindows: [["jingzhe", "qingming"], ["chushu", "qiufen"]],
       frostHardy: true,
       seedItem: "radish_seed",
-      seedPrice: 30,
       growDays: 9,
       regrowDays: null,
       harvestItem: "radish",
       yield: 1,
-      sellPrice: 90,
-      seedSoldAt: "general_store",
     },
     {
       id: "potato",
@@ -54,13 +49,10 @@ export const CROPS: CropsTable = {
       sowWindows: [["jingzhe", "chunfen"]],
       frostHardy: false,
       seedItem: "potato_seed",
-      seedPrice: 50,
       growDays: 10,
       regrowDays: null,
       harvestItem: "potato",
       yield: 1,
-      sellPrice: 130,
-      seedSoldAt: "general_store",
       extraYield: { chance: 0.25, amount: 1 },  // 有几率多收
     },
     {
@@ -69,13 +61,10 @@ export const CROPS: CropsTable = {
       sowWindows: [["lichun", "jingzhe"]],
       frostHardy: false,
       seedItem: "pea_seed",
-      seedPrice: 60,
       growDays: 14,
       regrowDays: 4,
       harvestItem: "pea",
       yield: 1,
-      sellPrice: 40,
-      seedSoldAt: "general_store",
     },
     {
       id: "chive",
@@ -84,13 +73,10 @@ export const CROPS: CropsTable = {
       frostHardy: false,
       perennial: true,  // 多年生：霜降时休眠不死，立春自动重新长
       seedItem: "chive_seed",
-      seedPrice: 80,
       growDays: 15,
       regrowDays: 6,
       harvestItem: "chive",
       yield: 1,
-      sellPrice: 60,
-      seedSoldAt: "market",
     },
     {
       id: "cucumber",
@@ -98,13 +84,10 @@ export const CROPS: CropsTable = {
       sowWindows: [["guyu", "mangzhong"]],
       frostHardy: false,
       seedItem: "cucumber_seed",
-      seedPrice: 40,
       growDays: 12,
       regrowDays: 4,
       harvestItem: "cucumber",
       yield: 1,
-      sellPrice: 50,
-      seedSoldAt: "general_store",
     },
     {
       id: "eggplant",
@@ -112,13 +95,10 @@ export const CROPS: CropsTable = {
       sowWindows: [["guyu", "lixia"]],
       frostHardy: false,
       seedItem: "eggplant_seed",
-      seedPrice: 50,
       growDays: 11,
       regrowDays: 5,
       harvestItem: "eggplant",
       yield: 1,
-      sellPrice: 75,
-      seedSoldAt: "general_store",
     },
     {
       id: "cowpea",
@@ -126,13 +106,10 @@ export const CROPS: CropsTable = {
       sowWindows: [["lixia", "xiaoshu"]],
       frostHardy: false,
       seedItem: "cowpea_seed",
-      seedPrice: 60,
       growDays: 15,
       regrowDays: 4,
       harvestItem: "cowpea",
       yield: 1,
-      sellPrice: 55,
-      seedSoldAt: "general_store",
     },
     {
       id: "chili",
@@ -140,13 +117,10 @@ export const CROPS: CropsTable = {
       sowWindows: [["qingming", "xiaoman"]],
       frostHardy: false,
       seedItem: "chili_seed",
-      seedPrice: 40,
       growDays: 8,
       regrowDays: 4,
       harvestItem: "chili",
       yield: 1,
-      sellPrice: 35,
-      seedSoldAt: "general_store",
     },
     {
       id: "watermelon",
@@ -154,13 +128,10 @@ export const CROPS: CropsTable = {
       sowWindows: [["qingming", "lixia"]],
       frostHardy: false,
       seedItem: "watermelon_seed",
-      seedPrice: 120,
       growDays: 18,
       regrowDays: null,
       harvestItem: "watermelon",
       yield: 1,
-      sellPrice: 450,
-      seedSoldAt: "market",
     },
     {
       id: "napa_cabbage",
@@ -168,13 +139,10 @@ export const CROPS: CropsTable = {
       sowWindows: [["liqiu", "chushu"]],
       frostHardy: true,
       seedItem: "napa_cabbage_seed",
-      seedPrice: 50,
       growDays: 12,
       regrowDays: null,
       harvestItem: "napa_cabbage",
       yield: 1,
-      sellPrice: 160,
-      seedSoldAt: "general_store",
     },
     {
       id: "taro",
@@ -182,13 +150,10 @@ export const CROPS: CropsTable = {
       sowWindows: [["qingming", "guyu"]],
       frostHardy: false,
       seedItem: "taro_seed",
-      seedPrice: 60,
       growDays: 28,
       regrowDays: null,
       harvestItem: "taro",
       yield: 1,
-      sellPrice: 220,
-      seedSoldAt: "general_store",
     },
     {
       id: "sweet_potato",
@@ -196,13 +161,10 @@ export const CROPS: CropsTable = {
       sowWindows: [["lixia", "xiaoshu"]],
       frostHardy: false,
       seedItem: "sweet_potato_seed",
-      seedPrice: 70,
       growDays: 20,
       regrowDays: null,
       harvestItem: "sweet_potato",
       yield: 1,
-      sellPrice: 250,
-      seedSoldAt: "general_store",
     },
     {
       id: "pumpkin",
@@ -210,13 +172,10 @@ export const CROPS: CropsTable = {
       sowWindows: [["qingming", "lixia"]],
       frostHardy: false,
       seedItem: "pumpkin_seed",
-      seedPrice: 100,
       growDays: 25,
       regrowDays: null,
       harvestItem: "pumpkin",
       yield: 1,
-      sellPrice: 520,
-      seedSoldAt: "market",
     },
     {
       id: "spinach",
@@ -224,13 +183,10 @@ export const CROPS: CropsTable = {
       sowWindows: [["bailu", "lidong"]],
       frostHardy: true,
       seedItem: "spinach_seed",
-      seedPrice: 30,
       growDays: 10,
       regrowDays: null,
       harvestItem: "spinach",
       yield: 1,
-      sellPrice: 80,
-      seedSoldAt: "general_store",
     },
     {
       id: "garlic",
@@ -238,13 +194,10 @@ export const CROPS: CropsTable = {
       sowWindows: [["qiufen", "hanlu"]],
       frostHardy: true,
       seedItem: "garlic_seed",
-      seedPrice: 40,
       growDays: 20,
       regrowDays: null,
       harvestItem: "garlic",
       yield: 1,
-      sellPrice: 150,
-      seedSoldAt: "general_store",
     },
     {
       id: "mustard_greens",
@@ -252,13 +205,10 @@ export const CROPS: CropsTable = {
       sowWindows: [["shuangjiang", "daxue"]],
       frostHardy: true,
       seedItem: "mustard_greens_seed",
-      seedPrice: 30,
       growDays: 12,
       regrowDays: 5,
       harvestItem: "mustard_greens",
       yield: 1,
-      sellPrice: 45,
-      seedSoldAt: "general_store",
     },
   ],
 };

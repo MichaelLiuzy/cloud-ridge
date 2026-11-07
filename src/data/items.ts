@@ -60,7 +60,6 @@ export const ITEMS: ItemsTable = {
       buyPrice: 20,  // 买入价格（文，null = 买不到）
       sellPrice: 10,  // 卖出价格（文）
       soldAt: ["general_store"],  // 在哪些店有卖
-      plants: "bok_choy",  // 种下去长成什么作物
     },
     {
       id: "bok_choy",
@@ -77,7 +76,6 @@ export const ITEMS: ItemsTable = {
       buyPrice: 30,
       sellPrice: 15,
       soldAt: ["general_store"],
-      plants: "radish",
     },
     {
       id: "radish",
@@ -94,7 +92,6 @@ export const ITEMS: ItemsTable = {
       buyPrice: 50,
       sellPrice: 25,
       soldAt: ["general_store"],
-      plants: "potato",
     },
     {
       id: "potato",
@@ -111,7 +108,6 @@ export const ITEMS: ItemsTable = {
       buyPrice: 60,
       sellPrice: 30,
       soldAt: ["general_store"],
-      plants: "pea",
     },
     {
       id: "pea",
@@ -128,7 +124,6 @@ export const ITEMS: ItemsTable = {
       buyPrice: 80,
       sellPrice: 40,
       soldAt: ["market"],
-      plants: "chive",
     },
     {
       id: "chive",
@@ -145,7 +140,6 @@ export const ITEMS: ItemsTable = {
       buyPrice: 40,
       sellPrice: 20,
       soldAt: ["general_store"],
-      plants: "cucumber",
     },
     {
       id: "cucumber",
@@ -162,7 +156,6 @@ export const ITEMS: ItemsTable = {
       buyPrice: 50,
       sellPrice: 25,
       soldAt: ["general_store"],
-      plants: "eggplant",
     },
     {
       id: "eggplant",
@@ -179,7 +172,6 @@ export const ITEMS: ItemsTable = {
       buyPrice: 60,
       sellPrice: 30,
       soldAt: ["general_store"],
-      plants: "cowpea",
     },
     {
       id: "cowpea",
@@ -196,7 +188,6 @@ export const ITEMS: ItemsTable = {
       buyPrice: 40,
       sellPrice: 20,
       soldAt: ["general_store"],
-      plants: "chili",
     },
     {
       id: "chili",
@@ -213,7 +204,6 @@ export const ITEMS: ItemsTable = {
       buyPrice: 120,
       sellPrice: 60,
       soldAt: ["market"],
-      plants: "watermelon",
     },
     {
       id: "watermelon",
@@ -230,7 +220,6 @@ export const ITEMS: ItemsTable = {
       buyPrice: 50,
       sellPrice: 25,
       soldAt: ["general_store"],
-      plants: "napa_cabbage",
     },
     {
       id: "napa_cabbage",
@@ -247,7 +236,6 @@ export const ITEMS: ItemsTable = {
       buyPrice: 60,
       sellPrice: 30,
       soldAt: ["general_store"],
-      plants: "taro",
     },
     {
       id: "taro",
@@ -264,7 +252,6 @@ export const ITEMS: ItemsTable = {
       buyPrice: 70,
       sellPrice: 35,
       soldAt: ["general_store"],
-      plants: "sweet_potato",
     },
     {
       id: "sweet_potato",
@@ -281,7 +268,6 @@ export const ITEMS: ItemsTable = {
       buyPrice: 100,
       sellPrice: 50,
       soldAt: ["market"],
-      plants: "pumpkin",
     },
     {
       id: "pumpkin",
@@ -298,7 +284,6 @@ export const ITEMS: ItemsTable = {
       buyPrice: 30,
       sellPrice: 15,
       soldAt: ["general_store"],
-      plants: "spinach",
     },
     {
       id: "spinach",
@@ -315,7 +300,6 @@ export const ITEMS: ItemsTable = {
       buyPrice: 40,
       sellPrice: 20,
       soldAt: ["general_store"],
-      plants: "garlic",
     },
     {
       id: "garlic",
@@ -332,7 +316,6 @@ export const ITEMS: ItemsTable = {
       buyPrice: 30,
       sellPrice: 15,
       soldAt: ["general_store"],
-      plants: "mustard_greens",
     },
     {
       id: "mustard_greens",

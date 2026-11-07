@@ -88,10 +88,10 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
 | 拿着什么点什么就做什么（水桶点田 = 浇水、种子点锄好的地 = 播种、熟了的菜点一下就收……）、做完变成什么、花多少体力 | `src/world/actions.ts` | `HELD_ACTIONS`（每条都有中文注释，从上往下用第一条对得上的） |
 | 每件事花多少体力、体力多少算「累」 | `src/data/time.ts` | `stamina` |
 | 一天过多快 | `src/data/time.ts` | `clock.realSecondsPerGameHour`（现实几秒 = 游戏一小时） |
-| 作物生长天数、价格、播种时节、耐不耐寒 | `src/data/crops.ts` | 每种作物的 `growDays`、`sellPrice`、`sowWindows`、`frostHardy`、`perennial` |
+| 作物生长天数、播种时节、耐不耐寒 | `src/data/crops.ts` | 每种作物的 `growDays`、`sowWindows`、`frostHardy`、`perennial`（价格见下一行） |
 | 月份、节气表、赶集日、节日表、霜降和冻土规则 | `src/data/time.ts` | `calendar` 里的 `solarTerms`、`marketDays`、`festivals`、`farmingRules` |
 | 开局日期（现在是正月十六） | `src/data/start.ts` | `startDay` |
-| 物品价格 | `src/data/items.ts` | `buyPrice`、`sellPrice` |
+| 物品价格（种子、菜的价格也只在这里） | `src/data/items.ts` | `buyPrice`、`sellPrice` |
 | 打工任务和报酬（还没做，改了暂时没效果） | `src/data/jobs.ts` | `reward` 等 |
 | 重建老宅的四个阶段：材料、工钱、体力上限、修好后学会什么 | `src/data/housing.ts` | `stages` 里每阶段的 `materials`、`cost`、`maxStamina`、`learns` |
 | 废墟里杂草、碎石、焦木各占几成（开新档时随机摆一次） | `src/data/housing.ts` | `ruins.mix`（处理方法和体力同普通的杂草、石头、木头） |

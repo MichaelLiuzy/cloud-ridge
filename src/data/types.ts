@@ -151,8 +151,6 @@ export interface Crop {
   perennial?: boolean;
   /** 种子是哪个物品 */
   seedItem: ItemId;
-  /** 种子价格（文） */
-  seedPrice: number;
   /** 几天成熟 */
   growDays: number;
   /** 收完后几天再长（null = 收一次就没了） */
@@ -161,10 +159,6 @@ export interface Crop {
   harvestItem: ItemId;
   /** 一次收几个 */
   yield: number;
-  /** 卖出价格（文） */
-  sellPrice: number;
-  /** 种子在哪买 */
-  seedSoldAt: ShopId;
   /** 有几率多收：chance 几率（0~1），amount 多收几个 */
   extraYield?: { chance: number; amount: number };
 }
@@ -192,8 +186,6 @@ export interface Item {
   sellPrice: number | null;
   /** 哪些店有卖 */
   soldAt: ShopId[];
-  /** （种子）种下去长成什么 */
-  plants?: CropId;
   /** （材料）怎么采集：用什么动作，一次得几个 [最少, 最多] */
   /** （食物、肥料）怎么做：在哪做、要什么材料、做出几个 */
   craft?: { station: string; inputs: Partial<Record<ItemId, number>>; output: number };
