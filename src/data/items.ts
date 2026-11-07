@@ -366,6 +366,25 @@ export const ITEMS: ItemsTable = {
       soldAt: ["kiln"],
     },
     {
+      id: "fence",  // 用镐拆下来的一节栅栏，拿着它点空地就放回去
+      name: { zh: "栅栏", en: "Fence" },
+      type: "material",
+      buyPrice: null,
+      sellPrice: null,
+      soldAt: [],
+      desc: { zh: "拿着它点一格空地，就放下一节栅栏。", en: "" },
+    },
+    {
+      id: "path",  // 开新档就在背包里，拿着它点普通土地就铺成小路
+      name: { zh: "小路", en: "Path" },
+      type: "material",
+      buyPrice: null,
+      sellPrice: null,
+      soldAt: [],
+      infinite: true,  // 用不完、不显示数量、不能丢不能卖、不能放进箱子
+      desc: { zh: "拿着它点一格普通土地，就铺成小路。用不完。", en: "" },
+    },
+    {
       id: "firewood",
       name: { zh: "柴火", en: "Firewood" },
       type: "material",

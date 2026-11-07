@@ -151,6 +151,7 @@ export const TIME: TimeTable = {
       chop_tree: 6,  // 砍大树
       mine_rock: 4,
       flatten: 2,  // 用镐把田填平成普通地
+      remove_fence: 2,  // 用镐拆一节栅栏（放栅栏、铺路、敲掉小路不花体力）
     },
     bucket: { capacity: 100, perWater: 7 },  // 水桶：装满 100 点水，浇一格用 7 点（满桶能浇 14 格）。对着池塘用水桶一次加满
   },

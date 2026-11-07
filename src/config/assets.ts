@@ -24,7 +24,7 @@ export interface AssetSpec {
   frames: string[];
   /** 占位色块的颜色：一个颜色 = 每格都用它；一串 = 每格各用各的 */
   color: PaletteName | PaletteName[];
-  shape: 'full' | 'object' | 'char' | 'tree' | 'lantern' | 'building' | 'icon' | 'portrait' | 'cg' | 'crop';
+  shape: 'full' | 'object' | 'fence' | 'char' | 'tree' | 'lantern' | 'building' | 'icon' | 'portrait' | 'cg' | 'crop';
 }
 
 const DIRS = ['down', 'left', 'right', 'up'];
@@ -83,8 +83,8 @@ export const ASSETS: Record<string, AssetSpec> = {
     color: ['stone', 'ochre', 'ash', 'stone', 'ochreLight', 'brown'],
     shape: 'full',
   },
-  /** 可拆的栅栏零件：中间的竹桩、横杆、竖杆（叠起来拼出各种连接；没图时用 tiles_farm 的 fence） */
-  tiles_fence: { w: 16, h: 16, frames: ['post', 'rail_h', 'rail_v'], color: 'brownDark', shape: 'object' },
+  /** 可拆的栅栏零件：中间的竹桩、横杆、竖杆（按四周有没有栅栏叠起来，拼出横、竖、拐角；tiles_farm 里那格 fence 不再用） */
+  tiles_fence: { w: 16, h: 16, frames: ['post', 'rail_h', 'rail_v'], color: 'brownDark', shape: 'fence' },
   /** 水塘：平静水面、带波光的水面（两格轮流换，间隔在 settings.ts 的 waterShimmerMs） */
   tiles_water: { w: 16, h: 16, frames: ['water', 'water_shimmer'], color: 'indigo', shape: 'full' },
 
@@ -183,7 +183,6 @@ export const GROUND_TILES: Record<string, { texture: string; frame: string }> = 
   tilled: { texture: 'tiles_farm', frame: 'tilled' },
   watered: { texture: 'tiles_farm', frame: 'watered' },
   path: { texture: 'tiles_farm', frame: 'path' },
-  fence: { texture: 'tiles_farm', frame: 'fence' },
   water: { texture: 'tiles_water', frame: 'water' },
 };
 

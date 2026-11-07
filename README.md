@@ -86,7 +86,7 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
 | 游戏名 | `src/locales/zh.ts` | `game.title` |
 | 农场地图（树、石头、田放在哪） | `src/world/farmMap.ts` | 用字符画的地图，文件开头有字符对照表 |
 | 拿着什么点什么就做什么（水桶点田 = 浇水、种子点锄好的地 = 播种、熟了的菜点一下就收……）、做完变成什么、花多少体力 | `src/world/actions.ts` | `HELD_ACTIONS`（每条都有中文注释，从上往下用第一条对得上的） |
-| 每件事花多少体力、体力多少算「累」 | `src/data/time.ts` | `stamina`（用镐把田填平是 `stamina.costs.flatten`） |
+| 每件事花多少体力、体力多少算「累」 | `src/data/time.ts` | `stamina`（用镐把田填平是 `stamina.costs.flatten`，拆一节栅栏是 `stamina.costs.remove_fence`） |
 | 一天过多快 | `src/data/time.ts` | `clock.realSecondsPerGameHour`（现实几秒 = 游戏一小时） |
 | 作物生长天数、播种时节、耐不耐寒 | `src/data/crops.ts` | 每种作物的 `growDays`、`sowWindows`、`frostHardy`、`perennial`（价格见下一行） |
 | 月份、节气表、赶集日、节日表、霜降和冻土规则 | `src/data/time.ts` | `calendar` 里的 `solarTerms`、`marketDays`、`festivals`、`farmingRules` |
@@ -112,7 +112,7 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
 | Q 菜单有哪几栏、顺序 | `src/data/menuTabs.ts` | `MENU_TABS` |
 | 名字能多长、汉字和字母各算多宽 | `src/config/settings.ts` | `nameRules` |
 | 背包、工具栏有几格；每格多大 | `src/config/settings.ts` | `inventory.toolbarSlots`、`inventory.bagSlots`；`bag.slotSize` |
-| 工具栏几格、背包几格、同一种东西一格最多叠几个 | `src/config/settings.ts` | `inventory` 里的 `toolbarSlots`、`bagSlots`、`stackMax`（默认 99；工具不叠） |
+| 工具栏几格、背包几格、同一种东西一格最多叠几个 | `src/config/settings.ts` | `inventory` 里的 `toolbarSlots`、`bagSlots`、`stackMax`（默认 99，栅栏也是这个数；工具和「小路」不叠） |
 | 对话框里旁白、黄字的颜色 | `src/config/settings.ts` | `ui` 里的 `textDim2`、`clueText`、`clueMark` |
 | 界面层放大倍数（小 / 中 / 大三档各是多少） | `src/config/settings.ts` | `ui.scale`（数字越大界面越小；中档 2 = 按 640×360 排版） |
 | 各处字号（三档） | `src/config/settings.ts` | `fontSize`（正文：对话、菜单、字幕、物品名）、`titleFontSize`（标题：人名、栏目名、章节名；游戏名是它的 3 倍）、`ui.smallFontSize`（小字提示）；`ui.dialogueScale`（对话框再放大几倍）、`ui.iconScale`（工具栏、背包图标） |
@@ -121,6 +121,8 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
 | 设置菜单里有哪些项目、顺序 | `src/data/settingsMenu.ts` | `SETTINGS_MENU`（文件开头有写法说明；名字在 `src/locales/zh.ts` 的 `settings.items`） |
 | 每样食物吃一个回复多少体力、物品说明 | `src/data/items.ts` | 食物的 `stamina`、`desc` |
 | 一整天没吃东西，第二天醒来体力最多多少 | `src/data/time.ts` | `hunger.nextDayStamina`（现在 80） |
+| 农场田区的范围（每周一杂物只刷在这里面；拆了栅栏也不变） | `src/world/farmMap.ts` | `FARM_FIELD`（格子坐标，现在是开局栅栏里面那 15×12 格） |
+| 镐、栅栏、「小路」对着哪种地做什么 | `src/world/actions.ts` | `removeFence`、`unpave`、`placeFence`、`pave` 这几条；「小路」用不完是 `src/data/items.ts` 里 `infinite: true` |
 | 晕倒：收现金的几成、最多收多少、第二天体力 | `src/data/time.ts` | `faint.feeFraction`（0.1）、`faint.feeMax`（200）、`faint.nextDayStamina`（80）；医馆来信的字在 `src/locales/zh.ts` 的 `letters.clinic_faint` |
 | 天气概率、每月 1 日的天气、下雨算不算浇水 | `src/data/time.ts` | `weather.chances`、`weather.firstDayOfMonth`、`weather.rainWatersCrops` |
 | 刚种下的种子画在格子的什么高度 | `src/config/settings.ts` | `seedOffsetY`（从格子底边往上挪几像素，0 = 贴底） |

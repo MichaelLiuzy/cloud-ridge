@@ -425,9 +425,10 @@ export class GameMenuScene extends Phaser.Scene {
     const i = this.hover ?? this.slot;
     const s = slotAt(i);
     const item = s ? itemInfo(s.id) : undefined;
-    // 工具名字后面写「（工具）」；水桶再写还有多少水
+    // 工具名字后面写「（工具）」；水桶再写还有多少水；「小路」写「（用不完）」，不写数量
     const water = s?.id === 'bucket' ? `　${t('bag.water', { n: gameState.water, max: TIME.stamina.bucket.capacity })}` : '';
-    const line = s ? localName(item?.name) + (isTool(s.id) ? `（${t('bag.tool')}）${water}` : `  ${t('bag.count', { n: s.n })}`) : t('bag.empty');
+    const count = item?.infinite ? `（${t('bag.infinite')}）` : `  ${t('bag.count', { n: s?.n ?? 0 })}`;
+    const line = s ? localName(item?.name) + (isTool(s.id) ? `（${t('bag.tool')}）${water}` : count) : t('bag.empty');
     const name = pixelText(this, x, y, line);
     info.add(name);
     if (s?.locked) {

@@ -79,6 +79,14 @@ function drawPlaceholder(g: Phaser.GameObjects.Graphics, spec: AssetSpec, i: num
       rect(2, h - 11, w - 4, 10, ink);
       rect(3, h - 10, w - 6, 8, c);
       break;
+    case 'fence': {
+      // 栅栏零件：post 一根竹桩、rail_h 横杆（左右通到格边）、rail_v 竖杆（上下通到格边）
+      const part = spec.frames[i];
+      if (part === 'post') rect(5, 3, 6, 12, ink), rect(6, 4, 4, 10, c);
+      if (part === 'rail_h') rect(0, 6, w, 4, ink), rect(0, 7, w, 2, c);
+      if (part === 'rail_v') rect(6, 0, 4, h, ink), rect(7, 0, 2, h, c);
+      break;
+    }
     case 'icon':
       rect(2, 2, w - 4, h - 4, ink);
       rect(3, 3, w - 6, h - 6, c);

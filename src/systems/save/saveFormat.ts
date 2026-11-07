@@ -12,7 +12,7 @@ import type { WeekStats } from '../weekStats';
 import type { Weather } from '../../data/types';
 import type { PrologueStep } from '../GameState';
 
-export const SAVE_VERSION = 15;
+export const SAVE_VERSION = 16;
 
 /** 存档里存了什么 */
 export interface SaveData {

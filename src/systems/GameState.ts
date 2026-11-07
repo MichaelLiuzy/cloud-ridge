@@ -14,12 +14,16 @@ import { normalizeChest } from './home/storage';
 import type { Weather } from '../data/types';
 import type { MailEntry } from './mail';
 import { TIME as timeData } from '../data/time';
+import { SETTINGS } from '../config/settings';
 
 export type PrologueStep = 'opening' | 'clinic' | 'tutorial' | 'done';
 
 function freshState() {
-  // 开局身上什么都没有：钱、种子和工具由周里正在序章里交给玩家（giveStartKit）
+  // 开局身上只有一个「小路」：钱、种子和工具由周里正在序章里交给玩家（giveStartKit）
   const hut = housingData.hut;
+  // 用不完的「小路」不用谁给，开新档就放在工具栏最后一格（数字键 9）
+  const slots = emptySlots();
+  slots[SETTINGS.inventory.toolbarSlots - 1] = { id: 'path', n: 1 };
   return {
     clock: null as Clock | null,
     /** 现在用的是第几个存档位（1~3） */
@@ -68,7 +72,7 @@ function freshState() {
     /** 门口灯笼灭了没有（点一下开关；新档是亮着的） */
     lanternOff: false,
     /** 工具栏 + 背包的格子（前 9 格是工具栏），见 src/systems/inventory.ts */
-    slots: emptySlots(),
+    slots,
     /** 手上拿的是工具栏第几格（0 ~ 8） */
     selected: 0,
     /** 重要物品（笔记本、烧焦的纸）：不占格子 */

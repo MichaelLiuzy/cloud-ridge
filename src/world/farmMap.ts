@@ -6,13 +6,13 @@
  *
  *  字符对照表：
  *    .  草地（能走）        ,  深色草地（能走，只是装饰）
- *    =  小路（能走）        o  开垦好的田地（能走）
+ *    =  小路（能走；用镐敲回草地，拿着「小路」点草地铺）        o  开垦好的田地（能走）
  *    O  浇过水的田（能走，第二天会变回 o）
  *    P  主角出生的位置（那一格是草地）
  *    D  草棚门口（能走）
  *    T  农场边缘的林子（挡路，不能砍，也点不了）   ~  水塘（挡路；拿水桶对着它就能打满水）
  *    y  树苗   u  小树   Y  大树（挡路，用斧头砍；每天会自己长大，也会在空地上自己长出来，见 src/data/trees.ts）
- *    #  篱笆（挡路）        H  草棚（挡路，连在一起的 H 会画成一座房子）
+ *    #  栅栏（挡路；用镐拆下来进背包，拿着「栅栏」点空地放回去）        H  草棚（挡路，连在一起的 H 会画成一座房子）
  *    G  篱笆上的门（能走；现在画成小路的样子，以后美术补门的图）
  *    r  石头（挡路）        g  杂草（挡路）
  *    s  树桩（挡路）        x  火灾残骸（挡路）
@@ -26,7 +26,7 @@
  *    B  收货筐（挡路；开通杂货铺上门收货后自动出现在 BASKET_CELL）
  *    M  家门口的信箱（挡路；有新信时竖起小旗，见 src/data/letters.ts）
  *
- *  中间被篱笆 # 围起来的就是 15×12 的农田区（地图就画在下面，改田的大小直接改地图）。
+ *  中间被篱笆 # 围起来的就是 15×12 的农田区。栅栏可以拆，所以「田区」另外写死在下面的 FARM_FIELD，改田的大小要两处一起改。
  *  田有两个门 G：左边小路通进来一个、下面一排篱笆中间一个，都是 2 格宽。
  *  以后正式地图会改用 Tiled 地图编辑器的格式，这份文字地图只是原型用。
  */
@@ -85,7 +85,7 @@ export const TILE_TYPES: Record<string, TileType> = {
   ',': { kind: 'grassDark', solid: false, hint: 'hint.grass', ground: 'grass' },
   'P': { kind: 'grass', solid: false, hint: 'hint.grass', ground: 'grass' },
   '=': { kind: 'path', solid: false, hint: 'hint.path', ground: 'path' },
-  'D': { kind: 'path', solid: false, hint: 'hint.hut', ground: 'path' },
+  'D': { kind: 'doorstep', solid: false, hint: 'hint.hut', ground: 'path' },
   'o': { kind: 'tilled', solid: false, hint: 'hint.tilled', ground: 'tilled' },
   'O': { kind: 'watered', solid: false, hint: 'hint.tilled', ground: 'watered' },
   'T': { kind: 'forest', solid: true, hint: 'hint.forest', ground: 'grass', object: 'prop_tree' },
@@ -93,7 +93,7 @@ export const TILE_TYPES: Record<string, TileType> = {
   'u': { kind: 'smallTree', solid: true, hint: 'hint.smallTree', ground: 'grass', object: 'tree_small' },
   'Y': { kind: 'bigTree', solid: true, hint: 'hint.bigTree', ground: 'grass', object: 'tree_big' },
   '~': { kind: 'water', solid: true, hint: 'hint.water', ground: 'water' },
-  '#': { kind: 'fence', solid: true, hint: 'hint.fence', ground: 'fence' },
+  '#': { kind: 'fence', solid: true, hint: 'hint.fence', ground: 'grass' },
   'G': { kind: 'gate', solid: false, hint: 'hint.gate', ground: 'path', object: 'prop_gate' },
   'H': { kind: 'hut', solid: true, hint: 'hint.hut', ground: 'dirt' },
   'r': { kind: 'rock', solid: true, hint: 'hint.rock', ground: 'grass', object: 'debris_rock' },
@@ -106,7 +106,7 @@ export const TILE_TYPES: Record<string, TileType> = {
   'j': { kind: 'stump', solid: true, hint: 'hint.ruinWood', ground: 'dirt', object: 'debris_fire', ruin: true },
   '_': { kind: 'site', solid: false, hint: 'hint.site', ground: 'dirt' },
   'K': { kind: 'house', solid: true, hint: 'hint.house', ground: 'dirt' },
-  'E': { kind: 'path', solid: false, hint: 'hint.house', ground: 'path' },
+  'E': { kind: 'doorstep', solid: false, hint: 'hint.house', ground: 'path' },
   'M': { kind: 'mailbox', solid: true, hint: 'hint.mailbox', ground: 'grass', object: 'prop_mailbox' },
   'B': { kind: 'basket', solid: true, hint: 'hint.basket', ground: 'grass', object: 'prop_basket' },
   'L': { kind: 'lantern', solid: true, hint: 'hint.lantern', ground: 'grass', object: 'prop_lantern', light: true, fire: true },
@@ -121,6 +121,12 @@ export const HOUSE_SITE = {
   house: { x: 9, y: 1, w: 4, h: 4 },
   door: { x: 10, y: 5 },
 };
+
+/**
+ * 农场田区：开局栅栏围起来的那块地（不含四边的栅栏，15×12 格）。每周一的杂物只刷在这里面。
+ * 玩家拆了、挪了栅栏也不变；改田的范围改这里。x0~x1、y0~y1 是格子坐标（都包含）。
+ */
+export const FARM_FIELD = { x0: 7, x1: 21, y0: 7, y1: 17 };
 
 /** 收货筐放在哪一格（开通上门收货后出现） */
 export const BASKET_CELL = { x: 6, y: 4 };

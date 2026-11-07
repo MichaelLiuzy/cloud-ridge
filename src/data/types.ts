@@ -38,7 +38,7 @@ export type ItemId =
   | 'watermelon_seed' | 'watermelon' | 'napa_cabbage_seed' | 'napa_cabbage' | 'taro_seed' | 'taro'
   | 'sweet_potato_seed' | 'sweet_potato' | 'pumpkin_seed' | 'pumpkin' | 'spinach_seed' | 'spinach'
   | 'garlic_seed' | 'garlic' | 'mustard_greens_seed' | 'mustard_greens' | 'tree_seed'
-  | 'wood' | 'thatch' | 'stone' | 'roof_tile' | 'brick' | 'firewood' | 'plant_ash'
+  | 'wood' | 'thatch' | 'stone' | 'roof_tile' | 'brick' | 'fence' | 'path' | 'firewood' | 'plant_ash'
   | 'mantou' | 'tea' | 'veg_porridge' | 'radish_soup' | 'roast_sweet_potato'
   | 'hoe' | 'bucket' | 'sickle' | 'axe' | 'pickaxe'
   | 'notebook' | 'burnt_paper';
@@ -64,7 +64,7 @@ export type NpcId =
   | 'fan' | 'que' | 'shen' | 'daoist' | 'soldier';
 
 /** 会花体力的动作 */
-export type StaminaAction = 'hoe' | 'water' | 'plant' | 'harvest' | 'cut_grass' | 'chop_wood' | 'chop_small_tree' | 'chop_tree' | 'mine_rock' | 'flatten';
+export type StaminaAction = 'hoe' | 'water' | 'plant' | 'harvest' | 'cut_grass' | 'chop_wood' | 'chop_small_tree' | 'chop_tree' | 'mine_rock' | 'flatten' | 'remove_fence';
 
 /** 重建老宅的阶段 id */
 export type HouseStageId = 'clear_ruins' | 'timber_frame' | 'tiled_roof' | 'courtyard';
@@ -196,6 +196,8 @@ export interface Item {
   action?: StaminaAction;
   /** 在背包里选中时显示的一句说明（可以不写） */
   desc?: LocalName;
+  /** 用不完的东西（比如「小路」）：一直在背包里，不显示数量，不能丢、不能卖、不能放进箱子或收货筐 */
+  infinite?: boolean;
 }
 
 export interface ItemsTable {

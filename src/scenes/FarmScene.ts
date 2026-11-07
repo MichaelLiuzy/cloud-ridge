@@ -45,7 +45,8 @@ type Facing = 'down' | 'up' | 'left' | 'right';
 /** 地图上一格现在的样子（地面图片 + 上面的东西 + 碰撞块） */
 interface TileView {
   ground: Phaser.GameObjects.Image;
-  object?: Phaser.GameObjects.Image;
+  /** 上面的东西（树、石头……）；栅栏是几块零件拼成的一组 */
+  object?: Phaser.GameObjects.Image | Phaser.GameObjects.Container;
   body?: Phaser.Physics.Arcade.Sprite;
 }
 
@@ -64,7 +65,7 @@ const FEET_W = 10;
 const FEET_H = 6;
 
 /** 这些地块是「地面」，人可以站上去，菜单里会有「走到这里」 */
-const GROUND_KINDS = ['grass', 'grassDark', 'path', 'tilled', 'watered', 'site'];
+const GROUND_KINDS = ['grass', 'grassDark', 'path', 'doorstep', 'tilled', 'watered', 'site'];
 
 /** 一句要显示的话：语言文件里的名字 + 要替换的内容 */
 type News = [string, Record<string, string | number>?];
@@ -561,6 +562,7 @@ export class FarmScene extends Phaser.Scene {
       return this.game.events.emit(UI_EVENTS.showMenu, [ok], t('msg.flattenAsk', { what })); // 小菜单自带「算了」
     }
     if (rule.id === 'flatten' && crop) this.clearCrop(cell);
+    if ((rule.id === 'placeFence' || rule.id === 'pave') && !this.canBuildAt(cell)) return this.say('msg.cantBuildHere');
     if (rule.id === 'water' && gameState.water < bucket.perWater) return this.say('msg.bucketEmpty');
     // 老宅废墟里的东西：清掉后是地基，算清了一样
     const ruin = TILE_TYPES[this.grid[cell.y][cell.x]]?.ruin;
@@ -574,6 +576,7 @@ export class FarmScene extends Phaser.Scene {
       this.say('msg.refilled');
     }
     // 自己种的树记下来（不算进自然长树的上限）；砍掉就划掉
+    if (rule.id === 'placeFence') takeFromSlot(gameState.selected, 1);
     if (rule.id === 'plantTree') {
       takeFromSlot(gameState.selected, 1);
       gameState.plantedTrees.push(cellKey(cell));
@@ -585,6 +588,15 @@ export class FarmScene extends Phaser.Scene {
       this.afterRuinCleared();
     }
     this.spendStamina(rule.cost === 'none' ? 0 : timeData.stamina.costs[rule.cost]);
+  }
+
+  /** 能不能在这一格放栅栏、铺小路（草地本身由规则表判断）：不能是自己脚下、周里正站的地方、种着东西、地上有掉落、老宅那块地、收货筐的位置 */
+  private canBuildAt(cell: Cell) {
+    const here = this.playerCell();
+    const { house } = HOUSE_SITE;
+    const inHouse = cell.x >= house.x && cell.x < house.x + house.w && cell.y >= house.y && cell.y < house.y + house.h;
+    const key = cellKey(cell);
+    return !(cell.x === here.x && cell.y === here.y) && !this.isZhouAt(cell) && !gameState.crops[key] && !gameState.drops[key] && !inHouse && !(cell.x === BASKET_CELL.x && cell.y === BASKET_CELL.y);
   }
 
   /** 割草、砍树、敲石头掉的材料：直接进背包，放不下的掉在这一格地上 */
@@ -1114,14 +1126,36 @@ export class FarmScene extends Phaser.Scene {
 
   /** 把一格改成别的字符（比如草地 → 田），并重画 */
   private setTile(c: Cell, ch: string) {
+    const was = this.grid[c.y][c.x];
     this.grid[c.y][c.x] = ch;
     this.refreshTile(c.x, c.y);
+    // 放下或拆掉栅栏：四周的栅栏要重新连
+    if (was === '#' || ch === '#') for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (this.grid[c.y + dy]?.[c.x + dx] === '#') this.refreshTile(c.x + dx, c.y + dy);
   }
 
   /** 门口灯笼：亮 ↔ 灭（不弹菜单，直接换） */
   private toggleLantern(cell: Cell) {
     gameState.lanternOff = !gameState.lanternOff;
     this.refreshTile(cell.x, cell.y);
+  }
+
+  /**
+   * 一节栅栏：中间一根竹桩，朝有栅栏（或栅栏门）的那几边各伸出半根杆子，拼出横、竖、拐角。
+   * 零件图是 tiles_fence 的 post、rail_h、rail_v（没图时是占位色块）。
+   */
+  private drawFence(tx: number, ty: number) {
+    const s = SETTINGS.tileSize;
+    const h = s / 2;
+    const linked = (dx: number, dy: number) => '#G'.includes(this.grid[ty + dy]?.[tx + dx] ?? '-');
+    const parts: Phaser.GameObjects.Image[] = [];
+    const rail = (frame: string, x: number, y: number, w: number, hh: number) =>
+      parts.push(this.add.image(0, 0, 'tiles_fence', frameIndex('tiles_fence', frame)).setOrigin(0).setCrop(x, y, w, hh));
+    if (linked(-1, 0)) rail('rail_h', 0, 0, h, s);
+    if (linked(1, 0)) rail('rail_h', h, 0, h, s);
+    if (linked(0, -1)) rail('rail_v', 0, 0, s, h);
+    if (linked(0, 1)) rail('rail_v', 0, h, s, h);
+    parts.push(this.add.image(0, 0, 'tiles_fence', frameIndex('tiles_fence', 'post')).setOrigin(0));
+    return this.add.container(tx * s, ty * s, parts).setDepth((ty + 1) * s);
   }
 
   /** 按地图字符重画一格：地面 + 上面的东西 + 碰撞块 + 灯光 */
@@ -1137,6 +1171,7 @@ export class FarmScene extends Phaser.Scene {
     if (view.object) this.lightSpots = this.lightSpots.filter((l) => l.fire !== view.object);
     view.object?.destroy();
     view.object = undefined;
+    if (ch === '#') view.object = this.drawFence(tx, ty);
     // 不挡路的东西（篱笆门）：没图时不画色块（免得看着像挡路），画的话贴在地面上、人从上面走过
     if (info.object && (info.solid || !PLACEHOLDERS.has(info.object))) {
       const bottom = (ty + 1) * s;
@@ -1144,10 +1179,11 @@ export class FarmScene extends Phaser.Scene {
       const off = info.kind === 'lantern' && gameState.lanternOff;
       const two = this.textures.get(info.object).has('1');
       const frame = two && ((info.kind === 'mailbox' && hasUnreadMail()) || off) ? 1 : 0;
-      view.object = this.add.image(tx * s + s / 2, bottom, info.object, frame).setOrigin(0.5, 1).setDepth(info.solid ? bottom : 0.5);
-      if (off && !two) view.object.setTint(toColor(SETTINGS.lanternOffTint));
+      const img = this.add.image(tx * s + s / 2, bottom, info.object, frame).setOrigin(0.5, 1).setDepth(info.solid ? bottom : 0.5);
+      view.object = img;
+      if (off && !two) img.setTint(toColor(SETTINGS.lanternOffTint));
       if (info.light && !off) {
-        this.lightSpots.push({ x: tx * s + s / 2, y: bottom - 22, radius: 30, fire: info.fire ? view.object : undefined });
+        this.lightSpots.push({ x: tx * s + s / 2, y: bottom - 22, radius: 30, fire: info.fire ? img : undefined });
       }
     }
 

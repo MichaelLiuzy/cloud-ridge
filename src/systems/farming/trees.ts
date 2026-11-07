@@ -5,7 +5,7 @@
  *  - 田里的杂物：每周一早上整体重新摆一次（reshuffleDebris）。
  */
 import { FIELD_DEBRIS, TREES } from '../../data/trees';
-import { FARM_MAP } from '../../world/farmMap';
+import { FARM_FIELD, FARM_MAP } from '../../world/farmMap';
 import { gameState } from '../GameState';
 import { cellKey } from '../pathfind';
 
@@ -53,14 +53,8 @@ export function treesOvernight(grid: string[][], frozen: boolean, avoid: { x: nu
 
 /** 田里的杂物：杂草 g、石头 r、树桩 s、焦木 x */
 const DEBRIS = ['g', 'r', 's', 'x'];
-/** 篱笆围起来的田（不含篱笆本身）的范围 */
-const FIELD = (() => {
-  const xs: number[] = [];
-  const ys: number[] = [];
-  FARM_MAP.forEach((row, y) => [...row].forEach((ch, x) => ch === '#' && (xs.push(x), ys.push(y))));
-  return { x0: Math.min(...xs) + 1, x1: Math.max(...xs) - 1, y0: Math.min(...ys) + 1, y1: Math.max(...ys) - 1 };
-})();
-const inField = (x: number, y: number) => x >= FIELD.x0 && x <= FIELD.x1 && y >= FIELD.y0 && y <= FIELD.y1;
+/** 在不在农场田区里（固定范围，见 farmMap.ts 的 FARM_FIELD；拆了栅栏也不变） */
+const inField = (x: number, y: number) => x >= FARM_FIELD.x0 && x <= FARM_FIELD.x1 && y >= FARM_FIELD.y0 && y <= FARM_FIELD.y1;
 const countIn = (rows: ArrayLike<string>[], ch: string) =>
   rows.reduce((n, row, y) => n + Array.from(row).filter((c, x) => c === ch && inField(x, y)).length, 0);
 

@@ -12,7 +12,7 @@
  *  - 体力花多少来自 src/data/time.ts 的 stamina.costs（用 cost 字段对应）。
  *  - 动作的名字在 src/locales/zh.ts 的 action 里。
  *  - 地块种类（on）见 src/world/farmMap.ts 的 TILE_TYPES。
- *  - turnsInto 写的是地图字符：'.' 草地，'o' 开垦好的田，'O' 浇过水的田，'y' 树苗。
+ *  - turnsInto 写的是地图字符：'.' 草地，'o' 开垦好的田，'O' 浇过水的田，'y' 树苗，'#' 栅栏，'=' 小路。
  *    老宅废墟里的东西清掉后一律变成地基 '_'。
  *  - drop：做完掉什么、掉几个 [最少, 最多]（概率见下面的 DROP_CHANCES）；extra = 另外有几成概率再掉一个什么。
  *    掉的东西直接进背包，背包满了就掉在地上，走过去就捡起来。
@@ -77,6 +77,14 @@ export const HELD_ACTIONS: HeldAction[] = [
   { id: 'mine', item: 'pickaxe', on: ['rock'], turnsInto: '.', cost: 'mine_rock', drop: { item: 'stone', amount: [3, 5] } },
   // 镐点田：填平成普通地；种着东西（没枯）先问一次，作物不退回（熟了的菜会先被上面第一条收走）
   { id: 'flatten', item: 'pickaxe', on: ['tilled', 'watered'], crop: ['none', 'growing', 'dead'], turnsInto: '.', cost: 'flatten' },
+  // 镐点栅栏：拆下一节，进背包（栅栏门 G 不能拆）
+  { id: 'removeFence', item: 'pickaxe', on: ['fence'], turnsInto: '.', cost: 'remove_fence', drop: { item: 'fence', amount: [1, 1] } },
+  // 镐点小路：敲回普通土地，不掉东西（草棚、老宅门口那格不算小路）
+  { id: 'unpave', item: 'pickaxe', on: ['path'], turnsInto: '.', cost: 'none' },
+  // 拿着栅栏点空地：放下一节（不能放在自己脚下、宅基地和收货筐的位置，见 FarmScene 的 canBuildAt）
+  { id: 'placeFence', item: 'fence', on: ['grass', 'grassDark'], turnsInto: '#', cost: 'none' },
+  // 拿着「小路」点空地：铺成小路，用不完
+  { id: 'pave', item: 'path', on: ['grass', 'grassDark'], turnsInto: '=', cost: 'none' },
 ];
 
 /** 手上拿着 item（类型 type），对着 kind 地块、作物状态 crop：用哪条规则（没有返回 undefined） */

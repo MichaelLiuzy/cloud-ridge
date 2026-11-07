@@ -43,9 +43,14 @@ export function isKeyItem(id: string) {
   return itemInfo(id)?.type === 'key';
 }
 
+/** 用不完的东西（「小路」）：不显示数量、不能丢、不能卖、不能放进箱子 */
+export function isInfinite(id: string) {
+  return !!itemInfo(id)?.infinite;
+}
+
 /** 一格最多叠几个 */
 export function stackMax(id: string) {
-  return isTool(id) ? 1 : SETTINGS.inventory.stackMax;
+  return isTool(id) || isInfinite(id) ? 1 : SETTINGS.inventory.stackMax;
 }
 
 /** 第 i 格：0 ~ 35 是身上（工具栏 + 背包），36 起是箱子 */
@@ -58,9 +63,9 @@ function setSlotAt(i: number, s: Slot | null) {
   else gameState.storage[i - ALL_SLOTS] = s;
 }
 
-/** 能不能放进箱子：工具和重要物品（笔记本、纸片）不放 */
+/** 能不能放进箱子：工具、重要物品（笔记本、纸片）、用不完的「小路」不放 */
 export function canStore(id: string) {
-  return !isTool(id) && !isKeyItem(id);
+  return !isTool(id) && !isKeyItem(id) && !isInfinite(id);
 }
 
 /** 全空的工具栏 + 背包（GameState 建新档时也用；这里直接读 SETTINGS，不用 ALL_SLOTS，免得两个文件互相导入时它还没算好） */
@@ -232,11 +237,12 @@ export function sortSlots(list: (Slot | null)[], from = 0, to = list.length) {
   while (i < to) list[i++] = null;
 }
 
-/** 能不能丢：空格、工具、上锁的都不能。返回不能丢的原因（语言文件的 key），能丢返回 null */
+/** 能不能丢：空格、工具、「小路」、上锁的都不能。返回不能丢的原因（语言文件的 key），能丢返回 null */
 export function whyCantDiscard(i: number): string | null {
   const s = slotAt(i);
   if (!s) return 'bag.nothing';
   if (isTool(s.id)) return 'bag.cantDiscardTool';
+  if (isInfinite(s.id)) return 'bag.cantDiscardInfinite';
   if (s.locked) return 'bag.cantDiscardLocked';
   return null;
 }
