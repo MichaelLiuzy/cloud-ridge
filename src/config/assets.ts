@@ -14,6 +14,7 @@
 import type { PaletteName } from './palette';
 import { CROPS } from '../data/crops';
 import { ITEMS } from '../data/items';
+import ART_RULES from '../../tools/art_rules.json';
 
 export interface AssetSpec {
   /** 每格宽、高（像素） */
@@ -75,6 +76,15 @@ export const ASSETS: Record<string, AssetSpec> = {
     color: ['leaf', 'ochreLight', 'ochre', 'brown', 'paperDark', 'brownDark'],
     shape: 'full',
   },
+  /** 小镇地面：石板街、土巷、墙头、石阶、河岸、码头（草地、水面用上面两张） */
+  tiles_town: {
+    w: 16, h: 16,
+    frames: ['stone_street', 'dirt_alley', 'wall_top', 'stone_steps', 'riverbank', 'dock'],
+    color: ['stone', 'ochre', 'ash', 'stone', 'ochreLight', 'brown'],
+    shape: 'full',
+  },
+  /** 可拆的栅栏零件：中间的竹桩、横杆、竖杆（叠起来拼出各种连接；没图时用 tiles_farm 的 fence） */
+  tiles_fence: { w: 16, h: 16, frames: ['post', 'rail_h', 'rail_v'], color: 'brownDark', shape: 'object' },
   /** 水塘：平静水面、带波光的水面（两格轮流换，间隔在 settings.ts 的 waterShimmerMs） */
   tiles_water: { w: 16, h: 16, frames: ['water', 'water_shimmer'], color: 'indigo', shape: 'full' },
 
@@ -109,6 +119,9 @@ export const ASSETS: Record<string, AssetSpec> = {
   house_tiled_roof: { w: 64, h: 64, frames: ['main'], color: 'paper', shape: 'building' },
   house_courtyard: { w: 64, h: 64, frames: ['main'], color: 'paper', shape: 'building' },
 
+  // ---- 小镇的建筑：bld_建筑id，每栋一张整图，大小在 tools/art_rules.json 的 bld_{id} 里 ----
+  ...townBuildings(),
+
   // ---- 图标（工具栏、背包）：物品表里每样东西都有 icon_物品id；下面单独写了颜色的用写的，其余见 itemIcons() ----
   ...itemIcons(),
   icon_hoe: { w: 16, h: 16, frames: ['main'], color: 'ochre', shape: 'icon' },
@@ -138,6 +151,14 @@ function itemIcons(): Record<string, AssetSpec> {
   const icon = (color: PaletteName): AssetSpec => ({ w: 16, h: 16, frames: ['main'], color, shape: 'icon' });
   return Object.fromEntries(
     ITEMS.items.map((it) => [`icon_${it.id}`, icon(it.type === 'seed' ? 'ochreLight' : it.type === 'crop' ? 'leaf' : 'paperDark')]),
+  );
+}
+
+/** 小镇的建筑占位（大小和整理脚本用同一张表：tools/art_rules.json 的 bld_{id}.sizes） */
+function townBuildings(): Record<string, AssetSpec> {
+  const sizes = (ART_RULES.rules.find((r) => r.name === 'bld_{id}')?.sizes ?? {}) as Record<string, number[]>;
+  return Object.fromEntries(
+    Object.entries(sizes).map(([id, [w, h]]) => [`bld_${id}`, { w, h, frames: ['main'], color: 'paper', shape: 'building' }]),
   );
 }
 

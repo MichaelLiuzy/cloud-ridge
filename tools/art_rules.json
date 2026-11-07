@@ -71,6 +71,20 @@
       "out": "tiles/tiles_water.png"
     },
     {
+      "name": "tiles_town",
+      "rows": 2, "cols": 3, "cell": [16, 16],
+      "tile": true,
+      "frames": ["stone_street", "dirt_alley", "wall_top", "stone_steps", "riverbank", "dock"],
+      "out": "tiles/tiles_town.png"
+    },
+    {
+      "name": "tiles_fence",
+      "rows": 1, "cols": 3, "cell": [16, 16],
+      "tile": true,
+      "frames": ["post", "rail_h", "rail_v"],
+      "out": "tiles/tiles_fence.png"
+    },
+    {
       "name": "tiles_{id}",
       "rows": 2, "cols": 3, "cell": [16, 16], "tile": true,
       "frames": ["1", "2", "3", "4", "5", "6"],
@@ -114,6 +128,26 @@
       "sizes": { "straw_hut": [48, 48], "woodshed": [48, 48], "old_ruin": [64, 64], "timber_frame": [64, 64], "tiled_roof": [64, 64], "courtyard": [64, 64] },
       "frames": ["main"],
       "out": "buildings/house_{id}.png"
+    },
+    {
+      "name": "bld_{id}",
+      "rows": 1, "cols": 1, "cell": [64, 64],
+      "sizes": {
+        "eric_home": [64, 64], "notice_board": [16, 32], "embroidery": [48, 48], "post_station": [80, 64], "temple": [48, 48],
+        "general_store": [64, 64], "clinic": [80, 64], "teahouse": [80, 64], "restaurant": [64, 64], "blacksmith": [64, 64],
+        "carpenter": [64, 64], "school": [64, 64], "kiln": [64, 64], "village_office": [96, 80], "stone_lion": [16, 32],
+        "drum_tower": [48, 80], "well": [16, 32], "ferry_hut": [64, 64], "boat": [32, 16], "bridge": [48, 32], "garrison_sign": [16, 32],
+        "home_1": [64, 64], "home_2": [64, 64], "home_3": [64, 64], "home_4": [64, 64]
+      },
+      "fire": ["blacksmith", "restaurant"],
+      "frames": ["main"],
+      "out": "buildings/bld_{id}.png"
+    },
+    {
+      "name": "icons_build",
+      "rows": 1, "cols": 2, "cell": [16, 16],
+      "frames": ["fence", "path"],
+      "out": "icons/icon_{frame}.png"
     },
     {
       "name": "crop_{id}",

@@ -40,6 +40,10 @@ ChatGPT 每次出完图会告诉你文件名，照着存就行。
 | `icons_food.png` | 食物图标（可用火光色） | 1 行 4 格：茶、菜粥、萝卜汤、烤红薯 |
 | `icons_crops_1.png` ~ `icons_crops_4.png` | 作物和种子图标 | 第一行是种子，第二行是对应的菜（顺序见 `tools/art_rules.json`）；`icons_crops_2` 可用火光色（南瓜橙） |
 | `icons_ui.png` | 界面小图标 | 1 行 5 格：齿轮、钱袋、体力、锁、背包。有图就换掉代码画的那几个 |
+| `tiles_town.png` | 小镇地面 | 2 行 3 格：`stone_street` 石板街、`dirt_alley` 土巷、`wall_top` 墙头、`stone_steps` 石阶、`riverbank` 河岸、`dock` 码头。草地、水面用 `tiles_farm` / `tiles_water` |
+| `bld_{建筑id}.png` | 小镇的建筑（每栋一张整图） | 1 格，按目标大小缩放（见 `tools/art_rules.json` 的 `bld_{id}` 的 `sizes`）：`eric_home`、`notice_board`、`embroidery`、`post_station`、`temple`、`general_store`、`clinic`、`teahouse`、`restaurant`、`blacksmith`、`carpenter`、`school`、`kiln`、`village_office`、`stone_lion`、`drum_tower`、`well`、`ferry_hut`、`boat`、`bridge`、`garrison_sign`、`home_1` ~ `home_4`。铁匠铺、饭馆可用火光色 |
+| `tiles_fence.png` | 可拆的栅栏零件 | 1 行 3 格：`post` 中间一根竹桩、`rail_h` 横杆（左右通到格边）、`rail_v` 竖杆（上下通到格边）。游戏按四周有没有栅栏把它们叠起来 |
+| `icons_build.png` | 建材图标 | 1 行 2 格：`fence` 栅栏、`path` 小路 |
 | `prop_gate.png` | 田地篱笆上的门（16×16） | 1 格。没图时篱笆门就画成小路 |
 | `cg_title.png` | 标题画面背景 | 整张画，上方中间留天空放标题字；没图时是纯色底 |
 | `portrait_qian.png` / `npc_qian_stand.png` | 钱掌柜（杂货铺）的头像 / 站立图 | 同主角头像 / 站立图 |
