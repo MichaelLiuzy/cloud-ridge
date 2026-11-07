@@ -196,16 +196,10 @@ export class HudScene extends Phaser.Scene {
     // ---- 鼠标 / 手指 ----
     new PointerControls(this, this.touch);
     if (this.touch) {
+      // 右下角的交互按钮（背包从右上角的菜单进）
       const cfg = SETTINGS.touch;
-      const ev = this.game.events;
-      const [action, bag] = [
-        makeRoundButton(this, t('buttons.action'), cfg.actionButtonRadius, () => ev.emit(INPUT_EVENTS.action, 'smart')),
-        makeRoundButton(this, t('buttons.bag'), cfg.smallButtonRadius, () => ev.emit(INPUT_EVENTS.bag), 'icon_backpack'),
-      ];
-      const ax = W - cfg.actionButtonRadius - 8;
-      const ay = H - cfg.actionButtonRadius - 8;
-      action.setPosition(ax, ay);
-      bag.setPosition(ax - cfg.actionButtonRadius - cfg.smallButtonRadius - 8, ay + 8);
+      const action = makeRoundButton(this, cfg.actionButtonRadius, () => this.game.events.emit(INPUT_EVENTS.action, 'smart'));
+      action.setPosition(W - cfg.actionButtonRadius - cfg.actionButtonMargin.right, H - cfg.actionButtonRadius - cfg.actionButtonMargin.bottom);
     }
 
     // ---- 接收指令 ----
@@ -446,7 +440,7 @@ export class HudScene extends Phaser.Scene {
     return !!this.menu || !!this.picker || this.story.active || this.naming || gameState.menuOpen;
   }
 
-  /** 回车 / 「使用」键 */
+  /** 回车 / 手机交互按钮 */
   private onAction(mode?: string) {
     if (gameState.menuOpen || this.naming) return;
     if (this.picker) return this.picker.confirm();
@@ -498,7 +492,7 @@ export class HudScene extends Phaser.Scene {
     });
   }
 
-  /** 字幕从下往上排：最新的贴着工具栏上方（手机上在「使用」键上方）的右边 */
+  /** 字幕从下往上排：最新的贴着工具栏上方（手机上在交互按钮上方）的右边 */
   private layoutSubtitles() {
     const { w: W, h: H } = uiSize();
     const cfg = SETTINGS.ui.subtitle;

@@ -8,7 +8,7 @@ export const UI_EVENTS = {
   say: 'ui:say',
   /** 弹出小菜单。参数：MenuOption 列表 */
   showMenu: 'ui:showMenu',
-  /** 下面这些是转给地图的：回车交互、空格用工具、手机「使用」键、点屏幕 */
+  /** 下面这些是转给地图的：回车交互、空格用工具、手机右下角的交互按钮、点屏幕 */
   worldAction: 'ui:worldAction',
   worldUseTool: 'ui:worldUseTool',
   worldSmart: 'ui:worldSmart',
