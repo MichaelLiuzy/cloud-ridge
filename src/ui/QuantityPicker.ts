@@ -2,7 +2,7 @@
  * 选数量的小框：往收货筐、箱子里放东西（以后店里买卖也用它）。
  *  - 一排按钮：「1 个」「一半」「全部」「－」「＋」，下面「确定」「算了」
  *  - 键盘：左右键（A D）减一 / 加一，上下键（W S）加十 / 减十，回车确定，Esc 取消
- * 位置和颜色按 320×180 的画面排，颜色在 src/config/settings.ts 的 ui 里。
+ * 位置按界面层（大约 640×360）排，颜色在 src/config/settings.ts 的 ui 里。
  */
 import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';

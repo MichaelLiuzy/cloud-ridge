@@ -50,7 +50,7 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
    - 或者放进自己电脑上的仓库文件夹，让本地的 Claude Code 帮你提交推送。
 2. **整理脚本会自动运行。** 在 GitHub 上传后，Cloudflare 发布时会自动跑一遍（一两分钟），刷新游戏就能看到新图。
    在自己电脑上，打开终端进到仓库文件夹，输入 `npm run art` 回车；`npm run dev` 启动时也会先自动跑一遍。
-   它会把大图缩小、抠掉品红背景、切格子、套 24 色，结果放进 `public/assets/`。
+   它会把大图缩小、抠掉品红背景、切格子、套 27 色，结果放进 `public/assets/`。
 3. **看预览页，检查切得对不对。** 每张原图旁边是处理后放大 4 倍的样子。
    - 网上：游戏网址后面加 `/art_preview/`，即 https://cloud-ridge.michaelliuzy83.workers.dev/art_preview/
    - 自己电脑上：跑完 `npm run art` 后，双击打开 `public/art_preview/index.html`。
@@ -74,7 +74,7 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
 | 按键（比如把背包改成 B） | `src/config/settings.ts` | `keys` 里的 `bag: ['Q']` 改成 `['B']` |
 | 手机摇杆、按钮大小和透明度 | `src/config/settings.ts` | `touch` |
 | 对话框、物品栏、时辰框的颜色 | `src/config/settings.ts` | `ui` |
-| 左上角时辰框（日期星期 / 时辰 / 天气 / 节日 / 钱和体力）的位置、大小、内边距，体力条的长和粗 | `src/config/settings.ts` | `ui.infoBox`、`ui.staminaBar` |
+| 左上角时辰框（日期星期 / 时辰 / 天气 / 节日 / 钱和体力）的位置、大小、内边距，体力条的长和粗 | `src/config/settings.ts` | `ui.infoBox`、`ui.staminaBar`；钟点格式在 `src/locales/zh.ts` 的 `hud.clock` |
 | 水面波光多久换一次 | `src/config/settings.ts` | `waterShimmerMs` |
 | 没有图时占位色块的颜色和样子 | `src/config/assets.ts` | 每张图的 `color`、`shape` |
 | 27 色调色板 | `src/config/palette.json` | `colors` |
@@ -85,14 +85,14 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
 | 游戏里显示的任何中文字 | `src/locales/zh.ts` | 搜你想改的那句话，改引号里的字 |
 | 游戏名 | `src/locales/zh.ts` | `game.title` |
 | 农场地图（树、石头、田放在哪） | `src/world/farmMap.ts` | 用字符画的地图，文件开头有字符对照表 |
-| 拿着什么点什么就做什么（水桶点田 = 浇水、种子点锄好的地 = 播种……）、做完变成什么、花多少体力 | `src/world/actions.ts` | `HELD_ACTIONS`（每条都有中文注释，从上往下用第一条对得上的） |
+| 拿着什么点什么就做什么（水桶点田 = 浇水、种子点锄好的地 = 播种、熟了的菜点一下就收……）、做完变成什么、花多少体力 | `src/world/actions.ts` | `HELD_ACTIONS`（每条都有中文注释，从上往下用第一条对得上的） |
 | 每件事花多少体力、体力多少算「累」 | `src/data/time.ts` | `stamina` |
 | 一天过多快 | `src/data/time.ts` | `clock.realSecondsPerGameHour`（现实几秒 = 游戏一小时） |
 | 作物生长天数、价格、播种时节、耐不耐寒 | `src/data/crops.ts` | 每种作物的 `growDays`、`sellPrice`、`sowWindows`、`frostHardy`、`perennial` |
 | 月份、节气表、赶集日、节日表、霜降和冻土规则 | `src/data/time.ts` | `calendar` 里的 `solarTerms`、`marketDays`、`festivals`、`farmingRules` |
 | 开局日期（现在是正月十六） | `src/data/start.ts` | `startDay` |
 | 物品价格 | `src/data/items.ts` | `buyPrice`、`sellPrice` |
-| 打工任务和报酬 | `src/data/jobs.ts` | `reward` 等 |
+| 打工任务和报酬（还没做，改了暂时没效果） | `src/data/jobs.ts` | `reward` 等 |
 | 重建老宅的四个阶段：材料、工钱、体力上限、修好后学会什么 | `src/data/housing.ts` | `stages` 里每阶段的 `materials`、`cost`、`maxStamina`、`learns` |
 | 废墟里杂草、碎石、焦木各占几成（开新档时随机摆一次） | `src/data/housing.ts` | `ruins.mix`（处理方法和体力同普通的杂草、石头、木头） |
 | 废墟在地图上的位置、老宅盖在哪 | `src/world/farmMap.ts` | 地图里的 `R`（四周的废墟，开新档时换成杂草 / 碎石 / 焦木）、`Q`（烧毁的老宅）；`HOUSE_SITE` |
@@ -110,14 +110,13 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
 | 笔记本「操作」「已学会」两栏的字 | `src/locales/zh.ts` | `notebook.controls`、`notebook.learned` |
 | Q 菜单有哪几栏、顺序 | `src/data/menuTabs.ts` | `MENU_TABS` |
 | 名字能多长、汉字和字母各算多宽 | `src/config/settings.ts` | `nameRules` |
-| 背包几行几列、格子多大 | `src/config/settings.ts` | `bag` |
+| 背包、工具栏有几格；每格多大 | `src/config/settings.ts` | `inventory.toolbarSlots`、`inventory.bagSlots`；`bag.slotSize` |
 | 工具栏几格、背包几格、同一种东西一格最多叠几个 | `src/config/settings.ts` | `inventory` 里的 `toolbarSlots`、`bagSlots`、`stackMax`（默认 99；工具不叠） |
 | 对话框里旁白、黄字的颜色 | `src/config/settings.ts` | `ui` 里的 `textDim2`、`clueText`、`clueMark` |
 | 界面层放大倍数（小 / 中 / 大三档各是多少） | `src/config/settings.ts` | `ui.scale`（数字越大界面越小；中档 2 = 按 640×360 排版） |
 | 各处字号（三档） | `src/config/settings.ts` | `fontSize`（正文：对话、菜单、字幕、物品名）、`titleFontSize`（标题：人名、栏目名、章节名；游戏名是它的 3 倍）、`ui.smallFontSize`（小字提示）；`ui.dialogueScale`（对话框再放大几倍）、`ui.iconScale`（工具栏、背包图标） |
 | 字体文件、换字体 | `public/assets/fonts/`、`tools/fonts.mjs`、`src/locales/i18n.ts`、`src/main.ts` | 现在用霞鹜文楷（LXGW WenKai，SIL OFL 1.1，https://github.com/lxgw/LxgwWenKai ，许可证 `OFL-WenKai.txt`）：正文常规体，标题粗体。打包时 `npm run fonts` 自动只留用得到的字（src 里出现的字 + 常用汉字 3755 个），做成两个 woff2；完整字体放 `fonts_raw/`（不提交，没有会自动下载）。换字体：把新字体的 ttf 放进 `fonts_raw/`，改 `tools/fonts.mjs` 里的文件名；`i18n.ts` 里 `font` / `titleFont` 是字体名单（后面的系统字体是生僻字的后备） |
 | 门口灯笼 | `src/scenes/FarmScene.ts`（`toggleLantern`）、`src/config/settings.ts`（`lanternOffTint`） | 点一下或面对它按回车：亮 ↔ 灭；灭了没有光圈，用灯笼图的第 2 格（off） |
-| 时辰框、体力条的位置和大小 | `src/config/settings.ts` | `ui.infoBox`、`ui.staminaBar`；钟点格式在 `src/locales/zh.ts` 的 `hud.clock` |
 | 设置菜单里有哪些项目、顺序 | `src/data/settingsMenu.ts` | `SETTINGS_MENU`（文件开头有写法说明；名字在 `src/locales/zh.ts` 的 `settings.items`） |
 | 每样食物吃一个回复多少体力、物品说明 | `src/data/items.ts` | 食物的 `stamina`、`desc` |
 | 一整天没吃东西，第二天醒来体力最多多少 | `src/data/time.ts` | `hunger.nextDayStamina`（现在 80） |
@@ -131,7 +130,6 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
 | 地图上每样东西的说明文字 | `src/locales/zh.ts` | `hint` |
 | 背包、箱子「整理」的类别顺序 | `src/config/settings.ts` | `inventory.sortOrder` |
 | 箱子每页几行几格 | `src/config/settings.ts` | `inventory.chestRows`、`inventory.chestCols` |
-| 点一下就做的事（拿着什么点什么、熟了的菜点一下就收） | `src/world/actions.ts` | `HELD_ACTIONS` |
 | 割草、砍树、敲石头掉几个材料、几成概率 | `src/world/actions.ts` | 每条规则的 `drop`（`amount` 最少 / 最多，`extra` 另外掉什么）；概率在 `DROP_CHANCES`（现在 20% / 60% / 20%） |
 | 农场里自己长树：每天几成概率长新树、新树是树苗 / 小树 / 大树的概率、长大的概率、最多几棵 | `src/data/trees.ts` | `spawnChance`、`spawnStage`、`grow`、`maxWild`（自己种的不算） |
 | 田里的杂草、石头、木头每周哪天重新摆、要不要回到开局的数量 | `src/data/trees.ts` | `FIELD_DEBRIS` 的 `weekday`（0 = 周一）、`keepCount`；开局数量就是 `src/world/farmMap.ts` 地图里篱笆里面画的 `g r s x` |
@@ -150,7 +148,7 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
 1. 打开仓库页面，点进想改的文件（比如 `src/config/settings.ts`）。
 2. 点右上角的铅笔图标 ✏️（Edit this file）。
 3. 改好后点绿色的 **Commit changes…**，再点一次确认。
-4. 等一两分钟，Cloudflare Pages 会自动重新发布，刷新游戏网址就能看到效果。
+4. 等一两分钟，Cloudflare Workers 会自动重新发布，刷新游戏网址就能看到效果。
    （如果改坏了打不开，告诉编程窗口，或者在文件的 History 里看改了什么、改回去。）
 
 ---
@@ -164,7 +162,7 @@ src/
   config/settings.ts   ★ 常调设置：速度、按键、界面颜色、摇杆
   config/assets.ts     ★ 素材清单：用哪些图、缺图时的占位色块
   config/atmosphere.ts ★ 昼夜叠色、灯光、回忆模式
-  config/palette.json  ★ 24 色调色板（整理脚本和游戏共用）
+  config/palette.json  ★ 27 色调色板（整理脚本和游戏共用）
   locales/zh.ts        ★ 所有中文文字
   locales/i18n.ts      多语言工具（以后加英文版用）
   data/*.ts            ★ 数值表：时间、作物、物品、打工、房子、开局
@@ -182,7 +180,7 @@ src/
     GameState.ts       全局状态（钱、体力、背包……）
     inventory.ts       工具栏 + 背包的格子：放进、拿走、移动、丢弃、上锁
     pathfind.ts        点远处时自动找路
-    save/              存档：格式和自动升级、3 个存档位、临时进度、存储
+    save/              存档：格式、3 个存档位、临时进度、存储
   ui/
     pixelUi.ts         画界面框、写像素字
     ListMenu.ts        小菜单
@@ -210,5 +208,5 @@ tools/art_rules.json   ★ 每种图怎么切、切成多大
 - 本地运行：`npm install`，然后 `npm run dev`；打包：`npm run build`（会先跑 `npm run art`，再做类型检查）。
 - 画面：320×180，`Scale.NONE` + 按真实像素取整的 zoom，`pixelArt`/`roundPixels`。主角位置 = 脚底，按 y 排遮挡。
 - 发布：Cloudflare（Workers & Pages）连接本仓库，构建命令 `npm run build`，部署命令 `npx wrangler deploy`（设置在 `wrangler.jsonc`），Node 版本见 `.node-version`。推到 `main` 自动发布。
-- 存档：带 `saveVersion` 的 JSON，存在 IndexedDB（`src/systems/save/storage.ts`，转 app 时只换这一层）。改存档格式时把 `SAVE_VERSION` 加 1，并在 `saveFormat.ts` 的 `MIGRATIONS` 里写升级步骤。
+- 存档：带 `saveVersion` 的 JSON，存在 IndexedDB（`src/systems/save/storage.ts`，转 app 时只换这一层）。改存档格式时把 `SAVE_VERSION` 加 1；原型期不写升级步骤，旧版本存档直接读不了（用户 2026-11-07 定）。
 - 以后转 app：iOS 用 Capacitor，Mac 用 Tauri 套壳，不用重写。

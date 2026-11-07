@@ -1,5 +1,5 @@
 // 打包设置。一般不用动。
-// BASE：网站放在哪个路径下。Cloudflare Pages 挂在根路径，所以默认是 /
+// BASE：网站放在哪个路径下。Cloudflare Workers 挂在根路径，所以默认是 /
 import fs from 'node:fs';
 import { execSync } from 'node:child_process';
 import { createRequire } from 'node:module';
@@ -35,7 +35,7 @@ const base = process.env.BASE ?? '/';
 
 /** 版本号：这次打包用的是哪一次提交（标题画面右上角会显示，方便确认手机上是不是最新版） */
 function buildVersion() {
-  const sha = process.env.WORKERS_CI_COMMIT_SHA ?? process.env.CF_PAGES_COMMIT_SHA;
+  const sha = process.env.WORKERS_CI_COMMIT_SHA;
   if (sha) return sha.slice(0, 7);
   try {
     return execSync('git rev-parse --short HEAD').toString().trim();

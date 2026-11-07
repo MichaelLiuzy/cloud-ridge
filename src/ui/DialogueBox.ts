@@ -220,10 +220,7 @@ export class DialogueBox {
   private applyTags(line: DialogueLine) {
     const { clue, learn, learned, give } = line.tags;
     if (give) addItem(give, 1);
-    if ('give_start' in line.tags) {
-      giveStartKit();
-      this.scene.game.events.emit('ui:toolsChanged');
-    }
+    if ('give_start' in line.tags) giveStartKit();
     if (clue) giveClue(clue);
     if (learn) learnControl(learn);
     if (learned) addLearned(learned);

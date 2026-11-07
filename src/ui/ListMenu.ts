@@ -16,7 +16,7 @@ export interface MenuOption {
   disabled?: boolean;
 }
 
-/** 每一行多高、框的内边距（像素，按 320×180 的画面算） */
+/** 每一行多高、框的内边距（像素，界面像素，界面层大约 640×360） */
 const ROW_H = 16;
 const PAD = 4;
 
@@ -59,7 +59,7 @@ export class ListMenu {
       titleText = pixelText(scene, w / 2, top, opts.title, { wrap: w - PAD * 2 - 4, align: 'center', title: true }).setOrigin(0.5, 0);
       top += Math.ceil(titleText.height) + 3;
     }
-    options.forEach((opt, i) => {
+    options.forEach((_, i) => {
       const y = top + i * ROW_H;
       const row = scene.add.rectangle(PAD, y, w - PAD * 2, ROW_H, toColor(ui.highlight), 0).setOrigin(0);
       row.setInteractive().on('pointerdown', () => this.choose(i));

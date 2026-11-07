@@ -13,7 +13,7 @@
  *    T  农场边缘的林子（挡路，不能砍，也点不了）   ~  水塘（挡路；拿水桶对着它就能打满水）
  *    y  树苗   u  小树   Y  大树（挡路，用斧头砍；每天会自己长大，也会在空地上自己长出来，见 src/data/trees.ts）
  *    #  篱笆（挡路）        H  草棚（挡路，连在一起的 H 会画成一座房子）
-    G  篱笆上的门（能走；现在画成小路的样子，以后美术补门的图）
+ *    G  篱笆上的门（能走；现在画成小路的样子，以后美术补门的图）
  *    r  石头（挡路）        g  杂草（挡路）
  *    s  树桩（挡路）        x  火灾残骸（挡路）
  *    L  灯笼（挡路，夜里会亮）
@@ -26,7 +26,7 @@
  *    B  收货筐（挡路；开通杂货铺上门收货后自动出现在 BASKET_CELL）
  *    M  家门口的信箱（挡路；有新信时竖起小旗，见 src/data/letters.ts）
  *
- *  中间被篱笆 # 围起来的就是 15×12 的农田区（数值来自 src/data/start.ts）。
+ *  中间被篱笆 # 围起来的就是 15×12 的农田区（地图就画在下面，改田的大小直接改地图）。
  *  田有两个门 G：左边小路通进来一个、下面一排篱笆中间一个，都是 2 格宽。
  *  以后正式地图会改用 Tiled 地图编辑器的格式，这份文字地图只是原型用。
  */
@@ -125,13 +125,13 @@ export const HOUSE_SITE = {
 /** 收货筐放在哪一格（开通上门收货后出现） */
 export const BASKET_CELL = { x: 6, y: 4 };
 
-/** 信箱在哪一格（地图上的 M；旧存档读进来时补上） */
+/** 信箱在哪一格（地图上的 M） */
 export const MAILBOX_CELL = { x: 5, y: 5 };
 
 /** 地图上一共有几格废墟 */
 export const RUIN_TILES = FARM_MAP.reduce((n, row) => n + [...row].filter((ch) => ch === 'R').length, 0);
 
-/** 把地图里的 R（废墟）按 housing.ts 的 ruins.mix 随机换成杂草 w、碎石 k、焦木 j（开新档、读旧存档时用一次） */
+/** 把地图里的 R（废墟）按 housing.ts 的 ruins.mix 随机换成杂草 w、碎石 k、焦木 j（开新档时用一次） */
 export function scatterRuins(rows: string[], rand = Math.random): string[] {
   const { weed, rock } = HOUSING.ruins.mix;
   const pick = () => {

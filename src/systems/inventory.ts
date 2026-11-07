@@ -93,28 +93,6 @@ export function roomFor(id: string) {
   return room;
 }
 
-/** 这么多能不能全放下 */
-export function canAdd(id: string, n = 1) {
-  if (n <= 0 || isKeyItem(id)) return true;
-  const max = stackMax(id);
-  let room = 0;
-  for (const s of gameState.slots) {
-    if (!s) room += max;
-    else if (s.id === id) room += max - s.n;
-    if (room >= n) return true;
-  }
-  return false;
-}
-
-/** 好几样东西一起能不能放下（比如收货筐、箱子一次拿好几种时） */
-export function canAddAll(list: Record<string, number>) {
-  const saved = gameState.slots.map((s) => (s ? { ...s } : null));
-  let ok = true;
-  for (const [id, n] of Object.entries(list)) if (addItem(id, n) < n) ok = false;
-  gameState.slots = saved;
-  return ok;
-}
-
 /**
  * 放进来 n 个：先叠到已有的同种格子上，再放空格（工具栏先、背包后）。
  * 返回实际放进去几个（放不下的就没放）。
@@ -260,29 +238,4 @@ export function whyCantDiscard(i: number): string | null {
 export function toggleLock(i: number) {
   const s = slotAt(i);
   if (s) s.locked = !s.locked;
-}
-
-/** 旧格式（物品 id → 数量 + 工具列表）换成格子：工具先按原来的顺序放，其他东西按物品表顺序，放满工具栏再放背包 */
-export function slotsFromOld(inventory: Record<string, number>, tools: string[] = []) {
-  const slots = emptySlots();
-  const keyItems: Record<string, number> = {};
-  let i = 0;
-  const put = (id: string, n: number) => {
-    const max = stackMax(id);
-    while (n > 0 && i < ALL_SLOTS) {
-      const k = Math.min(n, max);
-      slots[i++] = { id, n: k };
-      n -= k;
-    }
-  };
-  const order = [...tools.filter((id) => (inventory[id] ?? 0) > 0)];
-  for (const it of ITEMS.items) if (!order.includes(it.id) && (inventory[it.id] ?? 0) > 0) order.push(it.id);
-  // 物品表里没有的（理论上不会有）也放进去
-  for (const id of Object.keys(inventory)) if (!order.includes(id) && (inventory[id] ?? 0) > 0) order.push(id);
-  for (const id of order) {
-    const n = inventory[id] ?? 0;
-    if (isKeyItem(id)) keyItems[id] = n;
-    else put(id, n);
-  }
-  return { slots, keyItems };
 }

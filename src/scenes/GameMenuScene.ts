@@ -5,7 +5,7 @@
  *  - Q 或 Esc 关闭；右上角的 ✕ 也能关。
  *  - 点草棚里的箱子也是打开这里（chest = true）：只有背包一栏，左边多出箱子的格子。
  *  - 打开时游戏时间暂停（gameState.menuOpen = true，农场场景看到它就停）。
- * 背包格子的行列数在 src/config/settings.ts 的 bag 里。
+ * 背包、工具栏的格子数在 src/config/settings.ts 的 inventory 里，每格大小在 bag.slotSize。
  */
 import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';

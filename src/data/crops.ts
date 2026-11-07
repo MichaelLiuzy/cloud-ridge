@@ -15,8 +15,8 @@ export const CROPS: CropsTable = {
   // 种植规则
   rules: {
     needsWaterToGrow: true,  // 不浇水就不长
-    unwateredDies: false,  // 不浇水会不会死
-    fertilizer: { item: "plant_ash", growDaysReduction: 0.1, minReductionDays: 1 },  // 肥料
+    unwateredDies: false,  // 不浇水会不会死（还没做，改了暂时没效果）
+    fertilizer: { item: "plant_ash", growDaysReduction: 0.1, minReductionDays: 1 },  // 肥料（还没做，改了暂时没效果）
   },
   // 作物列表
   crops: [

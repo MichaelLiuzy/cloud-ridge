@@ -4,7 +4,7 @@
  * 所有操作（键盘、鼠标、手指）都先到这里：对话框或小菜单开着时由这里处理，
  * 否则再转给地图（FarmScene）。
  * 文字内容在 src/locales/zh.ts，颜色在 src/config/settings.ts 的 ui。
- * 画面按 320×180 排，下面的数字都是这个大小里的像素。
+ * 画在界面层（大约 640×360），下面的数字都是界面像素。
  */
 import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
@@ -54,7 +54,6 @@ export const UI_EVENTS = {
   /** 播一段剧本对话。参数：剧本里的段落名（knot），播完后调用的函数 */
   playDialogue: 'ui:playDialogue',
   /** 工具变了（比如拿到开局物资）：重画工具栏 */
-  toolsChanged: 'ui:toolsChanged',
   /** 让玩家选数量。参数：标题、最多几个、选好后调用的函数（取消时传 null） */
   askQuantity: 'ui:askQuantity',
 } as const;
@@ -102,7 +101,6 @@ export class HudScene extends Phaser.Scene {
   /** 右上角的笔记本图标（拿到笔记本后出现，有新内容会闪） */
   private notebookIcon!: Phaser.GameObjects.Container;
   /** 右上角的齿轮（设置） */
-  private gearButton!: Phaser.GameObjects.Container;
 
   private toolCursor?: Phaser.GameObjects.Graphics;
   /** 工具栏的所有东西（工具变了时整个重画） */
@@ -116,7 +114,6 @@ export class HudScene extends Phaser.Scene {
   private toolbarSig = '';
   private layoutW = 0;
   private layoutH = 0;
-  private touchButtons: Phaser.GameObjects.Container[] = [];
   private touch = false;
   /** 一格的说明：鼠标停住 / 手机长按时跟着手指的小框，键盘时工具栏上面那一条（settings.ts 的 ui.hoverTip） */
   private tip!: Phaser.GameObjects.Container;
@@ -195,10 +192,10 @@ export class HudScene extends Phaser.Scene {
     if (this.touch) {
       const cfg = SETTINGS.touch;
       const ev = this.game.events;
-      const [action, bag] = (this.touchButtons = [
+      const [action, bag] = [
         makeRoundButton(this, t('buttons.action'), cfg.actionButtonRadius, () => ev.emit(INPUT_EVENTS.action, 'smart')),
         makeRoundButton(this, t('buttons.bag'), cfg.smallButtonRadius, () => ev.emit(INPUT_EVENTS.bag), 'icon_backpack'),
-      ]);
+      ];
       const ax = W - cfg.actionButtonRadius - 8;
       const ay = H - cfg.actionButtonRadius - 8;
       action.setPosition(ax, ay);
@@ -221,7 +218,6 @@ export class HudScene extends Phaser.Scene {
       [INPUT_EVENTS.debugMemory, () => (gameState.memoryMode = !gameState.memoryMode)],
       [UI_EVENTS.say, (key: string, params?: Record<string, string | number>) => this.say(key, params)],
       [UI_EVENTS.showMenu, (opts: MenuOption[], title?: string) => this.openMenu(opts, title)],
-      [UI_EVENTS.toolsChanged, () => this.buildToolbar(W, H)],
       [VIEW_EVENTS.changed, () => this.relayout()],
       [UI_EVENTS.askQuantity, (title: string, max: number, onDone: (n: number | null) => void) => this.askQuantity(title, max, onDone)],
       [UI_EVENTS.playDialogue, (knot: string, onDone?: () => void) => this.playStory(knot, onDone)],
@@ -240,7 +236,6 @@ export class HudScene extends Phaser.Scene {
       this.closeMenu();
       this.picker?.destroy();
       this.picker = undefined;
-      this.touchButtons = [];
     });
   }
 
@@ -558,7 +553,7 @@ export class HudScene extends Phaser.Scene {
         { label: t('menu.debugToSunday'), run: () => ev.emit(FARM_EVENTS.debugToSunday) },
         { label: t('menu.debugLetter'), run: () => (sendLetter('debug_test'), this.say('msg.mailArrived')) },
         { label: t('menu.debugBuild'), run: () => ev.emit(FARM_EVENTS.debugBuild) },
-        { label: t('menu.debugPickup'), run: () => this.debugPickup() },
+        { label: t('menu.debugPickup', { points: SERVICES.pickup.unlockHearts * AFFECTION.pointsPerHeart, hearts: SERVICES.pickup.unlockHearts }), run: () => this.debugPickup() },
         { label: t('menu.debugPoster'), run: () => fireStoryEvent('saw_missing_poster') },
         { label: t('menu.debugChapter'), run: () => debugNextChapter() },
         { label: t('menu.debugMemory'), run: () => (gameState.memoryMode = !gameState.memoryMode) },
@@ -625,16 +620,6 @@ export class HudScene extends Phaser.Scene {
     this.syncBusy();
   }
 
-  /** 旧存档没有名字：先补填（不能跳过） */
-  private async fillInName() {
-    this.naming = true;
-    this.syncBusy();
-    const name = await askName(this.game, { title: t('nameInput.fillIn') });
-    gameState.playerName = name ?? '';
-    this.naming = false;
-    this.syncBusy();
-  }
-
   /** 打开 Q 总菜单 */
   private openGameMenu(tab: MenuTabId) {
     if (this.scene.isActive('GameMenu')) return;
@@ -654,14 +639,13 @@ export class HudScene extends Phaser.Scene {
       hit.on('pointerdown', onPress);
       return this.add.container(x, 4, extra ? [g, extra, hit] : [g, hit]).setDepth(45);
     };
-    this.gearButton = button(W - size - 4, (g) => {
+    button(W - size - 4, (g) => {
       const icon = artIcon(this, 'icon_gear', size / 2, size / 2, 1);
       if (!icon) drawGear(g, size / 2, size / 2, toColor(SETTINGS.ui.text));
       return icon;
     }, () => this.openSettings());
     this.notebookIcon = button(W - 2 * size - 8, () => this.add.image(size / 2, size / 2, 'icon_notebook'), () => !this.busy() && this.openGameMenu('notebook'));
     this.refreshNotebookIcon();
-    if (!gameState.playerName && (gameState.prologue === 'tutorial' || gameState.prologue === 'done')) void this.fillInName();
   }
 
   private refreshNotebookIcon() {

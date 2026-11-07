@@ -18,7 +18,7 @@ export const TIME: TimeTable = {
     dayEndHour: 26,  // 几点强制昏倒（26 = 第二天凌晨 2 点）
     realSecondsPerGameHour: 45,  // 现实几秒 = 游戏一小时（改大，一天就过得慢）
     tickMinutes: 10,  // 时钟每次跳几分钟
-    pauseDuringDialogue: true,  // 对话时时间是否暂停
+    pauseDuringDialogue: true,  // 对话时时间是否暂停（还没做，改了暂时没效果）
   },
   // 时辰表：从几点开始算哪个时辰
   shichenDisplay: [
@@ -125,7 +125,7 @@ export const TIME: TimeTable = {
       frozenGround: { from: "xiaohan", until: "lichun" },  // 小寒到立春前一天是冻土期：作物停止生长，不枯死
     },
   },
-  // 店铺营业时间 [开门, 关门]（24 小时制）
+  // 店铺营业时间 [开门, 关门]（24 小时制）（还没做，改了暂时没效果）
   openingHours: {
     general_store: [9, 17],
     carpenter: [9, 17],
@@ -136,7 +136,7 @@ export const TIME: TimeTable = {
   },
   // 体力
   stamina: {
-    base: 100,  // 基础体力上限
+    base: 100,  // 基础体力上限（还没做，改了暂时没效果）；现在开局体力上限按 src/data/housing.ts 的住处算
     lowThreshold: 15,  // 体力低于多少算「很累」（走路变慢）
     lowSpeedMultiplier: 0.7,  // 很累时走路速度（0.7 = 原来的 70%）
     // 每个动作花多少体力
@@ -161,18 +161,18 @@ export const TIME: TimeTable = {
   faint: {
     // 熬到凌晨两点昏倒
     lateNight: {
-      hour: 26,
+      hour: 26,  // 几点昏倒（还没做，改了暂时没效果）；实际用的是上面 clock.dayEndHour
       nextDayStamina: 0.7,  // 第二天体力剩多少（0.7 = 70%）
-      fee: 0,  // 被送回去要付多少文
-      wakeAt: "home",  // 在哪醒来
-      event: "night_watchman_escort",  // 触发的剧情事件
+      fee: 0,  // 被送回去要付多少文（还没做，改了暂时没效果）
+      wakeAt: "home",  // 在哪醒来（还没做，改了暂时没效果）
+      event: "night_watchman_escort",  // 触发的剧情事件（还没做，改了暂时没效果）
     },
     // 体力用完昏倒
     exhausted: {
       nextDayStamina: 0.5,
-      fee: 50,
+      fee: 50,  // 收多少文
       feeMaxFractionOfCash: 0.1,  // 最多收身上钱的几成（0.1 = 10%）
-      wakeAt: "clinic",
+      wakeAt: "clinic",  // （还没做，改了暂时没效果）现在在家醒来
     },
   },
   // 天气

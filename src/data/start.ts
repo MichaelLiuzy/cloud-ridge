@@ -26,7 +26,7 @@ export const START: StartTable = {
     axe: 1,
     pickaxe: 1,
   },
-  // 农场
+  // 农场（还没做，改了暂时没效果）：地图直接画在 src/world/farmMap.ts
   farm: {
     width: 15,  // 宽几格
     height: 12,  // 高几格

@@ -105,8 +105,6 @@ export const zh = {
     errChars: "只能用汉字、英文字母和数字，不能有空格、标点或表情符号。",
     errLong: "名字太长了：最多 {max} 个汉字（一个字母或数字算半个）。",
     renamed: "以后大家就叫你「{name}」了。",
-    /** 旧存档第一次读进来时，补填名字 */
-    fillIn: "这份存档还没有名字，先给主角起个名字吧。",
   },
 
   // ===== Q 总菜单 =====
@@ -242,13 +240,10 @@ export const zh = {
     date: "{month}{day} · {term}",
     /** 时辰框第一行：「正月十六 周二」 */
     dateWeek: "{date} {weekday}",
-    /** 时辰框第二行：「辰时 · 8:00 am」 */
-    timeRow: "{shichen} · {clock}",
     /** 左上角时辰框里的短日期 */
     shortDate: "{month}{day}",
     time: "{shichen}（{hour}:{minute}）",
     money: "{amount} {unit}",
-    stamina: "体力 {value}/{max}",
     /** 时辰框里的钟点（整点）。am / pm 用小写 */
     clock: "{hour}:00 {ampm}",
     am: "am",
@@ -325,15 +320,12 @@ export const zh = {
 
   // ===== 各种提示消息（对话框里显示） =====
   msg: {
-    bagNotReady: "背包还在做，下一版就有。",
     lateNightFaint: "已经凌晨两点了……你眼前一黑，倒了下去。醒来时已经是第二天早上，巡夜人把你送回了草棚。",
-    newDay: "新的一天开始了。",
     cantUseTool: "{tool}在这里用不上。",
     noTool: "手上没拿东西。先在下面的工具栏里选一格。",
     bagFull: "工具栏和背包都满了，放不下。先丢掉或放进箱子里一些东西吧。",
     lockedCantSell: "能卖的东西都上了锁。想卖的话，先在背包里解锁。",
     cantReach: "走不过去。",
-    toolSelected: "拿起了{tool}。",
     sleep: "你躺下睡了。新的一天开始了。（已自动存进存档{slot}）",
     ate: "吃了一个{name}，体力 +{n}。",
     hungry: "昨天一整天没吃东西，今天浑身没力气（体力只有 {n}）。记得每天吃点东西。",
@@ -499,12 +491,6 @@ export const zh = {
   },
 
   menu: {
-    title: "菜单",
-    export: "导出存档（备份成文件）",
-    backToTitle: "回到标题画面",
-    backConfirm: "回标题前，没存的进度会丢掉。确定吗？",
-    yes: "确定",
-    close: "继续玩",
     // 下面是测试用的选项（src/config/settings.ts 里 debugMenu 改成 false 就不显示）
     debugSkipTime: "测试：时间快进 3 小时",
     debugMemory: "测试：回忆模式 开 / 关",
@@ -515,9 +501,8 @@ export const zh = {
     debugToSunday: "测试：跳到本周日（本周统计不清空）",
     debugLetter: "测试：寄一封测试信",
     debugBuild: "测试：请木匠修下一阶段（材料不够直接给）",
-    debugPickup: "测试：杂货铺掌柜好感加到 200 点（2 颗心）",
+    debugPickup: "测试：杂货铺掌柜好感加到 {points} 点（{hearts} 颗心）",
     debugChapter: "测试：直接进入下一章",
-    rename: "改名字",
   },
 };
 

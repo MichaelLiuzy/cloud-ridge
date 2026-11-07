@@ -45,16 +45,3 @@ export function transferSlot(from: number) {
   normalizeChest();
   return n0 - (slotAt(from)?.n ?? 0);
 }
-
-/** 旧存档里的箱子（物品 id → 数量）换成格子：按原顺序放，超过叠放上限的拆成几格 */
-export function chestFromOld(old: Record<string, number>) {
-  const list: (Slot | null)[] = [];
-  for (const [id, n] of Object.entries(old)) {
-    for (let left = n; left > 0; ) {
-      const k = Math.min(left, SETTINGS.inventory.stackMax);
-      list.push({ id, n: k });
-      left -= k;
-    }
-  }
-  return list;
-}

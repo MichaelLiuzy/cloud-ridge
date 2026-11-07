@@ -16,13 +16,13 @@ export const ITEMS: ItemsTable = {
   currency: {
     unit: "wen",  // 单位
     name: { zh: "文", en: "wen" },  // 名字：zh 中文，en 英文（英文以后再填）
-    // 大单位
+    // 大单位（还没做，改了暂时没效果）
     bigUnit: {
       name: { zh: "两", en: "tael" },
       value: 1000,  // 等于多少小单位
     },
   },
-  // 店铺
+  // 店铺（还没做，改了暂时没效果）
   shops: [
     {
       id: "general_store",  // 程序用的英文名字，其他表靠它互相引用，不要改

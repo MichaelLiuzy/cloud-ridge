@@ -112,7 +112,7 @@ export class FarmScene extends Phaser.Scene {
 
   create() {
     // 读档时用存档里的地图（开垦、浇水情况都在里面），新游戏用 farmMap.ts 里的。
-    // 地图上还有 R（新游戏、旧存档）就随机换成杂草 / 碎石 / 焦木，之后跟着存档走
+    // 地图上还有 R（新游戏）就随机换成杂草 / 碎石 / 焦木，之后跟着存档走
     const load = gameState.pendingLoad;
     gameState.pendingLoad = null;
     this.grid = scatterRuins(load ? load.farm : FARM_MAP).map((row) => [...row]);
@@ -169,7 +169,7 @@ export class FarmScene extends Phaser.Scene {
       this.facing = 'right';
       this.placeZhou({ x: this.doorTile.x + 1, y: this.doorTile.y });
     }
-    // 万一站在了挡路的格子上（比如旧存档里这里后来变成了废墟），挪到门口
+    // 万一站在了挡路的格子上（比如存档时站的格子后来变了），挪到门口
     if (this.isSolid(this.playerCell())) {
       const door = this.cellFeet(this.doorTile);
       this.setFeet(door.x, door.y);
@@ -411,7 +411,7 @@ export class FarmScene extends Phaser.Scene {
   /** 回车：交互 / 对话（不用工具的事） */
   private interactFacing() {
     const cell = this.facingCell();
-    const options = this.optionsFor(cell, { tools: false, walk: false });
+    const options = this.optionsFor(cell, { walk: false });
     this.runOptions(options, cell);
   }
 
@@ -429,10 +429,9 @@ export class FarmScene extends Phaser.Scene {
     const cell = this.facingCell();
     const rule = this.heldRule(cell);
     if (rule) return this.doHeld(rule, cell);
-    this.runOptions(this.optionsFor(cell, { tools: false, walk: false }), cell);
+    this.runOptions(this.optionsFor(cell, { walk: false }), cell);
   }
 
-  /** 吃掉手上拿着的一个食物（src/systems/food.ts） */
   /** 界面坐标 (sx, sy) 落在地图的哪一格（点的位置先换成画布坐标，再换成地图坐标） */
   private cellAtScreen(sx: number, sy: number): Cell {
     const p = this.cameras.main.getWorldPoint(sx * VIEW.ui, sy * VIEW.ui);
@@ -473,7 +472,7 @@ export class FarmScene extends Phaser.Scene {
     // 手上的东西对这一格有用：走过去直接做，不弹菜单
     const rule = this.heldRule(cell);
     if (rule) return this.walkNextTo(cell, () => this.heldRule(cell) === rule && this.doHeld(rule, cell));
-    this.runOptions(this.optionsFor(cell, { tools: false, walk: true }), cell, true);
+    this.runOptions(this.optionsFor(cell, { walk: true }), cell, true);
   }
 
   /** 这一格的作物现在什么样（没种东西 = none） */
@@ -501,7 +500,7 @@ export class FarmScene extends Phaser.Scene {
   // =================================================================
 
   /** 列出对这一格能做的事 */
-  private optionsFor(cell: Cell, opts: { tools: boolean; walk: boolean }): (MenuOption & { needReach: boolean })[] {
+  private optionsFor(cell: Cell, opts: { walk: boolean }): (MenuOption & { needReach: boolean })[] {
     const kind = this.kindAt(cell);
     const list: (MenuOption & { needReach: boolean })[] = [];
     if (this.zhou && this.zhou.cell.x === cell.x && this.zhou.cell.y === cell.y) {

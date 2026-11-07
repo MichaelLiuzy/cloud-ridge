@@ -70,7 +70,7 @@ export const SETTINGS = {
     cancel: ['ESC'],
     /** 打开背包 */
     bag: ['Q'],
-    /** 打开菜单（先没做） */
+    /** 打开设置面板 */
     menu: ['M'],
     /** （测试用）切换回忆模式：画面去色、只有火光保留颜色 */
     debugMemory: ['F8'],
@@ -105,13 +105,13 @@ export const SETTINGS = {
    * 地图、人物没有图时的占位色块颜色在 src/config/assets.ts 里改。
    */
   ui: {
+    /** 读信：信纸底色、边框、信件列表里「没读过」的小红点（有 ui_letter 的图时信纸用图） */
+    letter: { paper: '#EFE4C8', border: '#A8402F', unread: '#A8402F' },
     /**
      * 右下角的提示字幕（得到东西、背包满了这类系统提示）：
      * holdMs 停多久（毫秒）、fadeMs 渐隐多久、maxLines 最多同时几条、maxW 一条最宽多少（超过就折行）、
      * right 离右边多远、gap 条与条之间空多少，字的颜色和描边颜色。
      */
-    /** 读信：信纸底色、边框、信件列表里「没读过」的小红点（有 ui_letter 的图时信纸用图） */
-    letter: { paper: '#EFE4C8', border: '#A8402F', unread: '#A8402F' },
     subtitle: { holdMs: 3000, fadeMs: 600, maxLines: 3, maxW: 260, right: 8, gap: 2, color: '#EFE4C8', stroke: '#2B2622' },
     /**
      * 界面层比地图细几倍。地图按 320×180 放大；界面按「地图倍数 ÷ 这个数」放大，
@@ -190,10 +190,9 @@ export const SETTINGS = {
   lanternOffTint: '#7A7068',
 
   /**
-   * 字号（界面像素，界面大约 640×360；对话框再放大 ui.dialogueScale 倍）。
-   * 字体是霞鹜文楷，文件在 public/assets/fonts/，怎么换见 README。
+   * 字号（界面像素，界面大约 640×360；对话框再放大 ui.dialogueScale 倍）。字体是霞鹜文楷，怎么换见 README。
+   * 正文：对话、菜单选项、信息框、字幕、物品名、数字
    */
-  /** 正文：对话、菜单选项、信息框、字幕、物品名、数字 */
   fontSize: 10,
   /** 标题：说话人名字、菜单栏目名、章节名、列表菜单标题、周总结标题（游戏名是它的 3 倍） */
   titleFontSize: 11,
@@ -222,8 +221,8 @@ export const SETTINGS = {
      * 自动翻页：每一格的出场效果播完后，等几秒没操作就自动翻到下一格。
      * 默认几秒、开不开在上面的 prefsDefaults（autoAdvance、autoAdvanceSec），玩家可以在设置里改。
      * 某一格想停久一点或短一点，在 src/data/cutscenes.ts 里给那一格写 autoMs。
+     * minShowMs：每一格至少显示多久（毫秒）才能手动翻走，防止手快一下翻过两格。
      */
-    /** 每一格至少显示多久（毫秒）才能手动翻走，防止手快一下翻过两格 */
     minShowMs: 400,
     /** 屏幕最上方「按任意键翻页」那行小字：颜色、透明度（0~1），以及慢慢闪一次要多久（毫秒） */
     hintColor: '#EFE4C8',
@@ -275,10 +274,8 @@ export const SETTINGS = {
   },
 
   // ---------------- 背包 ----------------
-  /** Q 菜单里背包的格子：每行几格、几行、每格多大（界面像素；图标放大 ui.iconScale 倍后是 32） */
+  /** Q 菜单里背包每格多大（界面像素；图标放大 ui.iconScale 倍后是 32）。格子数在下面 inventory 里 */
   bag: {
-    cols: 9,
-    rows: 4,
     slotSize: 36,
   },
 
