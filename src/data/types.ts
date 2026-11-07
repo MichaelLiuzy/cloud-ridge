@@ -37,7 +37,7 @@ export type ItemId =
   | 'eggplant_seed' | 'eggplant' | 'cowpea_seed' | 'cowpea' | 'chili_seed' | 'chili'
   | 'watermelon_seed' | 'watermelon' | 'napa_cabbage_seed' | 'napa_cabbage' | 'taro_seed' | 'taro'
   | 'sweet_potato_seed' | 'sweet_potato' | 'pumpkin_seed' | 'pumpkin' | 'spinach_seed' | 'spinach'
-  | 'garlic_seed' | 'garlic' | 'mustard_greens_seed' | 'mustard_greens'
+  | 'garlic_seed' | 'garlic' | 'mustard_greens_seed' | 'mustard_greens' | 'tree_seed'
   | 'wood' | 'thatch' | 'stone' | 'roof_tile' | 'brick' | 'firewood' | 'plant_ash'
   | 'mantou' | 'tea' | 'veg_porridge' | 'radish_soup' | 'roast_sweet_potato'
   | 'hoe' | 'bucket' | 'sickle' | 'axe' | 'pickaxe'
@@ -61,7 +61,7 @@ export type NpcId =
   | 'dock_manager' | 'tutor' | 'carpenter' | 'blacksmith' | 'night_watchman';
 
 /** 会花体力的动作 */
-export type StaminaAction = 'hoe' | 'water' | 'plant' | 'harvest' | 'cut_grass' | 'chop_tree' | 'mine_rock' | 'clear_ruin';
+export type StaminaAction = 'hoe' | 'water' | 'plant' | 'harvest' | 'cut_grass' | 'chop_wood' | 'chop_small_tree' | 'chop_tree' | 'mine_rock';
 
 /** 重建老宅的阶段 id */
 export type HouseStageId = 'clear_ruins' | 'timber_frame' | 'tiled_roof' | 'courtyard';
@@ -119,8 +119,8 @@ export interface TimeTable {
     lowSpeedMultiplier: number;
     /** 每个动作花几点体力 */
     costs: Record<StaminaAction, number>;
-    /** 水桶装满能浇几格 */
-    wateringCanCapacity: number;
+    /** 水桶：装满有多少水、浇一格用掉多少 */
+    bucket: { capacity: number; perWater: number };
   };
   sleep: { beforeMidnightRestore: number; afterMidnightRestore: number };
   faint: {
@@ -195,7 +195,6 @@ export interface Item {
   /** （种子）种下去长成什么 */
   plants?: CropId;
   /** （材料）怎么采集：用什么动作，一次得几个 [最少, 最多] */
-  gather?: { action: StaminaAction; amount: [number, number] };
   /** （食物、肥料）怎么做：在哪做、要什么材料、做出几个 */
   craft?: { station: string; inputs: Partial<Record<ItemId, number>>; output: number };
   /** （食物）吃了回几点体力 */
@@ -245,8 +244,8 @@ export interface HousingTable {
   builder: NpcId;
   /** 开局住的草棚（镇上的人在废墟旁搭的） */
   hut: Dwelling;
-  /** 清废墟：每清一格花多少体力在 time.ts 的 stamina.costs.clear_ruin；能用哪些工具清 */
-  ruins: { tools: ItemId[] };
+  /** 废墟里随机生成的东西：杂草、石头、木头各占几成（加起来是 1） */
+  ruins: { mix: { weed: number; rock: number; wood: number } };
   /** 重建的四个阶段，按顺序 */
   stages: HouseStage[];
 }

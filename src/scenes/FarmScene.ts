@@ -13,13 +13,14 @@ import { SETTINGS } from '../config/settings';
 import { VIEW, VIEW_EVENTS } from '../config/view';
 import { GROUND_TILES, WALK_SHEET, frameIndex } from '../config/assets';
 import { PALETTE, toColor } from '../config/palette';
-import { BASKET_CELL, FARM_MAP, HOUSE_SITE, TILE_TYPES } from '../world/farmMap';
-import { PLAIN_ACTIONS, heldActionFor, type CropState, type HeldAction } from '../world/actions';
+import { BASKET_CELL, FARM_MAP, HOUSE_SITE, TILE_TYPES, scatterRuins } from '../world/farmMap';
+import { PLAIN_ACTIONS, heldActionFor, rollAmount, type CropState, type HeldAction } from '../world/actions';
 import { KeyboardControls } from '../input/Controls';
 import { gameState } from '../systems/GameState';
 import { addItem, countItem, heldItem, inventoryCounts, itemInfo, roomFor, takeFromSlot } from '../systems/inventory';
 import { basketPrice } from '../systems/economy/shop';
-import { CROP_LOOKS, cropFromSeed, cropInfo, cropLook, growOvernight, harvest, inSowWindow, isRipe, nextSowTerm, plant } from '../systems/farming/crops';
+import { CROP_LOOKS, cropFromSeed, cropInfo, cropLook, growOvernight, harvest, inSowWindow, isFrozen, isRipe, nextSowTerm, plant } from '../systems/farming/crops';
+import { treesOvernight } from '../systems/farming/trees';
 import { buildOvernight, dwelling, requestBuild, ruinCleared, stageInfo } from '../systems/home/house';
 import { putInBasket, sellableInBag, settleBasket, takeFromBasket } from '../systems/economy/pickup';
 import { HOUSING } from '../data/housing';
@@ -92,6 +93,8 @@ export class FarmScene extends Phaser.Scene {
   private onArrive?: () => void;
   /** 地里每格作物的图（「x,y」→ 图） */
   private cropViews = new Map<string, Phaser.GameObjects.Image>();
+  /** 地上掉落的东西的图（「x,y」→ 图） */
+  private dropViews = new Map<string, Phaser.GameObjects.Container>();
   /** 重建中的老宅的图 */
   private houseImage?: Phaser.GameObjects.Image;
   private houseLight?: LightSpot;
@@ -104,13 +107,15 @@ export class FarmScene extends Phaser.Scene {
   }
 
   create() {
-    // 读档时用存档里的地图（开垦、浇水情况都在里面），新游戏用 farmMap.ts 里的
+    // 读档时用存档里的地图（开垦、浇水情况都在里面），新游戏用 farmMap.ts 里的。
+    // 地图上还有 R（新游戏、旧存档）就随机换成杂草 / 碎石 / 焦木，之后跟着存档走
     const load = gameState.pendingLoad;
     gameState.pendingLoad = null;
-    this.grid = (load ? load.farm : FARM_MAP).map((row) => [...row]);
+    this.grid = scatterRuins(load ? load.farm : FARM_MAP).map((row) => [...row]);
     this.views = [];
     this.lightSpots = [];
     this.cropViews = new Map();
+    this.dropViews = new Map();
     this.houseImage = undefined;
     this.houseLight = undefined;
     this.hutImage = undefined;
@@ -139,6 +144,7 @@ export class FarmScene extends Phaser.Scene {
     this.startWaterShimmer();
     if (gameState.pickup.unlocked) this.placeBasket();
     for (const key of Object.keys(gameState.crops)) this.refreshCrop(key);
+    for (const key of Object.keys(gameState.drops)) this.refreshDrop(key);
 
     // ---- 主角 ----
     this.feet = this.add.zone(spawn.x, spawn.y - FEET_H / 2, FEET_W, FEET_H);
@@ -258,6 +264,7 @@ export class FarmScene extends Phaser.Scene {
     } else {
       this.showStanding();
     }
+    if (!paused && Object.keys(gameState.drops).length) this.pickUpDrops();
   }
 
   // =================================================================
@@ -543,15 +550,79 @@ export class FarmScene extends Phaser.Scene {
   }
 
   private doToolAction(rule: HeldAction, cell: Cell) {
+    const bucket = timeData.stamina.bucket;
+    if (rule.id === 'water' && gameState.water < bucket.perWater) return this.say('msg.bucketEmpty');
+    // 老宅废墟里的东西：清掉后是地基，算清了一样
+    const ruin = TILE_TYPES[this.grid[cell.y][cell.x]]?.ruin;
     if (rule.item) this.swingTool(rule.item);
-    if (rule.turnsInto) this.setTile(cell, rule.turnsInto);
+    if (rule.turnsInto) this.setTile(cell, ruin ? '_' : rule.turnsInto);
     if (rule.doneHint) this.say(rule.doneHint);
     if (rule.id === 'till') noteTilled();
-    if (rule.id === 'clearRuin') {
+    if (rule.id === 'water') gameState.water -= bucket.perWater;
+    if (rule.id === 'refill') {
+      gameState.water = bucket.capacity;
+      this.say('msg.refilled');
+    }
+    // 自己种的树记下来（不算进自然长树的上限）；砍掉就划掉
+    if (rule.id === 'plantTree') {
+      takeFromSlot(gameState.selected, 1);
+      gameState.plantedTrees.push(cellKey(cell));
+    }
+    if (rule.id === 'chop') gameState.plantedTrees = gameState.plantedTrees.filter((k) => k !== cellKey(cell));
+    if (rule.drop) this.giveDrop(rule.drop, cell);
+    if (ruin) {
       noteRuin();
       this.afterRuinCleared();
     }
     this.spendStamina((timeData.stamina.costs as Record<string, number>)[rule.cost] ?? 0);
+  }
+
+  /** 割草、砍树、敲石头掉的材料：直接进背包，放不下的掉在这一格地上 */
+  private giveDrop(drop: NonNullable<HeldAction['drop']>, cell: Cell) {
+    const got: [string, number][] = [[drop.item, rollAmount(drop.amount)]];
+    if (drop.extra && Math.random() < drop.extra.chance) got.push([drop.extra.item, 1]);
+    let spilled = false;
+    for (const [id, n] of got) {
+      const left = n - addItem(id, n);
+      if (left <= 0) continue;
+      spilled = true;
+      const pile = (gameState.drops[cellKey(cell)] ??= {});
+      pile[id] = (pile[id] ?? 0) + left;
+    }
+    if (spilled) this.refreshDrop(cellKey(cell));
+    this.say(spilled ? 'msg.gotSpilled' : 'msg.got', { items: got.map(([id, n]) => `${this.itemName(id)}×${n}`).join('、') });
+  }
+
+  /** 站到有掉落的格子上：能放进背包的都捡起来 */
+  private pickUpDrops() {
+    const key = cellKey(this.playerCell());
+    const pile = gameState.drops[key];
+    if (!pile) return;
+    const took: string[] = [];
+    for (const [id, n] of Object.entries(pile)) {
+      const k = addItem(id, n);
+      if (k > 0) took.push(`${this.itemName(id)}×${k}`);
+      if (k >= n) delete pile[id];
+      else pile[id] = n - k;
+    }
+    if (!Object.keys(pile).length) delete gameState.drops[key];
+    if (!took.length) return;
+    this.refreshDrop(key);
+    this.say('msg.pickedUp', { items: took.join('、') });
+  }
+
+  /** 画地上的掉落：每种东西一个小图标（没有就拿掉） */
+  private refreshDrop(key: string) {
+    this.dropViews.get(key)?.destroy();
+    this.dropViews.delete(key);
+    const pile = gameState.drops[key];
+    if (!pile) return;
+    const [x, y] = key.split(',').map(Number);
+    const s = SETTINGS.tileSize;
+    const icons = Object.keys(pile).map((id, i) =>
+      this.textures.exists(`icon_${id}`) ? this.add.image(i * 3, -i * 2, `icon_${id}`).setScale(0.6) : this.add.rectangle(i * 3, -i * 2, 6, 6, toColor(PALETTE.ochre)),
+    );
+    this.dropViews.set(key, this.add.container(x * s + s / 2, y * s + s / 2, icons).setDepth(y * s + 1));
   }
 
   // =================================================================
@@ -562,6 +633,7 @@ export class FarmScene extends Phaser.Scene {
   private doSow(cell: Cell) {
     const seed = heldItem();
     const crop = seed ? cropFromSeed(seed) : undefined;
+    if (seed === 'tree_seed') return this.say('msg.noTreeOnField');
     if (!seed || !crop) return;
     if (!inSowWindow(crop, gameState.clock!)) {
       const term = timeData.calendar.solarTerms.find((s) => s.id === nextSowTerm(crop, gameState.clock!))!;
@@ -638,7 +710,7 @@ export class FarmScene extends Phaser.Scene {
   private sayHouseStatus() {
     const b = gameState.build;
     if (b) return this.say('house.building', { name: localName(stageInfo(b.stage)!.name), days: b.daysLeft });
-    if (gameState.houseStage < 1) return this.say('house.statusRuins', { left: Object.values(this.grid).flat().filter((c) => c === 'R').length });
+    if (gameState.houseStage < 1) return this.say('house.statusRuins', { left: this.grid.flat().filter((c) => TILE_TYPES[c]?.ruin).length });
     const next = stageInfo(gameState.houseStage + 1);
     if (!next) return this.say('house.allDone');
     const mats = Object.entries(next.materials).map(([id, n]) => `${this.itemName(id)}×${n}`).join('、');
@@ -861,6 +933,8 @@ export class FarmScene extends Phaser.Scene {
     if (grew.dormant) news.push(['msg.dormant']);
     if (grew.woke) news.push(['msg.woke']);
     for (const key of Object.keys(gameState.crops)) this.refreshCrop(key);
+    // 树：长大一点，或者在空地上长出新的（冻土期不长）
+    for (const c of treesOvernight(this.grid, isFrozen(clock), this.doorTile)) this.setTile(c, c.ch);
     // 木匠
     const built = buildOvernight();
     if (built) {

@@ -344,39 +344,27 @@ export const ITEMS: ItemsTable = {
     },
     {
       id: "wood",
-      name: { zh: "木料", en: "Wood" },
+      name: { zh: "木材", en: "Wood" },
       type: "material",
       buyPrice: 10,
       sellPrice: 5,
       soldAt: ["carpenter"],
-      gather: {
-        action: "chop_tree",  // 这个工具做什么动作
-        amount: [3, 5],  // 数量
-      },
     },
     {
-      id: "thatch",
-      name: { zh: "茅草", en: "Thatch" },
+      id: "thatch",  // 程序里还叫 thatch（以前是茅草），游戏里叫纤维
+      name: { zh: "纤维", en: "Fiber" },
       type: "material",
       buyPrice: 5,
       sellPrice: 2,
       soldAt: ["general_store"],
-      gather: {
-        action: "cut_grass",
-        amount: [1, 1],
-      },
     },
     {
       id: "stone",
-      name: { zh: "石料", en: "Stone" },
+      name: { zh: "石块", en: "Stone" },
       type: "material",
       buyPrice: 15,
       sellPrice: 7,
       soldAt: ["carpenter"],
-      gather: {
-        action: "mine_rock",
-        amount: [1, 2],
-      },
     },
     {
       id: "roof_tile",
@@ -401,10 +389,6 @@ export const ITEMS: ItemsTable = {
       buyPrice: 8,
       sellPrice: 4,
       soldAt: ["general_store"],
-      gather: {
-        action: "chop_tree",
-        amount: [1, 2],
-      },
     },
     {
       id: "plant_ash",
@@ -523,12 +507,21 @@ export const ITEMS: ItemsTable = {
     },
     {
       id: "pickaxe",
-      name: { zh: "铁镐", en: "Pickaxe" },
+      name: { zh: "镐", en: "Pickaxe" },
       type: "tool",
-      buyPrice: 800,
+      buyPrice: null,  // 开局就有，铁匠铺不卖
       sellPrice: null,
-      soldAt: ["blacksmith"],
+      soldAt: [],
       action: "mine_rock",
+    },
+    {
+      id: "tree_seed",
+      name: { zh: "树种", en: "Tree seed" },
+      type: "seed",
+      buyPrice: null,
+      sellPrice: 10,
+      soldAt: [],
+      desc: { zh: "砍大树偶尔掉下来的种子。拿着它点一块空地，就能种下一棵树苗。", en: "" },
     },
     {
       id: "notebook",

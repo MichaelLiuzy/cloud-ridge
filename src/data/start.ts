@@ -24,6 +24,7 @@ export const START: StartTable = {
     bucket: 1,
     sickle: 1,
     axe: 1,
+    pickaxe: 1,
   },
   // 农场
   farm: {

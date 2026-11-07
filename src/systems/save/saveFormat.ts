@@ -12,8 +12,9 @@ import { slotsFromOld, type Slot } from '../inventory';
 import { emptyWeek, type WeekStats } from '../weekStats';
 import { chestFromOld } from '../home/storage';
 import type { Weather } from '../../data/types';
+import { TIME } from '../../data/time';
 
-export const SAVE_VERSION = 10;
+export const SAVE_VERSION = 11;
 
 /** 存档里存了什么 */
 export interface SaveData {
@@ -38,6 +39,12 @@ export interface SaveData {
   week: WeekStats;
   /** 认识了哪些人 */
   metNpcs: string[];
+  /** 水桶里还有多少水 */
+  water: number;
+  /** 玩家自己种的树（「x,y」） */
+  plantedTrees: string[];
+  /** 背包满了掉在地上的东西：「x,y」→ { 物品 id: 数量 } */
+  drops: Record<string, Record<string, number>>;
   /** 重建老宅到第几阶段（0 = 住草棚、废墟没清完；1 = 废墟清完；2~4 = 木匠修好的阶段） */
   houseStage: number;
   /** 废墟清了几格 */
@@ -194,6 +201,15 @@ const MIGRATIONS: Record<number, (old: any) => any> = {
   }),
   // 9 → 10：箱子从「一种东西一格、数量不限」改成和背包一样的格子（每格最多叠 99 个，超过的拆成几格）
   9: (old) => ({ ...old, saveVersion: 10, storage: chestFromOld(old.storage ?? {}) }),
+  // 10 → 11：水桶有水量（旧存档当作满的）；树会长、能种；掉在地上的东西；开局送镐（铁匠不卖了，没有的补一把）。
+  // 废墟 R 换成随机的杂草、碎石、焦木：清了几格不变（还剩几样 = 原来还剩几格 R），在农场读档时换（scatterRuins）
+  10: (old) => {
+    const slots: (Slot | null)[] = old.slots.map((x: Slot | null) => (x ? { ...x } : null));
+    const hasPick = slots.some((x) => x?.id === 'pickaxe') || (old.storage ?? []).some((x: Slot | null) => x?.id === 'pickaxe');
+    const empty = slots.findIndex((x) => !x);
+    if (!hasPick && old.flags?.startKitGiven && empty >= 0) slots[empty] = { id: 'pickaxe', n: 1 };
+    return { ...old, saveVersion: 11, slots, water: TIME.stamina.bucket.capacity, plantedTrees: [], drops: {} };
+  },
 };
 
 /** 把任意版本的存档升级到最新。认不出来的返回 null。 */

@@ -4,7 +4,7 @@
  *  数值来自设计主管窗口（daily-systems）。可以直接改数字，保存后刷新游戏就生效。
  *  只改冒号右边的值。
  *  开局住在镇上的人搭的草棚里，旁边是宿主被烧掉的老宅（一片废墟）。
- *  第 1 阶段玩家自己清废墟（每格花多少体力在 time.ts 的 stamina.costs.clear_ruin）；
+ *  第 1 阶段玩家自己清废墟（废墟里随机生成杂草、石头、木头，见下面的 ruins.mix；处理方法和体力同普通的）；
  *  清完以后，第 2~4 阶段请木匠来修，每次动工 buildDays 天。
  *  每个阶段修好时会找到一片日记（位置文字在 src/locales/zh.ts 的 diary，线索在 src/data/clues.ts）。
  *  常改的：每阶段要的材料（materials）和钱（cost）、修好后体力上限（maxStamina）、学会什么（learns）。
@@ -24,7 +24,8 @@ export const HOUSING: HousingTable = {
   },
   // 清废墟
   ruins: {
-    tools: ["axe", "hoe", "pickaxe"],  // 用哪些工具能清（拿着其中一样，对着废墟用）
+    // 废墟（地图上的 R）开新档时随机变成这三种东西，各占几成（加起来是 1）。处理方法、掉落和普通的杂草、石头、木头一样
+    mix: { weed: 0.3, rock: 0.4, wood: 0.3 },
   },
   // 重建的四个阶段
   stages: [
@@ -43,7 +44,7 @@ export const HOUSING: HousingTable = {
       stage: 2,
       id: "timber_frame",
       name: { zh: "立梁架", en: "Raise the frame" },
-      materials: { wood: 40, thatch: 30 },
+      materials: { wood: 40, thatch: 30 },  // thatch = 纤维
       cost: 400,
       byCarpenter: true,
       maxStamina: 110,

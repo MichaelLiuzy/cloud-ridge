@@ -12,12 +12,14 @@
  *  - 体力花多少来自 src/data/time.ts 的 stamina.costs（用 cost 字段对应）。
  *  - 动作的名字在 src/locales/zh.ts 的 action 里。
  *  - 地块种类（on）见 src/world/farmMap.ts 的 TILE_TYPES。
- *  - turnsInto 写的是地图字符：'.' 草地，'o' 开垦好的田，'O' 浇过水的田。
+ *  - turnsInto 写的是地图字符：'.' 草地，'o' 开垦好的田，'O' 浇过水的田，'y' 树苗。
+ *    老宅废墟里的东西清掉后一律变成地基 '_'。
+ *  - drop：做完掉什么、掉几个 [最少, 最多]（概率见下面的 DROP_CHANCES）；extra = 另外有几成概率再掉一个什么。
+ *    掉的东西直接进背包，背包满了就掉在地上，走过去就捡起来。
  *  - crop：这一格上的作物要是什么样子才算数。none = 没种东西，growing = 正在长，
  *    ripe = 熟了，dead = 枯死了。不写 = 只在没种东西时算。
  */
 
-import { HOUSING } from '../data/housing';
 
 export type CropState = 'none' | 'growing' | 'ripe' | 'dead';
 
@@ -40,25 +42,38 @@ export interface HeldAction {
   cost: string;
   /** 做完后显示的话（可选） */
   doneHint?: string;
+  /** 掉什么材料 */
+  drop?: { item: string; amount: [number, number]; extra?: { item: string; chance: number } };
 }
+
+/**
+ * 掉落数量的概率：从最少到最多，每个数各占几成。现在的数量都是 3 个连着的数（比如 1–3），
+ * 所以是「最少 20%、中间 60%、最多 20%」。数字个数和这里对不上时，就每个数一样多。
+ */
+export const DROP_CHANCES = [0.2, 0.6, 0.2];
 
 export const HELD_ACTIONS: HeldAction[] = [
   // 熟了的菜：拿着什么都直接收（点一下就走过去收）
   { id: 'harvest', anyItem: true, on: ['tilled', 'watered'], crop: ['ripe'], cost: 'harvest' },
   // 锄头点草地：开垦
   { id: 'till', item: 'hoe', on: ['grass', 'grassDark'], turnsInto: 'o', cost: 'hoe' },
-  // 水桶点田（没种东西，或者菜正在长）：浇水
+  // 水桶点田（没种东西，或者菜正在长）：浇水（用水，见 time.ts 的 stamina.bucket）
   { id: 'water', item: 'bucket', on: ['tilled'], crop: ['none', 'growing'], turnsInto: 'O', cost: 'water' },
+  // 水桶点池塘：打满水，不花体力
+  { id: 'refill', item: 'bucket', on: ['water'], cost: 'none' },
+  // 树种点空地：种下一棵树苗
+  { id: 'plantTree', item: 'tree_seed', on: ['grass', 'grassDark'], turnsInto: 'y', cost: 'plant' },
   // 种子点锄过的地（浇没浇水都行）：播种
   { id: 'sow', itemType: 'seed', on: ['tilled', 'watered'], cost: 'plant' },
-  // 镰刀点杂草：割掉
-  { id: 'cutGrass', item: 'sickle', on: ['weed'], turnsInto: '.', cost: 'cut_grass' },
-  // 斧头点树桩、烧焦的木头：砍掉
-  { id: 'chop', item: 'axe', on: ['stump', 'fireDebris'], turnsInto: '.', cost: 'chop_tree' },
-  // 镐点石头：敲掉
-  { id: 'mine', item: 'pickaxe', on: ['rock'], turnsInto: '.', cost: 'mine_rock' },
-  // 清老宅废墟：能用哪些工具在 src/data/housing.ts 的 ruins.tools 里改
-  ...HOUSING.ruins.tools.map((tool) => ({ id: 'clearRuin', item: tool, on: ['ruin'], turnsInto: '_', cost: 'clear_ruin' })),
+  // 镰刀点杂草：割掉，得纤维（物品 id 还叫 thatch）
+  { id: 'cutGrass', item: 'sickle', on: ['weed'], turnsInto: '.', cost: 'cut_grass', drop: { item: 'thatch', amount: [1, 3] } },
+  // 斧头点木头（树桩、火灾残骸）、树苗：砍掉，得木材
+  { id: 'chop', item: 'axe', on: ['stump', 'fireDebris', 'sapling'], turnsInto: '.', cost: 'chop_wood', drop: { item: 'wood', amount: [2, 4] } },
+  // 斧头点小树、大树：大树还有三成概率掉一颗树种
+  { id: 'chop', item: 'axe', on: ['smallTree'], turnsInto: '.', cost: 'chop_small_tree', drop: { item: 'wood', amount: [4, 6] } },
+  { id: 'chop', item: 'axe', on: ['bigTree'], turnsInto: '.', cost: 'chop_tree', drop: { item: 'wood', amount: [10, 12], extra: { item: 'tree_seed', chance: 0.3 } } },
+  // 镐点石头：敲掉，得石块
+  { id: 'mine', item: 'pickaxe', on: ['rock'], turnsInto: '.', cost: 'mine_rock', drop: { item: 'stone', amount: [3, 5] } },
 ];
 
 /** 手上拿着 item（类型 type），对着 kind 地块、作物状态 crop：用哪条规则（没有返回 undefined） */
@@ -77,3 +92,15 @@ export const PLAIN_ACTIONS: { id: string; on: string[] }[] = [
   { id: 'sleep', on: ['hut', 'house'] },
   { id: 'saveOnly', on: ['hut', 'house'] },
 ];
+
+/** 按 DROP_CHANCES 抽这次掉几个（[最少, 最多]） */
+export function rollAmount([min, max]: [number, number], rand = Math.random) {
+  const n = max - min + 1;
+  const chances = DROP_CHANCES.length === n ? DROP_CHANCES : Array(n).fill(1 / n);
+  let r = rand();
+  for (let i = 0; i < n; i++) {
+    if (r < chances[i]) return min + i;
+    r -= chances[i];
+  }
+  return max;
+}

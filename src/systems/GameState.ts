@@ -14,6 +14,7 @@ import { addItem, isTool, type Slot } from './inventory';
 import { emptyWeek, type WeekStats } from './weekStats';
 import { normalizeChest } from './home/storage';
 import type { Weather } from '../data/types';
+import { TIME as timeData } from '../data/time';
 
 export type PrologueStep = 'opening' | 'clinic' | 'tutorial' | 'done';
 
@@ -53,6 +54,12 @@ function freshState() {
     week: emptyWeek() as WeekStats,
     /** 认识了哪些人（第一次说话就算认识；names 里的 id） */
     metNpcs: [] as string[],
+    /** 水桶里还有多少水（满是 src/data/time.ts 的 stamina.bucket.capacity） */
+    water: timeData.stamina.bucket.capacity as number,
+    /** 玩家自己种的树在哪几格（「x,y」）：不算进自然长树的上限 */
+    plantedTrees: [] as string[],
+    /** 背包满了掉在地上的东西：「x,y」→ { 物品 id: 数量 }，走过去就捡起来 */
+    drops: {} as Record<string, Record<string, number>>,
     /** 工具栏 + 背包的格子（前 9 格是工具栏），见 src/systems/inventory.ts */
     slots: Array.from({ length: SETTINGS.inventory.toolbarSlots + SETTINGS.inventory.bagSlots }, () => null) as (Slot | null)[],
     /** 手上拿的是工具栏第几格（0 ~ 8） */
@@ -112,6 +119,9 @@ export function resetGameState(slot: number, load: SaveData | null = null) {
       weather: load.weather,
       week: JSON.parse(JSON.stringify(load.week)),
       metNpcs: [...load.metNpcs],
+      water: load.water,
+      plantedTrees: [...load.plantedTrees],
+      drops: JSON.parse(JSON.stringify(load.drops)),
       slots: load.slots.map((x) => (x ? { ...x } : null)),
       selected: load.selected,
       keyItems: { ...load.keyItems },

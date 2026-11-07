@@ -71,11 +71,14 @@ export const ASSETS: Record<string, AssetSpec> = {
   debris_rock: { w: 16, h: 16, frames: ['main'], color: 'stone', shape: 'object' },
   debris_stump: { w: 16, h: 16, frames: ['main'], color: 'ochre', shape: 'object' },
   debris_fire: { w: 16, h: 16, frames: ['main'], color: 'ink', shape: 'object' },
-  /** 老宅的废墟（一格一格清） */
-  debris_ruin: { w: 16, h: 16, frames: ['main'], color: 'ash', shape: 'object' },
   /** 门口的收货筐（开通杂货铺上门收货后出现） */
   prop_basket: { w: 16, h: 16, frames: ['main'], color: 'ochre', shape: 'object' },
+  /** 农场边缘的林子（不能砍） */
   prop_tree: { w: 16, h: 32, frames: ['main'], color: 'leafDark', shape: 'tree' },
+  /** 农场里自己长的树：树苗、小树、大树（能砍，见 src/data/trees.ts） */
+  tree_sapling: { w: 16, h: 16, frames: ['main'], color: 'leafLight', shape: 'object' },
+  tree_small: { w: 16, h: 32, frames: ['main'], color: 'leaf', shape: 'tree' },
+  tree_big: { w: 32, h: 48, frames: ['main'], color: 'leafDark', shape: 'tree' },
   prop_lantern: { w: 16, h: 32, frames: ['main'], color: 'vermilion', shape: 'lantern' },
 
   // ---- 房子 ----
@@ -103,6 +106,10 @@ export const ASSETS: Record<string, AssetSpec> = {
   icon_plant_ash: { w: 16, h: 16, frames: ['main'], color: 'ash', shape: 'icon' },
   icon_notebook: { w: 16, h: 16, frames: ['main'], color: 'vermilion', shape: 'icon' },
   icon_burnt_paper: { w: 16, h: 16, frames: ['main'], color: 'ash', shape: 'icon' },
+  icon_wood: { w: 16, h: 16, frames: ['main'], color: 'brown', shape: 'icon' },
+  icon_stone: { w: 16, h: 16, frames: ['main'], color: 'stone', shape: 'icon' },
+  icon_thatch: { w: 16, h: 16, frames: ['main'], color: 'ochreLight', shape: 'icon' },
+  icon_tree_seed: { w: 16, h: 16, frames: ['main'], color: 'leafDark', shape: 'icon' },
 
   // ---- 作物（每种 5 格：种子、幼苗、半大、成熟、枯萎；颜色是成熟时果实的颜色）----
   ...cropSheets(),

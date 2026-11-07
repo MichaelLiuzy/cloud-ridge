@@ -94,8 +94,8 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
 | 物品价格 | `src/data/items.ts` | `buyPrice`、`sellPrice` |
 | 打工任务和报酬 | `src/data/jobs.ts` | `reward` 等 |
 | 重建老宅的四个阶段：材料、工钱、体力上限、修好后学会什么 | `src/data/housing.ts` | `stages` 里每阶段的 `materials`、`cost`、`maxStamina`、`learns` |
-| 清废墟每格花多少体力、能用哪些工具 | `src/data/time.ts`、`src/data/housing.ts` | `stamina.costs.clear_ruin`；`ruins.tools` |
-| 废墟在地图上的位置、老宅盖在哪 | `src/world/farmMap.ts` | 地图里的 `R`（四周的破瓦焦木）、`Q`（烧毁的老宅）；`HOUSE_SITE` |
+| 废墟里杂草、碎石、焦木各占几成（开新档时随机摆一次） | `src/data/housing.ts` | `ruins.mix`（处理方法和体力同普通的杂草、石头、木头） |
+| 废墟在地图上的位置、老宅盖在哪 | `src/world/farmMap.ts` | 地图里的 `R`（四周的废墟，开新档时换成杂草 / 碎石 / 焦木）、`Q`（烧毁的老宅）；`HOUSE_SITE` |
 | 田地篱笆上的门 | `src/world/farmMap.ts` | 地图里的 `G` |
 | 人物图套色时的肤色保护 | `tools/art.mjs` | `TUNING.skin` |
 | 每个阶段找到哪一页日记、在哪找到 | `src/data/diary.ts` | `DIARY_PAGES`（找到的位置文字在 `src/locales/zh.ts` 的 `diary.where`） |
@@ -130,6 +130,10 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
 | 背包、箱子「整理」的类别顺序 | `src/config/settings.ts` | `inventory.sortOrder` |
 | 箱子每页几行几格 | `src/config/settings.ts` | `inventory.chestRows`、`inventory.chestCols` |
 | 点一下就做的事（拿着什么点什么、熟了的菜点一下就收） | `src/world/actions.ts` | `HELD_ACTIONS` |
+| 割草、砍树、敲石头掉几个材料、几成概率 | `src/world/actions.ts` | 每条规则的 `drop`（`amount` 最少 / 最多，`extra` 另外掉什么）；概率在 `DROP_CHANCES`（现在 20% / 60% / 20%） |
+| 农场里自己长树：每天几成概率长新树、新树是树苗 / 小树 / 大树的概率、长大的概率、最多几棵 | `src/data/trees.ts` | `spawnChance`、`spawnStage`、`grow`、`maxWild`（自己种的不算） |
+| 下雨、下雪的画面：变暗变亮多少、雨丝雪花多少、多快、手机上少多少 | `src/config/settings.ts` | `weatherFx` |
+| 水桶装多少水、浇一次用多少 | `src/data/time.ts` | `stamina.bucket` 的 `capacity`、`perWater`（拿水桶点池塘打满，不花体力） |
 | 设置项的默认值（文字速度、界面大小、音量……） | `src/config/settings.ts` | `prefsDefaults`；四档文字速度各多快在 `textSpeedMs` |
 
 > 改错了，打包会报错（比如数字写成了文字、物品 id 拼错）。看报错信息里的文件名和行号，或者直接告诉编程窗口。

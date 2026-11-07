@@ -35,11 +35,12 @@ ChatGPT 每次出完图会告诉你文件名，照着存就行。
 | `crop_radish.png` | 萝卜 | 同上 |
 | `icons_batch1.png` | 第一批图标 | 2 行 5 格：锄头、水桶、镰刀、斧头、馒头；小白菜种子、萝卜种子、小白菜、萝卜、草木灰 |
 | `icons_batch2.png` | 第二批图标 | 1 行 3 格：`pickaxe`（镐）、`notebook`（笔记本）、`burnt_paper`（烧焦的纸页） |
-| `house_old_ruin.png` | 烧毁的老宅（64×64） | 1 格，整栋烧毁的房子。立在宅基地上，四周的破瓦焦木（`debris_ruin`）清完、木匠搭好梁架后换成 `house_timber_frame` |
+| `house_old_ruin.png` | 烧毁的老宅（64×64） | 1 格，整栋烧毁的房子。立在宅基地上，四周废墟里的杂草、碎石、焦木（用的是 `debris_` 那几张图）清完、木匠搭好梁架后换成 `house_timber_frame` |
 | `portrait_player.png` | 主角头像 | 1 行 4 格：平常、笑、担忧、惊讶 |
 | `player_walk.png` | 主角走路（以后再画） | 4 行 5 格：每行一个方向（下、左、右、上），每行是站立 + 走路 4 格。有了它游戏会自动改用真的走路动画 |
 | `prop_lantern.png` | 灯笼 | 1 格（16×32） |
-| `prop_tree.png` | 树 | 1 格（16×32） |
+| `prop_tree.png` | 农场边缘的林子 | 1 格（16×32） |
+| `tree_sapling.png` / `tree_small.png` / `tree_big.png` | 农场里自己长的树：树苗、小树、大树 | 1 格；树苗 16×16，小树 16×32，大树 32×48 |
 | `portrait_zhou.png` / `portrait_doctor.png` / `portrait_fan.png` | 周里正 / 大夫 / 老范的头像 | 同主角头像 |
 | `npc_zhou_stand.png` | 周里正站立图 | 同主角站立图 |
 | `cg_office.png` 等 | 开场过场的整张画 | 1 张，横版（最好 16:9）；会从正中裁成 320×180，不抠背景。要的几张：`cg_office`（写字楼加班）、`cg_walk_home`（下班路上）、`cg_penn_station`（车站）、`cg_headlights`（车灯）、`cg_hospital_bed`（病床）、`cg_clinic_wake`（医馆醒来） |

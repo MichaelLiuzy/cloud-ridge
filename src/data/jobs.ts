@@ -116,7 +116,7 @@ export const JOBS: JobsTable = {
     },
     {
       id: "gather_thatch",
-      name: { zh: "帮木匠收茅草", en: "Thatch for the carpenter" },
+      name: { zh: "帮木匠收纤维", en: "Fiber for the carpenter" },
       type: "gather",
       giver: "carpenter",
       source: "notice_board",

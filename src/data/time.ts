@@ -146,11 +146,12 @@ export const TIME: TimeTable = {
       plant: 0,
       harvest: 0,
       cut_grass: 1,
-      chop_tree: 6,
+      chop_wood: 4,  // 砍一截木头、火灾残骸、树苗
+      chop_small_tree: 5,  // 砍小树
+      chop_tree: 6,  // 砍大树
       mine_rock: 4,
-      clear_ruin: 4,  // 清废墟：每清一格
     },
-    wateringCanCapacity: 20,  // 水桶装满能浇几格
+    bucket: { capacity: 100, perWater: 7 },  // 水桶：装满 100 点水，浇一格用 7 点（满桶能浇 14 格）。对着池塘用水桶一次加满
   },
   sleep: { beforeMidnightRestore: 1.0, afterMidnightRestore: 0.9 },  // 睡觉
   // 饿肚子：某一天从早上醒来到睡着（或昏倒）一口东西都没吃，第二天醒来体力最多只有这么多（点数）。

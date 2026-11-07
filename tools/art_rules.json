@@ -83,10 +83,10 @@
       "out": "objects/debris_{frame}.png"
     },
     {
-      "name": "debris_ruin",
-      "rows": 1, "cols": 1, "cell": [16, 16],
-      "frames": ["main"],
-      "out": "objects/debris_ruin.png"
+      "name": "tree_{id}",
+      "rows": 1, "cols": 1, "cell": [16, 32],
+      "sizes": { "sapling": [16, 16], "small": [16, 32], "big": [32, 48] },
+      "out": "objects/tree_{id}.png"
     },
     {
       "name": "prop_{id}",

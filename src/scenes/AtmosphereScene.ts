@@ -2,8 +2,9 @@
  * 氛围场景：叠在农场上面、界面下面，负责
  *  - 昼夜色层：按游戏时间平滑变色（清晨暖米、白天不叠、傍晚橘、夜里冷蓝）；
  *  - 夜里在灯笼、窗户处挖出暖色光圈；
- *  - 回忆模式：农场画面去色 + 叠黛青，只有火光类（灯笼、烛台）保留颜色。
- * 颜色、时间点、浓淡都在 src/config/atmosphere.ts 里改。
+ *  - 回忆模式：农场画面去色 + 叠黛青，只有火光类（灯笼、烛台）保留颜色；
+ *  - 雨天稍暗 + 斜斜的雨丝，雪天稍亮 + 慢慢飘的雪花（数量、颜色在 src/config/settings.ts 的 weatherFx）。
+ * 昼夜颜色、时间点、浓淡都在 src/config/atmosphere.ts 里改。
  */
 import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
@@ -12,6 +13,8 @@ import { ATMOSPHERE } from '../config/atmosphere';
 import { toColor } from '../config/palette';
 import { gameState } from '../systems/GameState';
 import type { FarmScene } from './FarmScene';
+import { isTouchDevice } from '../input/Controls';
+import type { Weather } from '../data/types';
 
 /** 光圈笔刷的半径（像素）。实际光圈按灯的半径缩放 */
 const BRUSH_R = 32;
@@ -23,6 +26,10 @@ export class AtmosphereScene extends Phaser.Scene {
   private memoryTint!: Phaser.GameObjects.Rectangle;
   private fireCopies: Phaser.GameObjects.Image[] = [];
   private grayFx?: Phaser.FX.ColorMatrix;
+  /** 雨雪：叠色和落下来的雨丝 / 雪花（现在显示的是哪种天气） */
+  private weatherShade!: Phaser.GameObjects.Rectangle;
+  private weatherFx?: Phaser.GameObjects.Particles.ParticleEmitter;
+  private weatherNow: Weather | null = null;
 
   constructor() {
     super('Atmosphere');
@@ -42,6 +49,9 @@ export class AtmosphereScene extends Phaser.Scene {
     this.memoryTint = this.add.rectangle(0, 0, w, h, toColor(mem.color), mem.alpha).setOrigin(0).setDepth(1).setVisible(false);
     this.glows = [];
     this.fireCopies = [];
+    this.weatherShade = this.add.rectangle(0, 0, w, h, 0, 0).setOrigin(0).setDepth(0.5);
+    this.weatherFx = undefined;
+    this.weatherNow = null;
     this.events.once('shutdown', () => this.setGray(false));
   }
 
@@ -80,6 +90,8 @@ export class AtmosphereScene extends Phaser.Scene {
     });
     this.glows.slice(farm.lightSpots.length).forEach((g) => g.setVisible(false));
 
+    this.refreshWeather(memory ? null : gameState.weather);
+
     // ---- 回忆模式 ----
     this.memoryTint.setVisible(memory);
     this.setGray(memory, cam);
@@ -94,6 +106,47 @@ export class AtmosphereScene extends Phaser.Scene {
         .setVisible(true);
     });
     this.fireCopies.slice(fires.length).forEach((c) => c.setVisible(false));
+  }
+
+  /** 天气变了才换：雨天 / 雪天放叠色和粒子，别的天气什么都不放 */
+  private refreshWeather(weather: Weather | null) {
+    const kind = weather === 'rain' || weather === 'snow' ? weather : null;
+    if (kind === this.weatherNow) return;
+    this.weatherNow = kind;
+    this.weatherFx?.destroy();
+    this.weatherFx = undefined;
+    this.weatherShade.setFillStyle(0, 0);
+    if (!kind) return;
+    const fx = SETTINGS.weatherFx;
+    const c = fx[kind];
+    this.weatherShade.setFillStyle(toColor(c.shade), c.alpha);
+    const { gameWidth: w, gameHeight: h } = SETTINGS;
+    const perSecond = c.perSecond * (isTouchDevice() ? fx.touchFactor : 1);
+    // 雨丝：顺着落下的方向斜着画；雪花：一个小方块
+    const key = `weather-${kind}`;
+    if (!this.textures.exists(key)) {
+      const g = this.add.graphics().fillStyle(0xffffff);
+      if (kind === 'rain') {
+        const r = fx.rain;
+        for (let i = 0; i < r.length; i++) g.fillRect(Math.round(((r.length - 1 - i) * -r.speedX) / r.speedY), i, 1, 1);
+      } else g.fillRect(0, 0, fx.snow.size, fx.snow.size);
+      g.generateTexture(key, kind === 'rain' ? Math.ceil((fx.rain.length * -fx.rain.speedX) / fx.rain.speedY) + 1 : fx.snow.size, kind === 'rain' ? fx.rain.length : fx.snow.size);
+      g.destroy();
+    }
+    const sway = kind === 'snow' ? fx.snow.sway : 0;
+    // 从画面上方一条线上随机落下；往左斜着落，所以线往右多放一截
+    this.weatherFx = this.add
+      .particles(0, -8, key, {
+        x: { min: 0, max: w + Math.abs(c.speedX) * 2 },
+        speedY: { min: c.speedY * 0.85, max: c.speedY * 1.15 },
+        speedX: { min: c.speedX - sway, max: c.speedX + sway },
+        lifespan: ((h + 16) / c.speedY) * 1000,
+        frequency: 1000 / perSecond,
+        tint: toColor(c.color),
+        alpha: c.dropAlpha,
+      })
+      .setDepth(0.6);
+    this.weatherFx.fastForward(((h + 16) / c.speedY) * 1000); // 一进来画面上就已经在下了
   }
 
   /** 农场镜头去色（只有 WebGL 才支持；老设备上就只叠黛青） */

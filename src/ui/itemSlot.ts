@@ -1,9 +1,11 @@
 /**
- * 画一格物品：图标、右下角的数量、左上角的小锁。工具栏和背包共用。
+ * 画一格物品：图标、右下角的数量、左上角的小锁、水桶底下的水量条。工具栏和背包共用。
  */
 import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
-import { toColor } from '../config/palette';
+import { PALETTE, toColor } from '../config/palette';
+import { TIME } from '../data/time';
+import { gameState } from '../systems/GameState';
 import { localName } from '../locales/i18n';
 import { itemInfo, type Slot } from '../systems/inventory';
 import { pixelText } from './pixelUi';
@@ -20,6 +22,14 @@ export function drawItemSlot(scene: Phaser.Scene, into: Phaser.GameObjects.Conta
   into.add(icon);
   if (slot.n > 1) {
     into.add(pixelText(scene, x + size - 1, y + size + 1, String(slot.n), { color: ui.text }).setOrigin(1, 1).setStroke(ui.panel, 3).setAlpha(alpha));
+  }
+  // 水桶：底下一条小水量条
+  if (slot.id === 'bucket') {
+    const full = TIME.stamina.bucket.capacity;
+    const bar = scene.add.graphics().setAlpha(alpha);
+    bar.fillStyle(toColor(ui.border)).fillRect(x + 2, y + size - 3, size - 4, 2);
+    bar.fillStyle(toColor(PALETTE.teal)).fillRect(x + 2, y + size - 3, Math.round(((size - 4) * gameState.water) / full), 2);
+    into.add(bar);
   }
   if (slot.locked) {
     const g = scene.add.graphics().setAlpha(alpha);

@@ -307,7 +307,7 @@ export class HudScene extends Phaser.Scene {
   /** 工具栏 9 格现在放了什么（变了才重画） */
   private toolbarSignature() {
     const show = gameState.flags.startKitGiven || gameState.slots.slice(0, TOOLBAR_SLOTS).some(Boolean);
-    return show ? JSON.stringify(gameState.slots.slice(0, TOOLBAR_SLOTS)) : '';
+    return show ? JSON.stringify(gameState.slots.slice(0, TOOLBAR_SLOTS)) + gameState.water : ''; // 水桶的水量变了也要重画
   }
 
   // ---------------- 左上角时辰框 ----------------

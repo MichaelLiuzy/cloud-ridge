@@ -231,6 +231,19 @@ export const SETTINGS = {
     lineColor: '#B89A64',
   },
 
+  // ---------------- 雨雪画面 ----------------
+  /**
+   * 下雨、下雪时叠在农场上的画面（不用美术图，程序画的）。室内不显示。
+   *  - shade：整个画面叠一层颜色（雨天稍暗、雪天稍亮），alpha 越大越明显。
+   *  - perSecond：每秒落下几根雨丝 / 几片雪花；手机上乘 touchFactor（少一些，省电）。
+   *  - speedY / speedX：往下、往旁边落的速度（像素/秒，负数往左）；length：雨丝长几像素；size：雪花几像素。
+   */
+  weatherFx: {
+    touchFactor: 0.5,
+    rain: { shade: '#2E3A4A', alpha: 0.18, perSecond: 90, speedY: 240, speedX: -60, length: 5, color: '#C9D6E0', dropAlpha: 0.6 },
+    snow: { shade: '#F4F1EA', alpha: 0.12, perSecond: 25, speedY: 18, speedX: -6, sway: 10, size: 2, color: '#FFFFFF', dropAlpha: 0.9 },
+  },
+
   // ---------------- 名字 ----------------
   /**
    * 玩家名字的规则：只能用汉字、英文字母和数字（不能有空格、标点、表情符号）。
