@@ -107,7 +107,7 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
 | 开场过场：有几格、顺序、每格用哪张图和什么效果 | `src/data/cutscenes.ts` | `CUTSCENES.opening`（每格的字在 `src/locales/zh.ts` 的 `cutscene`） |
 | 医馆对话、周里正教学、所有剧情台词 | `src/story/zh/prologue.ink` | 文件开头有写法说明：`#speaker:` 谁说、`<<clue:id=字>>` 标黄字、`@fan` 写人名 |
 | 人物名字（周里正、老范……） | `src/locales/zh.ts` | `names` |
-| 线索、问题、章节和每章怎么解锁 | `src/data/clues.ts` | `CHAPTERS`、`CLUES`、`QUESTIONS` |
+| 线索、问题、章节和每章怎么解锁 | `src/data/clues.ts` | `CHAPTERS`、`CLUES`、`QUESTIONS`；新线索先在 `ClueId` 里加 id。剧本和信里的 `<<clue:id=字>>`、`#clue:id` 写了不存在的 id，`npm run build` 会报错并说出第几行 |
 | 笔记本「操作」「已学会」两栏的字 | `src/locales/zh.ts` | `notebook.controls`、`notebook.learned` |
 | Q 菜单有哪几栏、顺序 | `src/data/menuTabs.ts` | `MENU_TABS` |
 | 名字能多长、汉字和字母各算多宽 | `src/config/settings.ts` | `nameRules` |

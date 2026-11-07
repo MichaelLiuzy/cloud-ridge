@@ -31,6 +31,37 @@ function inkPlugin(): Plugin {
   };
 }
 
+/**
+ * 黄字线索的 id 写错了打包就报错：剧本（.ink）里的 <<clue:id=字>>、#clue:id，
+ * 语言文件（信的正文等）里的 <<clue:id=字>>，id 都必须在 src/data/clues.ts 的 ClueId 里。
+ */
+function clueCheckPlugin(): Plugin {
+  const ids = () => {
+    const src = fs.readFileSync('src/data/clues.ts', 'utf8');
+    const block = src.slice(src.indexOf('export type ClueId'), src.indexOf(';', src.indexOf('export type ClueId')));
+    return new Set([...block.matchAll(/'([a-z0-9_]+)'/g)].map((m) => m[1]));
+  };
+  return {
+    name: 'clue-check',
+    enforce: 'pre',
+    transform(code, id) {
+      if (!id.endsWith('.ink') && !/src\/locales\/[^/]+\.ts$/.test(id)) return null;
+      const source = id.endsWith('.ink') ? fs.readFileSync(id, 'utf8') : code;
+      const known = ids();
+      const bad: string[] = [];
+      source.split('\n').forEach((line, i) => {
+        if (/^\s*(\/\/|\/\*|\*)/.test(line)) return; // 注释里的写法说明不算
+        for (const m of line.matchAll(/<<clue:([^=>]+)=|#clue:([A-Za-z0-9_]+)/g)) {
+          const clue = (m[1] ?? m[2]).trim();
+          if (!known.has(clue)) bad.push(`第 ${i + 1} 行：${clue}`);
+        }
+      });
+      if (bad.length) throw new Error(`${id} 里有线索 id 在 src/data/clues.ts 里找不到（写错了？）：\n${bad.join('\n')}`);
+      return null;
+    },
+  };
+}
+
 const base = process.env.BASE ?? '/';
 
 /** 版本号：这次打包用的是哪一次提交（标题画面右上角会显示，方便确认手机上是不是最新版） */
@@ -50,6 +81,7 @@ export default defineConfig({
   build: { chunkSizeWarningLimit: 2000 },
   plugins: [
     inkPlugin(),
+    clueCheckPlugin(),
     // PWA：让游戏可以「添加到主屏幕」并离线游玩
     VitePWA({
       // 有新版本时不马上刷新（玩到一半会丢进度），由 src/main.ts 决定什么时候换：在标题画面就换
