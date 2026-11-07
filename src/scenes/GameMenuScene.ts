@@ -7,6 +7,7 @@
  *  - 打开时游戏时间暂停（gameState.menuOpen = true，农场场景看到它就停）。
  * 背包、工具栏的格子数在 src/config/settings.ts 的 inventory 里，每格大小在 bag.slotSize。
  */
+import { UI_EVENTS } from '../config/events';
 import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
 import { VIEW_EVENTS, setupUiCamera, uiSize } from '../config/view';
@@ -14,7 +15,7 @@ import { toColor } from '../config/palette';
 import { CHAPTERS, CLUES, QUESTIONS, type ClueId, type QuestionId } from '../data/clues';
 import { MENU_TABS, NOTEBOOK_SECTIONS, type MenuTabId, type NotebookSectionId } from '../data/menuTabs';
 import { ITEMS } from '../data/items';
-import { isTouchDevice } from '../input/Controls';
+import { isTouchDevice, keyIs } from '../input/Controls';
 import { localName, t } from '../locales/i18n';
 import { fillNames } from '../story/text';
 import { gameState } from '../systems/GameState';
@@ -31,7 +32,6 @@ import { parseClueMarks } from '../story/text';
 import { canGetClue, giveClue } from '../systems/story/notebook';
 import { letterInfo, takeAttachments, type MailEntry } from '../systems/mail';
 import { PLACEHOLDERS } from './BootScene';
-import { UI_EVENTS } from './HudScene';
 import { PALETTE } from '../config/palette';
 import { TIME } from '../data/time';
 import { eatFromSlot, isFood } from '../systems/food';
@@ -152,9 +152,9 @@ export class GameMenuScene extends Phaser.Scene {
   private buildKeys() {
     const kb = this.input.keyboard;
     if (!kb) return;
-    kb.addCapture('TAB');
+    kb.addCapture(SETTINGS.keys.switchTab.join(','));
     const keys = SETTINGS.keys;
-    const is = (names: string[], e: KeyboardEvent) => names.some((n) => Phaser.Input.Keyboard.KeyCodes[n as keyof typeof Phaser.Input.Keyboard.KeyCodes] === e.keyCode);
+    const is = keyIs;
     const onKey = (e: KeyboardEvent) => {
       if (this.time.now - this.openedAt < 120) return;
       // 数量框开着：回车确定、Esc 取消、上下加减十（左右由数量框自己管）
@@ -166,26 +166,27 @@ export class GameMenuScene extends Phaser.Scene {
         return;
       }
       if (this.modal) return;
-      if (e.key === 'Tab' && !this.chest && !this.mail) return this.switchTab(e.shiftKey ? -1 : 1);
+      const page = is(keys.pagePrev, e) ? -1 : is(keys.pageNext, e) ? 1 : 0;
+      if (is(keys.switchTab, e) && !this.chest && !this.mail) return this.switchTab(e.shiftKey ? -1 : 1);
       if (is(keys.bag, e) || is(keys.cancel, e)) return this.close();
       if (this.tab === 'bag') {
         if (is(keys.action, e)) return this.select(this.slot);
-        if (e.key === 'r' || e.key === 'R') return this.sort(this.slot >= ALL_SLOTS);
-        if ((e.key === 'f' || e.key === 'F') && this.chest) return this.transfer();
-        if ((e.key === '[' || e.key === ']') && this.chest) return this.flipPage(e.key === ']' ? 1 : -1);
-        if (e.key === 'x' || e.key === 'X') return this.discard();
-        if (e.key === 'l' || e.key === 'L') return this.lock();
-        if (e.key === 'e' || e.key === 'E') return this.eat();
+        if (is(keys.bagSort, e)) return this.sort(this.slot >= ALL_SLOTS);
+        if (is(keys.bagTransfer, e) && this.chest) return this.transfer();
+        if (page && this.chest) return this.flipPage(page);
+        if (is(keys.bagDiscard, e)) return this.discard();
+        if (is(keys.bagLock, e)) return this.lock();
+        if (is(keys.bagEat, e)) return this.eat();
       }
       if (this.tab === 'mail' && is(keys.action, e)) return this.takeMail();
-      if (this.tab === 'calendar' && (e.key === '[' || e.key === ']')) return this.flipMonth(e.key === ']' ? 1 : -1);
+      if (this.tab === 'calendar' && page) return this.flipMonth(page);
       const dir = is(keys.up, e) ? 'up' : is(keys.down, e) ? 'down' : is(keys.left, e) ? 'left' : is(keys.right, e) ? 'right' : null;
       if (dir) this.nav(dir, e.shiftKey);
     };
     kb.on('keydown', onKey);
     this.events.once('shutdown', () => {
       kb.off('keydown', onKey);
-      kb.removeCapture('TAB');
+      kb.removeCapture(SETTINGS.keys.switchTab.join(','));
     });
   }
 
@@ -374,7 +375,7 @@ export class GameMenuScene extends Phaser.Scene {
     // 格子旁边的字和「整理」按钮
     const r0 = this.cellRect(0);
     const r9 = this.cellRect(TOOLBAR_SLOTS);
-    const sortKey = keys ? ' R' : '';
+    const sortKey = keys ? ` ${SETTINGS.keys.bagSort[0]}` : '';
     if (this.chest) {
       const c0 = this.cellRect(ALL_SLOTS + this.page * CHEST_PAGE);
       const pages = gameState.storage.length / CHEST_PAGE;
@@ -404,12 +405,12 @@ export class GameMenuScene extends Phaser.Scene {
     const why = whyCantDiscard(this.slot);
     let bx = left;
     const by = Math.min(this.infoBox.y + LINE_H * 3 + 6, this.AREA.y + this.AREA.h - 20);
-    bx = this.button(bx, by, t('bag.discard') + (keys ? ' X' : ''), !!sel && !why, () => this.discard());
-    bx = this.button(bx, by, (sel?.locked ? t('bag.unlock') : t('bag.lock')) + (keys ? ' L' : ''), !!sel, () => this.lock());
-    if (sel && isFood(sel.id) && this.slot < ALL_SLOTS) bx = this.button(bx, by, t('bag.eat') + (keys ? ' E' : ''), true, () => this.eat());
+    bx = this.button(bx, by, t('bag.discard') + (keys ? ` ${SETTINGS.keys.bagDiscard[0]}` : ''), !!sel && !why, () => this.discard());
+    bx = this.button(bx, by, (sel?.locked ? t('bag.unlock') : t('bag.lock')) + (keys ? ` ${SETTINGS.keys.bagLock[0]}` : ''), !!sel, () => this.lock());
+    if (sel && isFood(sel.id) && this.slot < ALL_SLOTS) bx = this.button(bx, by, t('bag.eat') + (keys ? ` ${SETTINGS.keys.bagEat[0]}` : ''), true, () => this.eat());
     if (sel && this.chest) {
       const label = this.slot < ALL_SLOTS ? t('chest.put') : t('chest.take');
-      bx = this.button(bx, by, label + (keys ? ' F' : ''), canStore(sel.id), () => this.transfer());
+      bx = this.button(bx, by, label + (keys ? ` ${SETTINGS.keys.bagTransfer[0]}` : ''), canStore(sel.id), () => this.transfer());
     }
     this.content.add(pixelText(this, bx + 4, by + 3, t(this.touch ? 'bag.touchHint' : 'bag.keyHint'), { color: ui.textDim }));
   }

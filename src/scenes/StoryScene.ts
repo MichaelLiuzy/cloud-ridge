@@ -18,7 +18,7 @@ import { t } from '../locales/i18n';
 import { gameState, type PrologueStep } from '../systems/GameState';
 import { currentSave } from '../systems/save/snapshot';
 import { saveToSlot } from '../systems/save/saveManager';
-import { isTouchDevice } from '../input/Controls';
+import { isTouchDevice, keyIs } from '../input/Controls';
 import { DialogueBox } from '../ui/DialogueBox';
 import { pixelText } from '../ui/pixelUi';
 import { PLACEHOLDERS } from './BootScene';
@@ -63,7 +63,7 @@ export class StoryScene extends Phaser.Scene {
       if (e.repeat || e.isComposing) return;
       if ((e.target as HTMLElement | null)?.tagName === 'INPUT') return;
       if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab'].includes(e.key)) return;
-      if (this.dialogue?.active && !['Enter', ' ', 'Spacebar'].includes(e.key)) return;
+      if (this.dialogue?.active && !keyIs(SETTINGS.keys.action, e) && !keyIs(SETTINGS.keys.useTool, e)) return;
       this.step();
     };
     this.input.keyboard?.on('keydown', onKey);

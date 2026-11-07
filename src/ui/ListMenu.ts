@@ -6,6 +6,7 @@
  */
 import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
+import { keyIs } from '../input/Controls';
 import { toColor } from '../config/palette';
 import { drawPanel, pixelText } from './pixelUi';
 
@@ -80,13 +81,11 @@ export class ListMenu {
     this.highlight(Math.max(0, options.findIndex((o) => !o.disabled)));
 
     if (opts.ownKeys) {
-      const has = (names: string[], e: KeyboardEvent) =>
-        names.some((n) => (Phaser.Input.Keyboard.KeyCodes as Record<string, number>)[n] === e.keyCode);
       this.keyHandler = (e: KeyboardEvent) => {
-        if (has(SETTINGS.keys.up, e)) this.move(-1);
-        else if (has(SETTINGS.keys.down, e)) this.move(1);
-        else if (has(SETTINGS.keys.action, e)) this.choose(this.index);
-        else if (has(SETTINGS.keys.cancel, e)) opts.onCancel?.();
+        if (keyIs(SETTINGS.keys.up, e)) this.move(-1);
+        else if (keyIs(SETTINGS.keys.down, e)) this.move(1);
+        else if (keyIs(SETTINGS.keys.action, e)) this.choose(this.index);
+        else if (keyIs(SETTINGS.keys.cancel, e)) opts.onCancel?.();
       };
       scene.input.keyboard?.on('keydown', this.keyHandler);
     }

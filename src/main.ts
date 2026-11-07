@@ -5,6 +5,7 @@
  * 画面：地图按 320×180 画，再整数倍放大铺满屏幕，放不满的地方留黑边（美术规范定的）；
  * 界面另外按大约 640×360 排版（两倍精度），字小一半但依然清晰。两层的倍数见 src/config/view.ts。
  */
+import { TITLE_SHOWN } from './config/events';
 import Phaser from 'phaser';
 import { registerSW } from 'virtual:pwa-register';
 import { SETTINGS } from './config/settings';
@@ -80,7 +81,6 @@ async function start() {
  *  - 每次打开、从后台切回来、开着的时候每半小时，都去看一下有没有新版本；
  *  - 有新版本：在标题画面就立刻刷新换上；在玩的时候先不动，等回到标题画面再换（不会丢进度）。
  */
-export const TITLE_SHOWN = 'title:shown';
 let gameRef: Phaser.Game | null = null;
 let updateWaiting = false;
 let updateSW: ((reload?: boolean) => Promise<void>) | null = null;

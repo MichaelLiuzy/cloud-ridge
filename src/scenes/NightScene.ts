@@ -10,6 +10,7 @@
 import { displayName } from '../systems/playerName';
 import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
+import { keyIs } from '../input/Controls';
 import { setupUiCamera, uiSize } from '../config/view';
 import { toColor } from '../config/palette';
 import { t } from '../locales/i18n';
@@ -66,7 +67,7 @@ export class NightScene extends Phaser.Scene {
 
     this.input.on('pointerdown', () => this.skip());
     const onKey = (e: KeyboardEvent) => {
-      if (['Enter', ' ', 'Escape'].includes(e.key)) this.skip();
+      if (keyIs(SETTINGS.keys.action, e) || keyIs(SETTINGS.keys.useTool, e) || keyIs(SETTINGS.keys.cancel, e)) this.skip();
     };
     this.input.keyboard?.on('keydown', onKey);
     this.events.once('shutdown', () => this.input.keyboard?.off('keydown', onKey));

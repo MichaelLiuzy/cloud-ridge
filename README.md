@@ -71,7 +71,7 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
 | 过场某一格单独停久一点或短一点 | `src/data/cutscenes.ts` | 那一格的 `autoMs` |
 | 过场时最上方「按任意键翻页」的提示：文字 / 颜色、透明度、闪烁快慢 | `src/locales/zh.ts`、`src/config/settings.ts` | `cutscene.hintKey`、`cutscene.hintTap`；`cutscene.hintColor`、`hintAlpha`、`hintBlinkMs` |
 | 被墙角、门框卡住时自动往通道挪多少（贴边滑入） | `src/config/settings.ts` | `cornerSlidePixels`（0 = 关掉） |
-| 按键（比如把背包改成 B） | `src/config/settings.ts` | `keys` 里的 `bag: ['Q']` 改成 `['B']` |
+| 按键（比如把背包改成 B） | `src/config/settings.ts` | `keys` 里的 `bag: ['Q']` 改成 `['B']`；所有界面（背包、设置、数量框、对话）都认这里的键，背包里整理 / 丢弃 / 上锁 / 吃 / 放进箱子、翻页也在这里（`bagSort`、`bagDiscard`……），按钮上的字母跟着变 |
 | 手机摇杆、按钮大小和透明度 | `src/config/settings.ts` | `touch` |
 | 对话框、物品栏、时辰框的颜色 | `src/config/settings.ts` | `ui` |
 | 左上角时辰框（日期星期 / 时辰 / 天气 / 节日 / 钱和体力）的位置、大小、内边距，体力条的长和粗 | `src/config/settings.ts` | `ui.infoBox`、`ui.staminaBar`；钟点格式在 `src/locales/zh.ts` 的 `hud.clock` |

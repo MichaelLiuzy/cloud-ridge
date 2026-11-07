@@ -15,6 +15,11 @@ import { uiSize } from '../config/view';
 import { pixelText, artIcon } from '../ui/pixelUi';
 
 /** 指令名称。游戏里用 game.events.on(INPUT_EVENTS.xxx, ...) 来接收。 */
+/** 这一下按的是不是 names 里的键（names 用 settings.ts 里 keys 的写法，比如 ['W', 'UP']） */
+export function keyIs(names: readonly string[], e: KeyboardEvent) {
+  return names.some((n) => (Phaser.Input.Keyboard.KeyCodes as Record<string, number>)[n] === e.keyCode);
+}
+
 export const INPUT_EVENTS = {
   /** 交互 / 确认（回车、手机「使用」键） */
   action: 'input:action',

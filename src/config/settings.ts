@@ -79,6 +79,17 @@ export const SETTINGS = {
      * 小菜单打开时，上面的 up/down（W S 或方向键上下）用来移动选项，action（回车）确认。
      */
     toolSlots: ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE'],
+    /** Q 菜单里换栏目（加 Shift 往回） */
+    switchTab: ['TAB'],
+    /** 背包、箱子里：整理、放进 / 拿出箱子、丢弃、上锁、吃（按钮上显示的字母取第一个键） */
+    bagSort: ['R'],
+    bagTransfer: ['F'],
+    bagDiscard: ['X'],
+    bagLock: ['L'],
+    bagEat: ['E'],
+    /** 箱子翻页、日历翻月：上一页 / 下一页（[ 和 ]） */
+    pagePrev: ['OPEN_BRACKET'],
+    pageNext: ['CLOSED_BRACKET'],
   },
 
   // ---------------- 触屏（iPhone） ----------------

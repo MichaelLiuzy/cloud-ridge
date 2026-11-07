@@ -5,12 +5,13 @@
  *  - 打开时游戏时间暂停。文字速度、音量、界面大小这些存在这台设备上（src/systems/prefs.ts），不放进存档。
  *  - 改名字、导出存档、回标题、测试菜单要界面配合：关掉设置，发 SETTINGS_EVENTS.action 给界面场景。
  */
+import { SETTINGS_EVENTS } from '../config/events';
 import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
 import { toColor } from '../config/palette';
 import { VIEW_EVENTS, setupUiCamera, uiSize } from '../config/view';
 import { SETTINGS_MENU, type SettingItem } from '../data/settingsMenu';
-import { isTouchDevice } from '../input/Controls';
+import { isTouchDevice, keyIs } from '../input/Controls';
 import { t } from '../locales/i18n';
 import { gameState } from '../systems/GameState';
 import { loadPrefs, setPref, type Prefs } from '../systems/prefs';
@@ -20,10 +21,6 @@ import { pickTextFile } from '../ui/fileTransfer';
 import { drawFrame, drawPanel, pixelText } from '../ui/pixelUi';
 import { wrapText } from '../ui/richText';
 
-export const SETTINGS_EVENTS = {
-  /** 设置里选了要界面配合的一项。参数：项目 id（rename / export / backToTitle / debug） */
-  action: 'settings:action',
-} as const;
 
 /** 一行：显示什么、左右键 / 点击做什么 */
 interface Row {
@@ -82,13 +79,13 @@ export class SettingsScene extends Phaser.Scene {
 
     const onKey = (e: KeyboardEvent) => {
       if (e.repeat || this.time.now - this.openedAt < 120) return;
-      const k = e.key;
-      if (k === 'Escape' || k === 'm' || k === 'M') return this.back();
-      if (['ArrowUp', 'w', 'W'].includes(k)) return this.move(-1);
-      if (['ArrowDown', 's', 'S'].includes(k)) return this.move(1);
-      if (['ArrowLeft', 'a', 'A'].includes(k)) return this.rows[this.selected]?.change?.(-1);
-      if (['ArrowRight', 'd', 'D'].includes(k)) return this.rows[this.selected]?.change?.(1);
-      if (k === 'Enter' || k === ' ') {
+      const keys = SETTINGS.keys;
+      if (keyIs(keys.cancel, e) || keyIs(keys.menu, e)) return this.back();
+      if (keyIs(keys.up, e)) return this.move(-1);
+      if (keyIs(keys.down, e)) return this.move(1);
+      if (keyIs(keys.left, e)) return this.rows[this.selected]?.change?.(-1);
+      if (keyIs(keys.right, e)) return this.rows[this.selected]?.change?.(1);
+      if (keyIs(keys.action, e) || keyIs(keys.useTool, e)) {
         const row = this.rows[this.selected];
         if (row?.run) row.run();
         else row?.change?.(1);

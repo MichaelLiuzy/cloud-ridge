@@ -3,6 +3,7 @@
  *  - 如果上次没存档就离开了（切到后台时自动存了临时进度），会先问要不要接着玩。
  *  - 游戏名在 src/locales/zh.ts 的 game.title 里改。
  */
+import { TITLE_SHOWN } from '../config/events';
 import { enterFarm } from './FarmScene';
 import Phaser from 'phaser';
 import { PLACEHOLDERS } from './BootScene';
@@ -29,7 +30,7 @@ export class TitleScene extends Phaser.Scene {
 
   create() {
     // 告诉入口：现在在标题画面，有新版本可以换（见 src/main.ts）
-    this.game.events.emit('title:shown');
+    this.game.events.emit(TITLE_SHOWN);
     const { gameWidth: W, gameHeight: H } = SETTINGS;
     const ui = SETTINGS.ui;
     this.menu = undefined;

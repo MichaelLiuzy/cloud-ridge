@@ -6,6 +6,7 @@
  */
 import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
+import { keyIs } from '../input/Controls';
 import { uiSize } from '../config/view';
 import { toColor } from '../config/palette';
 import { t } from '../locales/i18n';
@@ -72,8 +73,8 @@ export class QuantityPicker {
 
     // 左右键加减一个（上下、回车、Esc 由界面场景转过来）
     this.keyHandler = (e: KeyboardEvent) => {
-      if (['ArrowLeft', 'a', 'A'].includes(e.key)) this.set(this.value - 1);
-      if (['ArrowRight', 'd', 'D'].includes(e.key)) this.set(this.value + 1);
+      if (keyIs(SETTINGS.keys.left, e)) this.set(this.value - 1);
+      if (keyIs(SETTINGS.keys.right, e)) this.set(this.value + 1);
     };
     scene.input.keyboard?.on('keydown', this.keyHandler);
   }

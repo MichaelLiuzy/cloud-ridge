@@ -6,10 +6,10 @@
  * 文字内容在 src/locales/zh.ts，颜色在 src/config/settings.ts 的 ui。
  * 画在界面层（大约 640×360），下面的数字都是界面像素。
  */
+import { UI_EVENTS, FARM_EVENTS, SETTINGS_EVENTS } from '../config/events';
 import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
 import { VIEW, VIEW_EVENTS, setupUiCamera, uiSize } from '../config/view';
-import { SETTINGS_EVENTS } from './SettingsScene';
 import { PALETTE, toColor } from '../config/palette';
 import { dayTagsText, weatherName, weekdayName } from '../systems/days';
 import { localName, t } from '../locales/i18n';
@@ -21,7 +21,7 @@ import { askName } from '../ui/nameInput';
 import { CHAPTERS, type ChapterId } from '../data/clues';
 import { fillNames } from '../story/text';
 import { STORY_EVENTS, debugNextChapter, fireStoryEvent, storyEvents } from '../systems/story/notebook';
-import { FARM_EVENTS, type FarmScene } from './FarmScene';
+import type { FarmScene } from './FarmScene';
 import { debugSetAffection } from '../systems/affection';
 import { AFFECTION } from '../data/affection';
 import { pickupOfferReady, unlockPickup } from '../systems/economy/pickup';
@@ -38,23 +38,6 @@ import { exportText } from '../systems/save/saveManager';
 import { eatFromSlot, isFood } from '../systems/food';
 import { sendLetter } from '../systems/mail';
 
-/** 界面和地图之间互相传的消息 */
-export const UI_EVENTS = {
-  /** 显示一句话。参数：语言文件里的名字（如 'hint.rock'），以及要替换的内容 */
-  say: 'ui:say',
-  /** 弹出小菜单。参数：MenuOption 列表 */
-  showMenu: 'ui:showMenu',
-  /** 下面这些是转给地图的：回车交互、空格用工具、手机「使用」键、点屏幕 */
-  worldAction: 'ui:worldAction',
-  worldUseTool: 'ui:worldUseTool',
-  worldSmart: 'ui:worldSmart',
-  worldTap: 'ui:worldTap',
-  /** 播一段剧本对话。参数：剧本里的段落名（knot），播完后调用的函数 */
-  playDialogue: 'ui:playDialogue',
-  /** 工具变了（比如拿到开局物资）：重画工具栏 */
-  /** 让玩家选数量。参数：标题、最多几个、选好后调用的函数（取消时传 null） */
-  askQuantity: 'ui:askQuantity',
-} as const;
 
 
 /**

@@ -8,6 +8,7 @@
  * 主角的位置 = 脚底中间那一点。图片从脚底往上画（16×32），所以站在树前面时会盖住树根。
  * 所有东西按脚底的 y 排前后：越靠下越在前面。
  */
+import { UI_EVENTS, FARM_EVENTS } from '../config/events';
 import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
 import { VIEW, followView } from '../config/view';
@@ -32,7 +33,6 @@ import { stateFields } from '../systems/save/snapshot';
 import { clearTemp, saveTemp, saveToSlot } from '../systems/save/saveManager';
 import { cellKey, findPath, parseCellKey, type Cell } from '../systems/pathfind';
 import { localName, t } from '../locales/i18n';
-import { UI_EVENTS } from './HudScene';
 import type { MenuOption } from '../ui/ListMenu';
 import { TIME as timeData } from '../data/time';
 import { isLastDayOfWeek, rollWeather, weekdayIndex } from '../systems/days';
@@ -1246,14 +1246,3 @@ function facingOf(dx: number, dy: number): Facing {
   return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up';
 }
 
-/** 农场场景另外听的消息（M 菜单的测试选项、开通收货服务） */
-export const FARM_EVENTS = {
-  /** 直接过几天。参数：天数 */
-  debugDays: 'farm:debugDays',
-  /** 给够材料，请木匠修下一阶段 */
-  debugBuild: 'farm:debugBuild',
-  /** 一天天过到本周日（不清空本周统计） */
-  debugToSunday: 'farm:debugToSunday',
-  /** 收货服务开通了：门口放上收货筐 */
-  basketUnlocked: 'farm:basketUnlocked',
-} as const;
