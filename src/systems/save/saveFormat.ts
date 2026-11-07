@@ -8,8 +8,9 @@
 
 import { FARM_MAP, RUIN_TILES } from '../../world/farmMap';
 import type { PlantedCrop } from '../farming/crops';
+import { slotsFromOld, type Slot } from '../inventory';
 
-export const SAVE_VERSION = 7;
+export const SAVE_VERSION = 8;
 
 /** 存档里存了什么 */
 export interface SaveData {
@@ -44,10 +45,12 @@ export interface SaveData {
   basket: Record<string, number>;
   /** 地里种的东西：「x,y」→ 作物 */
   crops: Record<string, PlantedCrop>;
-  tools: string[];
-  toolIndex: number;
-  /** 背包：物品 id → 数量 */
-  inventory: Record<string, number>;
+  /** 工具栏 9 格 + 背包 27 格：每格放了什么、几个、上锁没有（空格是 null） */
+  slots: (Slot | null)[];
+  /** 手上拿的是工具栏第几格（0 ~ 8） */
+  selected: number;
+  /** 重要物品（笔记本、烧焦的纸）：不占格子 */
+  keyItems: Record<string, number>;
   /** 农场地图（每行一串字符，含开垦、浇水情况），见 src/world/farmMap.ts */
   farm: string[];
   /** 镇上的人：好感度、位置和状态（位置等有小镇地图后再加） */
@@ -158,6 +161,15 @@ const MIGRATIONS: Record<number, (old: any) => any> = {
     );
     const left = farm.join('').split('R').length - 1;
     return { ...old, saveVersion: 7, farm, crops, ruinsCleared: stage >= 1 ? RUIN_TILES : RUIN_TILES - left };
+  },
+  // 7 → 8：背包从「物品 → 数量」改成工具栏 9 格 + 背包 27 格。
+  // 原来的工具按原顺序先放，其他东西按物品表顺序放，工具栏满了再放背包；手上拿的工具还拿着。
+  7: (old) => {
+    const { tools = [], toolIndex = 0, inventory = {}, ...rest } = old;
+    const { slots, keyItems } = slotsFromOld(inventory, tools);
+    const held = tools[toolIndex];
+    const selected = Math.max(0, slots.slice(0, 9).findIndex((s) => s?.id === held));
+    return { ...rest, saveVersion: 8, slots, selected, keyItems };
   },
 };
 

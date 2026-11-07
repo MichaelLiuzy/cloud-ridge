@@ -9,13 +9,10 @@ import { HOUSING as housingData } from '../data/housing';
 import { Clock } from './Clock';
 import type { SaveData } from './save/saveFormat';
 import type { PlantedCrop } from './farming/crops';
+import { SETTINGS } from '../config/settings';
+import { addItem, isTool, type Slot } from './inventory';
 
 export type PrologueStep = 'opening' | 'clinic' | 'tutorial' | 'done';
-
-/** 背包里有哪些工具（按物品表里的顺序放进工具栏） */
-function toolsIn(inventory: Record<string, number>) {
-  return itemsData.items.filter((it) => it.type === 'tool' && (inventory[it.id] ?? 0) > 0).map((it) => it.id as string);
-}
 
 function freshState() {
   // 开局身上什么都没有：钱、种子和工具由周里正在序章里交给玩家（giveStartKit）
@@ -45,9 +42,12 @@ function freshState() {
     crops: {} as Record<string, PlantedCrop>,
     maxStamina: hut.maxStamina as number,
     stamina: hut.maxStamina as number,
-    tools: [] as string[],
-    toolIndex: 0,
-    inventory: {} as Record<string, number>,
+    /** 工具栏 + 背包的格子（前 9 格是工具栏），见 src/systems/inventory.ts */
+    slots: Array.from({ length: SETTINGS.inventory.toolbarSlots + SETTINGS.inventory.bagSlots }, () => null) as (Slot | null)[],
+    /** 手上拿的是工具栏第几格（0 ~ 8） */
+    selected: 0,
+    /** 重要物品（笔记本、烧焦的纸）：不占格子 */
+    keyItems: {} as Record<string, number>,
     affection: { ...startData.affection } as Record<string, number>,
     flags: {} as Record<string, boolean | number | string>,
     quests: {} as Record<string, string>,
@@ -97,9 +97,9 @@ export function resetGameState(slot: number, load: SaveData | null = null) {
       crops: JSON.parse(JSON.stringify(load.crops)),
       maxStamina: load.maxStamina,
       stamina: load.stamina,
-      tools: [...load.tools],
-      toolIndex: load.toolIndex,
-      inventory: { ...load.inventory },
+      slots: load.slots.map((x) => (x ? { ...x } : null)),
+      selected: load.selected,
+      keyItems: { ...load.keyItems },
       affection: { ...load.npcs.affection },
       flags: { ...load.flags },
       quests: { ...load.quests },
@@ -120,35 +120,8 @@ export function giveStartKit() {
   if (gameState.flags.startKitGiven) return;
   gameState.flags.startKitGiven = true;
   gameState.cash += startData.cash;
-  for (const [id, n] of Object.entries(startData.inventory)) gameState.inventory[id] = (gameState.inventory[id] ?? 0) + (n ?? 0);
-  syncTools();
-}
-
-/** 背包里的工具变了：重新排工具栏（手上拿的那件不变） */
-export function syncTools() {
-  const holding = currentTool();
-  gameState.tools = toolsIn(gameState.inventory);
-  gameState.toolIndex = Math.max(0, gameState.tools.indexOf(holding ?? ''));
-}
-
-/** 背包里加 / 减东西（减到 0 就从背包里拿掉） */
-export function addItem(id: string, n = 1) {
-  const left = (gameState.inventory[id] ?? 0) + n;
-  if (left > 0) gameState.inventory[id] = left;
-  else delete gameState.inventory[id];
-}
-
-/** 有没有这件东西（背包里数量大于 0） */
-export function hasItem(id: string) {
-  return (gameState.inventory[id] ?? 0) > 0;
-}
-
-/** 有没有这个工具 */
-export function hasTool(id: string) {
-  return gameState.tools.includes(id);
-}
-
-/** 现在手上的工具 id */
-export function currentTool() {
-  return gameState.tools[gameState.toolIndex];
+  // 工具栏依次放：工具、种子、别的东西
+  const rank = (id: string) => (isTool(id) ? 0 : itemsData.items.find((it) => it.id === id)?.type === 'seed' ? 1 : 2);
+  const kit = Object.entries(startData.inventory).sort(([a], [b]) => rank(a) - rank(b));
+  for (const [id, n] of kit) addItem(id, n ?? 0);
 }

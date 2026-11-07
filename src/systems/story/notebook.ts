@@ -7,7 +7,8 @@
  */
 import Phaser from 'phaser';
 import { CHAPTERS, CLUES, QUESTIONS, type ChapterId, type ClueId, type QuestionId, type StoryEventId } from '../../data/clues';
-import { gameState, hasItem } from '../GameState';
+import { gameState } from '../GameState';
+import { hasItem } from '../inventory';
 
 /** 笔记本有新内容、新章节开始时发出的消息（界面听这个来闪图标、显示提示） */
 export const storyEvents = new Phaser.Events.EventEmitter();

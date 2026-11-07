@@ -5,7 +5,8 @@
  *  - 筐里的东西第二天早上按收购价结算，钱直接到手上。
  */
 import { SERVICES } from '../../data/services';
-import { addItem, gameState } from '../GameState';
+import { gameState } from '../GameState';
+import { addItem, countItem, inventoryCounts, removeItem, roomFor } from '../inventory';
 import { heartsOf } from '../affection';
 import { basketPrice } from './shop';
 
@@ -25,23 +26,23 @@ export function unlockPickup(): boolean {
   return true;
 }
 
-/** 能放进筐里的东西：杂货铺收、背包里有 */
+/** 能放进筐里的东西：杂货铺收、背包里有、没上锁（上锁的不能卖）。返回 id → 能放几个 */
 export function sellableInBag() {
-  return Object.keys(gameState.inventory).filter((id) => (gameState.inventory[id] ?? 0) > 0 && basketPrice(id) != null);
+  const counts = inventoryCounts({ skipLocked: true });
+  return Object.fromEntries(Object.entries(counts).filter(([id, n]) => n > 0 && basketPrice(id) != null));
 }
 
 /** 把背包里的某样东西放 n 个进筐（最多放背包里有的数），返回实际放了几个 */
 export function putInBasket(id: string, n: number) {
-  const k = Math.min(n, gameState.inventory[id] ?? 0);
+  const k = removeItem(id, Math.min(n, countItem(id, { skipLocked: true })), { skipLocked: true });
   if (k <= 0) return 0;
-  addItem(id, -k);
   gameState.basket[id] = (gameState.basket[id] ?? 0) + k;
   return k;
 }
 
-/** 从筐里拿回 n 个（还没结算的当天都能拿回），返回实际拿了几个 */
+/** 从筐里拿回 n 个（还没结算的当天都能拿回；背包放不下的留在筐里），返回实际拿了几个 */
 export function takeFromBasket(id: string, n: number) {
-  const k = Math.min(n, gameState.basket[id] ?? 0);
+  const k = Math.min(n, gameState.basket[id] ?? 0, roomFor(id));
   if (k <= 0) return 0;
   addItem(id, k);
   const left = (gameState.basket[id] ?? 0) - k;

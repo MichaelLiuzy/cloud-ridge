@@ -3,7 +3,8 @@
  * 草棚改成柴房时，箱子和里面的东西原样留着。
  */
 import { HOUSING } from '../../data/housing';
-import { addItem, gameState } from '../GameState';
+import { gameState } from '../GameState';
+import { addItem, countItem, inventoryCounts, isKeyItem, isTool, removeItem, roomFor } from '../inventory';
 
 export const CHEST_SLOTS = HOUSING.hut.storageSlots;
 
@@ -11,16 +12,15 @@ export const CHEST_SLOTS = HOUSING.hut.storageSlots;
 export function putInChest(id: string, n: number) {
   const isNew = !(gameState.storage[id] > 0);
   if (isNew && Object.keys(gameState.storage).length >= CHEST_SLOTS) return -1;
-  const k = Math.min(n, gameState.inventory[id] ?? 0);
+  const k = removeItem(id, Math.min(n, countItem(id)));
   if (k <= 0) return 0;
-  addItem(id, -k);
   gameState.storage[id] = (gameState.storage[id] ?? 0) + k;
   return k;
 }
 
-/** 从箱子里拿 n 个出来，返回实际拿了几个 */
+/** 从箱子里拿 n 个出来（背包放不下的留在箱子里），返回实际拿了几个 */
 export function takeFromChest(id: string, n: number) {
-  const k = Math.min(n, gameState.storage[id] ?? 0);
+  const k = Math.min(n, gameState.storage[id] ?? 0, roomFor(id));
   if (k <= 0) return 0;
   addItem(id, k);
   const left = gameState.storage[id] - k;
@@ -29,7 +29,7 @@ export function takeFromChest(id: string, n: number) {
   return k;
 }
 
-/** 背包里能放进箱子的东西：工具和重要物品（笔记本、纸片）不放 */
-export function storableInBag(isTool: (id: string) => boolean) {
-  return Object.keys(gameState.inventory).filter((id) => (gameState.inventory[id] ?? 0) > 0 && !isTool(id));
+/** 背包里能放进箱子的东西：工具和重要物品（笔记本、纸片）不放。返回 id → 有几个 */
+export function storableInBag() {
+  return Object.fromEntries(Object.entries(inventoryCounts()).filter(([id, n]) => n > 0 && !isTool(id) && !isKeyItem(id)));
 }

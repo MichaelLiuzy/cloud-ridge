@@ -19,15 +19,15 @@ Mac 和手机用同一套规则：**想干什么就直接点那个东西**。只
 | | Mac（键盘） | Mac（鼠标） | iPhone（触屏，请横屏） |
 |---|---|---|---|
 | 走路 | W A S D 或方向键 | 点地面 →「走到这里」 | 左半边屏幕按住拖动（摇杆） |
-| 做事 | 回车 = 查看 / 交互；空格 = 用手上的工具 | 点那个东西 | 轻点那个东西；或按右下「使用」对面前一格 |
+| 做事 | 回车 = 查看 / 交互；空格 = 用手上的东西 | 点那个东西（手上的东西用得上就直接做，不弹菜单） | 轻点那个东西；或按右下「使用」对面前一格 |
 | 小菜单 | 上下键选，回车确认，Esc 取消 | 点选项，点外面取消 | 点选项，点外面取消 |
-| 换工具 | 数字键 1~9 | 点底部工具栏 | 点底部工具栏 |
-| 背包 | Q（还没做） | | 「背包」按钮 |
-| 菜单 | M | | 右上「菜单」按钮 |
+| 换手上的东西 | 数字键 1~9 | 点底部工具栏 | 点底部工具栏 |
+| 背包 | Q；方向键选格，回车拿起 / 放下，X 丢弃，L 上锁 | 拖动换位置，点按钮丢弃、上锁 | 「背包」按钮；点一样东西再点另一格就移过去 |
+| 设置 | Esc 或 M | 右上角齿轮 | 右上角齿轮 |
 
-现在能做的事：锄头开垦草地、水桶浇田、镰刀割草、斧头砍树桩和火灾残骸。
+现在能做的事：锄头开垦草地、水桶浇田、拿着种子点锄好的地播种、镰刀割草、斧头砍树桩和火灾残骸。
 
-**测试用：** 按 M 打开菜单，最下面有「时间快进 3 小时」（看傍晚和夜里）和「回忆模式 开 / 关」（画面去色，只有灯笼保留颜色）。
+**测试用：** 按 M 打开设置，最下面「测试……」里有「时间快进 3 小时」（看傍晚和夜里）和「回忆模式 开 / 关」（画面去色，只有灯笼保留颜色）。
 Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/config/settings.ts` 里的 `debugMenu` 改成 `false`。
 每件事花体力，体力用完或熬到凌晨两点会昏倒，第二天在草棚醒来（数值都在 `src/data/time.ts`）。
 
@@ -85,7 +85,7 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
 | 游戏里显示的任何中文字 | `src/locales/zh.ts` | 搜你想改的那句话，改引号里的字 |
 | 游戏名 | `src/locales/zh.ts` | `game.title` |
 | 农场地图（树、石头、田放在哪） | `src/world/farmMap.ts` | 用字符画的地图，文件开头有字符对照表 |
-| 哪个工具对什么东西有用、做完变成什么 | `src/world/actions.ts` | `TOOL_ACTIONS` |
+| 拿着什么点什么就做什么（水桶点田 = 浇水、种子点锄好的地 = 播种……）、做完变成什么、花多少体力 | `src/world/actions.ts` | `HELD_ACTIONS`（每条都有中文注释，从上往下用第一条对得上的） |
 | 每件事花多少体力、体力多少算「累」 | `src/data/time.ts` | `stamina` |
 | 一天过多快 | `src/data/time.ts` | `clock.realSecondsPerGameHour`（现实几秒 = 游戏一小时） |
 | 作物生长天数、价格、播种时节、耐不耐寒 | `src/data/crops.ts` | 每种作物的 `growDays`、`sellPrice`、`sowWindows`、`frostHardy`、`perennial` |
@@ -112,6 +112,7 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
 | Q 菜单有哪几栏、顺序 | `src/data/menuTabs.ts` | `MENU_TABS` |
 | 名字能多长、汉字和字母各算多宽 | `src/config/settings.ts` | `nameRules` |
 | 背包几行几列、格子多大 | `src/config/settings.ts` | `bag` |
+| 工具栏几格、背包几格、同一种东西一格最多叠几个 | `src/config/settings.ts` | `inventory` 里的 `toolbarSlots`、`bagSlots`、`stackMax`（默认 99；工具不叠） |
 | 对话框里旁白、黄字的颜色 | `src/config/settings.ts` | `ui` 里的 `textDim2`、`clueText`、`clueMark` |
 | 界面层放大倍数（小 / 中 / 大三档各是多少） | `src/config/settings.ts` | `ui.scale`（数字越大界面越小；中档 2 = 按 640×360 排版） |
 | 各处字号 | `src/config/settings.ts` | `fontSize`（普通界面字）、`ui.smallFontSize`（最小的提示字）、`ui.dialogueScale`（对话框再放大几倍）、`ui.iconScale`（工具栏、背包图标） |
@@ -147,7 +148,7 @@ src/
   data/*.ts            ★ 数值表：时间、作物、物品、打工、房子、开局
   data/types.ts        数值表的格式说明（打错了会报错就靠它）
   world/farmMap.ts     ★ 农场地图（字符画）
-  world/actions.ts     ★ 对什么东西能做什么（工具规则、床边菜单）
+  world/actions.ts     ★ 拿着什么、对着什么就做什么（顺手规则表、床边菜单）
   scenes/
     BootScene.ts       读美术图；缺的画占位色块
     TitleScene.ts      标题画面：继续 / 新游戏 / 导入存档
@@ -157,6 +158,7 @@ src/
   systems/
     Clock.ts           游戏时钟（季节、天、时辰）
     GameState.ts       全局状态（钱、体力、背包……）
+    inventory.ts       工具栏 + 背包的格子：放进、拿走、移动、丢弃、上锁
     pathfind.ts        点远处时自动找路
     save/              存档：格式和自动升级、3 个存档位、临时进度、存储
   ui/

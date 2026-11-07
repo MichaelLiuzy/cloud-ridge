@@ -9,7 +9,8 @@ import { HOUSING } from '../../data/housing';
 import { DIARY_PAGES } from '../../data/diary';
 import { CLUES } from '../../data/clues';
 import { RUIN_TILES } from '../../world/farmMap';
-import { addItem, gameState } from '../GameState';
+import { gameState } from '../GameState';
+import { addItem, countItem, removeItem } from '../inventory';
 import { addLearned, chapterStarted, giveClue, hasClue, storyEvents, STORY_EVENTS } from '../story/notebook';
 
 const PAPER = 'burnt_paper';
@@ -37,9 +38,9 @@ export function requestBuild(): string | null {
   const next = stageInfo(gameState.houseStage + 1);
   if (!next) return 'house.allDone';
   if (!next.byCarpenter) return 'house.clearFirst';
-  const lacking = Object.entries(next.materials).some(([id, n]) => (gameState.inventory[id] ?? 0) < (n ?? 0));
+  const lacking = Object.entries(next.materials).some(([id, n]) => countItem(id) < (n ?? 0));
   if (lacking || gameState.cash < next.cost) return 'house.notEnough';
-  for (const [id, n] of Object.entries(next.materials)) addItem(id, -(n ?? 0));
+  for (const [id, n] of Object.entries(next.materials)) removeItem(id, n ?? 0);
   gameState.cash -= next.cost;
   gameState.build = { stage: next.stage, daysLeft: HOUSING.buildDays };
   return null;
@@ -85,7 +86,7 @@ export function refreshDiary() {
   for (const stage of gameState.diaryFound) {
     const page = DIARY_PAGES.find((p) => p.stage === stage);
     if (!page || hasClue(page.clue) || !chapterStarted(CLUES[page.clue].chapter)) continue;
-    if (giveClue(page.clue)) addItem(PAPER, -1);
+    if (giveClue(page.clue)) removeItem(PAPER, 1);
   }
 }
 storyEvents.on(STORY_EVENTS.chapterStart, refreshDiary);

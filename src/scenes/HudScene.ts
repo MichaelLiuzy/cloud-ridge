@@ -26,7 +26,8 @@ import { debugSetAffection } from '../systems/affection';
 import { AFFECTION } from '../data/affection';
 import { pickupOfferReady, unlockPickup } from '../systems/economy/pickup';
 import { SERVICES } from '../data/services';
-import { hasItem } from '../systems/GameState';
+import { TOOLBAR_SLOTS, hasItem } from '../systems/inventory';
+import { drawItemSlot } from '../ui/itemSlot';
 import type { MenuTabId } from '../data/menuTabs';
 import { gameState } from '../systems/GameState';
 import { ListMenu, type MenuOption } from '../ui/ListMenu';
@@ -95,7 +96,7 @@ export class HudScene extends Phaser.Scene {
   /** 右上角的齿轮（设置） */
   private gearButton!: Phaser.GameObjects.Container;
 
-  private toolCursor!: Phaser.GameObjects.Graphics;
+  private toolCursor?: Phaser.GameObjects.Graphics;
   /** 工具栏的所有东西（工具变了时整个重画） */
   private toolbar?: Phaser.GameObjects.Container;
   /** 对话框开着时又来的话，排队等着 */
@@ -103,6 +104,10 @@ export class HudScene extends Phaser.Scene {
   /** 正在选数量 */
   private picker?: QuantityPicker;
   private toolSlotX: number[] = [];
+  /** 工具栏上次画的时候放了什么、画在多大的界面上 */
+  private toolbarSig = '';
+  private layoutW = 0;
+  private layoutH = 0;
   private touchButtons: Phaser.GameObjects.Container[] = [];
   private touch = false;
 
@@ -218,8 +223,17 @@ export class HudScene extends Phaser.Scene {
     if (!clock) return;
     if (this.relayoutPending) this.relayout();
     this.refreshInfoBox(clock.shortDateText(), clock.shichen, clock.clockText());
-    const x = this.toolSlotX[gameState.toolIndex];
-    if (x !== undefined) this.toolCursor.setX(x - 1);
+    // 工具栏里的东西变了（用掉种子、在背包里挪了位置……）：重画
+    const sig = this.toolbarSignature();
+    if (sig !== this.toolbarSig) this.buildToolbar(this.layoutW, this.layoutH);
+    const x = this.toolSlotX[gameState.selected];
+    if (x !== undefined) this.toolCursor?.setX(x - 1);
+  }
+
+  /** 工具栏 9 格现在放了什么（变了才重画） */
+  private toolbarSignature() {
+    const show = gameState.flags.startKitGiven || gameState.slots.slice(0, TOOLBAR_SLOTS).some(Boolean);
+    return show ? JSON.stringify(gameState.slots.slice(0, TOOLBAR_SLOTS)) : '';
   }
 
   // ---------------- 左上角时辰框 ----------------
@@ -540,15 +554,17 @@ export class HudScene extends Phaser.Scene {
 
   // ---------------- 工具栏 ----------------
 
-  /** 底部正中一排格子，每格放工具图标；当前拿着的那格有橘色框 */
+  /** 底部正中 9 格（工具栏）：什么都能放；当前拿着的那格有橘色框。还没拿到开局物资时不显示 */
   private buildToolbar(W: number, H: number) {
     this.toolbar?.destroy();
     this.toolSlotX = [];
+    this.layoutW = W;
+    this.layoutH = H;
+    this.toolbarSig = this.toolbarSignature();
     this.toolbar = this.add.container(0, 0).setDepth(40);
+    if (!this.toolbarSig) return;
     const SL = SLOT();
-    const iconScale = SETTINGS.ui.iconScale;
-    const n = gameState.tools.length;
-    if (!n) return; // 还没拿到工具（序章里周里正给之前）
+    const n = TOOLBAR_SLOTS;
     const w = BAR_PAD * 2 + n * SL + (n - 1) * SLOT_GAP;
     const h = BAR_PAD * 2 + SL;
     const x0 = Math.round((W - w) / 2);
@@ -556,22 +572,17 @@ export class HudScene extends Phaser.Scene {
     const g = this.add.graphics();
     this.toolbar.add(g);
     drawPanel(g, x0, y0, w, h);
-    gameState.tools.forEach((id, i) => {
+    for (let i = 0; i < n; i++) {
       const x = x0 + BAR_PAD + i * (SL + SLOT_GAP);
       const y = y0 + BAR_PAD;
       this.toolSlotX.push(x);
       g.fillStyle(toColor(SETTINGS.ui.innerBorder)).fillRect(x, y, SL, SL);
       const slot = this.add.zone(x, y, SL, SL).setOrigin(0).setInteractive();
-      this.toolbar!.add(slot);
+      this.toolbar.add(slot);
       slot.on('pointerdown', () => !this.busy() && this.selectTool(i));
-      const key = `icon_${id}`;
-      this.toolbar!.add(
-        this.textures.exists(key)
-          ? this.add.image(x + SL / 2, y + SL / 2, key).setScale(iconScale)
-          : pixelText(this, x + SL / 2, y + SL / 2, this.itemName(id).slice(0, 1)).setOrigin(0.5),
-      );
-    });
-    // 当前工具的框：画在 (0,0)，每帧挪到选中的那格
+      drawItemSlot(this, this.toolbar, x, y, SL, gameState.slots[i]);
+    }
+    // 当前那格的框：画在 (0,0)，每帧挪到选中的那格
     this.toolCursor = this.add.graphics().setY(y0 + BAR_PAD - 1);
     this.toolbar.add(this.toolCursor);
     drawFrame(this.toolCursor, 0, 0, SL + 2, SL + 2, toColor(SETTINGS.ui.toolSelected));
@@ -582,7 +593,7 @@ export class HudScene extends Phaser.Scene {
   }
 
   private selectTool(i: number) {
-    if (i < gameState.tools.length) gameState.toolIndex = i;
+    if (i >= 0 && i < TOOLBAR_SLOTS) gameState.selected = i;
   }
 }
 
