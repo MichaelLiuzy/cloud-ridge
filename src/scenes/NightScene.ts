@@ -7,6 +7,7 @@
  *    它返回本周总结（不是周日就是 null）。有总结就先显示总结，关掉以后再天亮。
  * 这一层开着时游戏时间暂停、主角不能动（gameState.menuOpen）。
  */
+import { displayName } from '../systems/playerName';
 import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
 import { setupUiCamera, uiSize } from '../config/view';
@@ -77,7 +78,7 @@ export class NightScene extends Phaser.Scene {
     this.phase = 'hold';
     const { w: W, h: H } = uiSize();
     const cfg = SETTINGS.sleepCutscene;
-    const name = gameState.playerName || t('names.playerUnknown');
+    const name = displayName();
     this.line = pixelText(this, W / 2, H / 2 + 14, t('sleep.line', { name }), { color: cfg.lineColor }).setOrigin(0.5).setAlpha(0);
     this.tweens.add({ targets: this.line, alpha: 1, duration: 300 });
     this.timer = this.time.delayedCall(cfg.holdMs, () => this.goBlack());

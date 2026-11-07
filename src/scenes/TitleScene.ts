@@ -3,20 +3,20 @@
  *  - 如果上次没存档就离开了（切到后台时自动存了临时进度），会先问要不要接着玩。
  *  - 游戏名在 src/locales/zh.ts 的 game.title 里改。
  */
+import { enterFarm } from './FarmScene';
 import Phaser from 'phaser';
 import { PLACEHOLDERS } from './BootScene';
 import { SETTINGS } from '../config/settings';
-import { VIEW_EVENTS, setupWorldCamera } from '../config/view';
+import { followView, setupWorldCamera } from '../config/view';
 import { t } from '../locales/i18n';
 import { pixelText } from '../ui/pixelUi';
-import { isTouchDevice } from '../input/Controls';
 import { ListMenu, type MenuOption } from '../ui/ListMenu';
 import { pickTextFile } from '../ui/fileTransfer';
 import { describeClock } from '../systems/Clock';
 import { gameState, resetGameState } from '../systems/GameState';
 import { currentSave } from '../systems/save/snapshot';
 import type { SaveData } from '../systems/save/saveFormat';
-import { clearTemp, listSlots, loadTemp, parseImport, saveToSlot } from '../systems/save/saveManager';
+import { clearTemp, listSlots, loadTemp, parseImport, saveToSlot, slotLabel } from '../systems/save/saveManager';
 
 export class TitleScene extends Phaser.Scene {
   private menu?: ListMenu;
@@ -35,10 +35,7 @@ export class TitleScene extends Phaser.Scene {
     this.menu = undefined;
     this.cameras.main.setBackgroundColor(ui.titleBg);
     // 标题画面和地图一样按 320×180 放大
-    setupWorldCamera(this);
-    const rezoom = () => setupWorldCamera(this);
-    this.game.events.on(VIEW_EVENTS.changed, rezoom);
-    this.events.once('shutdown', () => this.game.events.off(VIEW_EVENTS.changed, rezoom));
+    followView(this, () => setupWorldCamera(this));
     // 标题背景图（cg_title）：有图就铺在最下面，上方中间的天空放标题字；没图就是纯色底
     if (!PLACEHOLDERS.has('cg_title')) this.add.image(0, 0, 'cg_title').setOrigin(0).setDisplaySize(W, H);
     // 游戏名：12 像素的字放大 3 倍，保持像素方块
@@ -120,9 +117,7 @@ export class TitleScene extends Phaser.Scene {
     const slots = await listSlots();
     const options: MenuOption[] = slots.map((save, i) => {
       const n = i + 1;
-      const label = save
-        ? t('title.slotFull', { n, ...describeClock(save.clock), cash: save.cash })
-        : t('title.slotEmpty', { n });
+      const label = slotLabel(save, n);
       return {
         label,
         disabled: mode === 'continue' && !save,
@@ -175,9 +170,7 @@ export class TitleScene extends Phaser.Scene {
       this.scene.start('Story', { step });
       return;
     }
-    this.scene.start('Farm');
-    this.scene.launch('Atmosphere');
-    this.scene.launch('Hud', { touch: isTouchDevice() });
+    enterFarm(this);
   }
 }
 

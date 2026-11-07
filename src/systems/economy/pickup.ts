@@ -6,7 +6,7 @@
  */
 import { SERVICES } from '../../data/services';
 import { gameState } from '../GameState';
-import { addItem, countItem, inventoryCounts, removeItem, roomFor } from '../inventory';
+import { addItem, inventoryCounts, removeItem, roomFor } from '../inventory';
 import { heartsOf } from '../affection';
 import { basketPrice } from './shop';
 import { earn, spend } from '../weekStats';
@@ -35,7 +35,7 @@ export function sellableInBag() {
 
 /** 把背包里的某样东西放 n 个进筐（最多放背包里有的数），返回实际放了几个 */
 export function putInBasket(id: string, n: number) {
-  const k = removeItem(id, Math.min(n, countItem(id, { skipLocked: true })), { skipLocked: true });
+  const k = removeItem(id, n, { skipLocked: true });
   if (k <= 0) return 0;
   gameState.basket[id] = (gameState.basket[id] ?? 0) + k;
   return k;

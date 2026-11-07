@@ -53,6 +53,13 @@ export function setupWorldCamera(scene: Phaser.Scene) {
   scene.cameras.main.setSize(scene.scale.width, scene.scale.height).setOrigin(0, 0).setZoom(VIEW.world);
 }
 
+/** 先设一次镜头，以后窗口大小变了再设一次；场景关掉时自动不再跟 */
+export function followView(scene: Phaser.Scene, setup: () => void) {
+  setup();
+  scene.game.events.on(VIEW_EVENTS.changed, setup);
+  scene.events.once('shutdown', () => scene.game.events.off(VIEW_EVENTS.changed, setup));
+}
+
 /** 界面层的场景：镜头放大 ui 倍，左上角对齐 */
 export function setupUiCamera(scene: Phaser.Scene) {
   scene.cameras.main.setSize(scene.scale.width, scene.scale.height).setOrigin(0, 0).setZoom(VIEW.ui);

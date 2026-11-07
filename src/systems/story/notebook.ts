@@ -72,19 +72,21 @@ export function checkChapters() {
     const cluesOk = (ch.unlock.clues ?? []).every((c) => hasClue(c));
     const eventsOk = (ch.unlock.events ?? []).every((e) => eventHappened(e));
     if (!cluesOk || !eventsOk) return;
-    gameState.chapter = ch.number;
-    storyEvents.emit(STORY_EVENTS.chapterStart, id);
-    notifyNew(null);
+    startChapter(id);
   }
+}
+
+/** 进入这一章：记下章节号，通知剧情和笔记本 */
+function startChapter(id: ChapterId) {
+  gameState.chapter = CHAPTERS[id].number;
+  storyEvents.emit(STORY_EVENTS.chapterStart, id);
+  notifyNew(null);
 }
 
 /** （测试用）不管条件，直接进入下一章 */
 export function debugNextChapter() {
   const next = chaptersInOrder().find((id) => CHAPTERS[id].number === gameState.chapter + 1);
-  if (!next) return;
-  gameState.chapter += 1;
-  storyEvents.emit(STORY_EVENTS.chapterStart, next);
-  notifyNew(null);
+  if (next) startChapter(next);
 }
 
 /** 问题现在的状态：hidden = 还没被引出；open = 未解决；solved = 已解决 */

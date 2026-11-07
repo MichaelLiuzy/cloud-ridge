@@ -14,8 +14,7 @@ import { isTouchDevice } from '../input/Controls';
 import { t } from '../locales/i18n';
 import { gameState } from '../systems/GameState';
 import { loadPrefs, setPref, type Prefs } from '../systems/prefs';
-import { listSlots, parseImport, saveToSlot } from '../systems/save/saveManager';
-import { describeClock } from '../systems/Clock';
+import { listSlots, parseImport, saveToSlot, slotLabel } from '../systems/save/saveManager';
 import type { SaveData } from '../systems/save/saveFormat';
 import { pickTextFile } from '../ui/fileTransfer';
 import { drawFrame, drawPanel, pixelText } from '../ui/pixelUi';
@@ -264,7 +263,7 @@ export class SettingsScene extends Phaser.Scene {
         const n = i + 1;
         const current = n === gameState.slot;
         return {
-          label: save ? t('title.slotFull', { n, ...describeClock(save.clock), cash: save.cash }) : t('title.slotEmpty', { n }),
+          label: slotLabel(save, n),
           dim: current,
           run: () => (current ? undefined : void this.finishImport(n)),
         };

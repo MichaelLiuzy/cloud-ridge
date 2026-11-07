@@ -6,6 +6,7 @@
 import { TIME as timeData } from '../data/time';
 import { START as startData } from '../data/start';
 import { localName, t } from '../locales/i18n';
+import { dayName, monthName } from './days';
 
 export class Clock {
   /** 几月：1 = 正月 …… 12 = 腊月 */
@@ -55,23 +56,11 @@ export class Clock {
     return Math.floor(this.minutes / 60) % 24;
   }
 
-  /** 当前的时辰名（子时、丑时……） */
+  /** 当前的时辰名（子时、丑时……）：时辰表第一个是子时（23 点开始），其余按开始的钟点排 */
   get shichen() {
-    // 时辰表按开始的钟点排列；23 点以后、1 点以前是子时
-    const h = this.hour;
     const list = timeData.shichenDisplay;
-    let name = list[0].name;
-    for (const s of list) {
-      if (s.from <= h && s.from !== 23) name = s.name;
-    }
-    if (h >= 23 || h < 1) name = list[0].name;
-    return name;
-  }
-
-  /** 现在是哪个季节（春 1–3 月、夏 4–6 月……） */
-  get season() {
-    const list = timeData.calendar.seasons;
-    return list.find((s) => s.months.includes(this.month)) ?? list[0];
+    const found = list.slice(1).filter((s) => s.from <= this.hour).pop();
+    return (this.hour >= 23 || !found ? list[0] : found).name;
   }
 
   /** 现在在哪个节气里（每个节气从当天算到下一个节气的前一天） */
@@ -83,28 +72,14 @@ export class Clock {
     return current;
   }
 
-  /** 今天是不是赶集日 */
-  get isMarketDay() {
-    return timeData.calendar.marketDays.includes(this.day);
-  }
-
-  /** 今天的节日（没有就是 undefined） */
-  get festival() {
-    return timeData.calendar.festivals.find((f) => f.month === this.month && f.day === this.day);
-  }
-
   /** 屏幕上显示的日期：「正月十六 · 立春」 */
   dateText() {
-    const month = timeData.calendar.months[this.month - 1];
-    const days = t('calendar.dayNames').split(',');
-    return t('hud.date', { month: localName(month.name), day: days[this.day - 1] ?? String(this.day), term: localName(this.solarTerm.name) });
+    return t('hud.date', { month: monthName(this.month), day: dayName(this.day), term: localName(this.solarTerm.name) });
   }
 
   /** 左上角时辰框用的短日期：「正月十六」 */
   shortDateText() {
-    const month = timeData.calendar.months[this.month - 1];
-    const days = t('calendar.dayNames').split(',');
-    return t('hud.shortDate', { month: localName(month.name), day: days[this.day - 1] ?? String(this.day) });
+    return t('hud.shortDate', { month: monthName(this.month), day: dayName(this.day) });
   }
 
   /** 左上角的钟点：「6:00 am」。只显示整点（每小时才跳一次，不用每十分钟一跳那么紧张） */

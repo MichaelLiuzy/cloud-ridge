@@ -3,7 +3,7 @@
  * 过场的图按地图的倍数放大；这一层按界面的倍数放大（大约 640×360），所以字更小更细。
  */
 import Phaser from 'phaser';
-import { VIEW_EVENTS, setupUiCamera } from '../config/view';
+import { followView, setupUiCamera } from '../config/view';
 
 export class UiOverlayScene extends Phaser.Scene {
   constructor() {
@@ -11,9 +11,6 @@ export class UiOverlayScene extends Phaser.Scene {
   }
 
   create() {
-    setupUiCamera(this);
-    const rezoom = () => setupUiCamera(this);
-    this.game.events.on(VIEW_EVENTS.changed, rezoom);
-    this.events.once('shutdown', () => this.game.events.off(VIEW_EVENTS.changed, rezoom));
+    followView(this, () => setupUiCamera(this));
   }
 }

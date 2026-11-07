@@ -18,7 +18,7 @@ import { isTouchDevice } from '../input/Controls';
 import { localName, t } from '../locales/i18n';
 import { fillNames } from '../story/text';
 import { gameState } from '../systems/GameState';
-import { ALL_SLOTS, TOOLBAR_SLOTS, canStore, hasItem, isTool, itemInfo, moveSlot, slotAt, sortSlots, takeFromSlot, toggleLock, whyCantDiscard } from '../systems/inventory';
+import { ALL_SLOTS, TOOLBAR_SLOTS, canStore, hasItem, isTool, itemInfo, itemName, moveSlot, slotAt, sortSlots, takeFromSlot, toggleLock, whyCantDiscard } from '../systems/inventory';
 import { CHEST_PAGE, normalizeChest, transferSlot } from '../systems/home/storage';
 import { shopSellPrice } from '../systems/economy/shop';
 import { drawItemSlot, drawLock } from '../ui/itemSlot';
@@ -37,14 +37,14 @@ import { TIME } from '../data/time';
 import { eatFromSlot, isFood } from '../systems/food';
 import { dayEvents, dayName, monthName, seasonOf, weekdayIndex, weekdayName } from '../systems/days';
 
-/** 面板大小 = 界面层大小（大约 640×360，打开时按当前界面大小算） */
-let W = 640;
-let H = 360;
-/** 内容区（栏目条下面那块） */
-let AREA = { x: 8, y: 28, w: W - 16, h: H - 34 };
 const LINE_H = 14;
 
 export class GameMenuScene extends Phaser.Scene {
+  /** 面板大小 = 界面层大小（大约 640×360，打开时按当前界面大小算） */
+  private W = 640;
+  private H = 360;
+  /** 内容区（栏目条下面那块） */
+  private AREA = { x: 8, y: 28, w: 640 - 16, h: 360 - 34 };
   private tab: MenuTabId | 'mail' = 'bag';
   private section: NotebookSectionId = 'story';
   /** 栏目条和内容各放一层，切栏目时只重画内容 */
@@ -107,8 +107,8 @@ export class GameMenuScene extends Phaser.Scene {
     this.openedAt = this.time.now;
     gameState.menuOpen = true;
     setupUiCamera(this);
-    ({ w: W, h: H } = uiSize());
-    AREA = { x: 8, y: 28, w: W - 16, h: H - 34 };
+    ({ w: this.W, h: this.H } = uiSize());
+    this.AREA = { x: 8, y: 28, w: this.W - 16, h: this.H - 34 };
     // 界面大小变了（转屏）：重新打开
     const relayout = () => this.scene.restart({ tab: this.tab === 'mail' ? 'bag' : this.tab, chest: this.chest, mail: this.mail });
     this.game.events.on(VIEW_EVENTS.changed, relayout);
@@ -120,10 +120,10 @@ export class GameMenuScene extends Phaser.Scene {
     });
 
     // 挡住下面的游戏：点在面板上不会穿到农场里
-    this.add.zone(0, 0, W, H).setOrigin(0).setInteractive();
+    this.add.zone(0, 0, this.W, this.H).setOrigin(0).setInteractive();
     const g = this.add.graphics();
-    g.fillStyle(toColor(SETTINGS.ui.border), 0.55).fillRect(0, 0, W, H);
-    drawPanel(g, 2, 2, W - 4, H - 4);
+    g.fillStyle(toColor(SETTINGS.ui.border), 0.55).fillRect(0, 0, this.W, this.H);
+    drawPanel(g, 2, 2, this.W - 4, this.H - 4);
     this.tabBar = this.add.container(0, 0);
     this.content = this.add.container(0, 0);
     this.buildKeys();
@@ -219,19 +219,10 @@ export class GameMenuScene extends Phaser.Scene {
       // 选日子：左右一天、上下一周；翻过这个月的头尾就到上个月 / 下个月
       const step = { up: -7, down: 7, left: -1, right: 1 }[dir];
       const n = TIME.calendar.daysPerMonth;
-      let d = this.calDay + step;
-      let m = this.calMonth;
-      const months = TIME.calendar.months.length;
-      if (d < 1) {
-        d += n;
-        m = m === 1 ? months : m - 1;
-      } else if (d > n) {
-        d -= n;
-        m = m === months ? 1 : m + 1;
-      }
-      this.calMonth = m;
-      this.calDay = d;
-      this.redraw();
+      const d = this.calDay + step;
+      const delta = d < 1 ? -1 : d > n ? 1 : 0;
+      this.calDay = d - delta * n;
+      this.flipMonth(delta);
     }
   }
 
@@ -266,7 +257,7 @@ export class GameMenuScene extends Phaser.Scene {
     else if (this.tab === 'notebook') this.drawNotebook();
     else if (this.tab === 'calendar') this.drawCalendar();
     else if (this.tab === 'mail') this.drawMail();
-    else this.content.add(pixelText(this, W / 2, H / 2, t('map.placeholder'), { color: SETTINGS.ui.textDim }).setOrigin(0.5));
+    else this.content.add(pixelText(this, this.W / 2, this.H / 2, t('map.placeholder'), { color: SETTINGS.ui.textDim }).setOrigin(0.5));
   }
 
   /** 顶部栏目条：当前那栏垫底色 */
@@ -295,12 +286,12 @@ export class GameMenuScene extends Phaser.Scene {
     const clock = gameState.clock;
     if (clock) {
       const money = t('hud.money', { amount: gameState.cash, unit: localName(ITEMS.currency.name) });
-      const info = pixelText(this, W - 30, 9, `${clock.dateText()}　${money}`, { color: ui.textDim2 }).setOrigin(1, 0);
+      const info = pixelText(this, this.W - 30, 9, `${clock.dateText()}　${money}`, { color: ui.textDim2 }).setOrigin(1, 0);
       this.tabBar.add(info);
     }
     // 右上角 ✕
-    const close = pixelText(this, W - 20, 8, '✕');
-    const hit = this.add.zone(W - 26, 4, 22, 22).setOrigin(0).setInteractive();
+    const close = pixelText(this, this.W - 20, 8, '✕');
+    const hit = this.add.zone(this.W - 26, 4, 22, 22).setOrigin(0).setInteractive();
     hit.on('pointerdown', () => this.close());
     this.tabBar.add([close, hit]);
   }
@@ -325,14 +316,14 @@ export class GameMenuScene extends Phaser.Scene {
     const gap = 2;
     const sep = 6;
     const cols = TOOLBAR_SLOTS;
-    const S = this.chest ? Math.min(SETTINGS.bag.slotSize, Math.floor((AREA.w - 24) / (cols * 2)) - gap) : SETTINGS.bag.slotSize;
+    const S = this.chest ? Math.min(SETTINGS.bag.slotSize, Math.floor((this.AREA.w - 24) / (cols * 2)) - gap) : SETTINGS.bag.slotSize;
     const gridW = cols * S + (cols - 1) * gap;
-    const y0 = AREA.y + (this.chest ? 22 : 4);
+    const y0 = this.AREA.y + (this.chest ? 22 : 4);
     if (i >= ALL_SLOTS) {
       const k = (i - ALL_SLOTS) % CHEST_PAGE;
-      return { x: AREA.x + 4 + (k % cols) * (S + gap), y: y0 + Math.floor(k / cols) * (S + gap), size: S };
+      return { x: this.AREA.x + 4 + (k % cols) * (S + gap), y: y0 + Math.floor(k / cols) * (S + gap), size: S };
     }
-    const x0 = this.chest ? AREA.x + AREA.w - 4 - gridW : Math.round((W - gridW) / 2);
+    const x0 = this.chest ? this.AREA.x + this.AREA.w - 4 - gridW : Math.round((this.W - gridW) / 2);
     const row = Math.floor(i / cols);
     return { x: x0 + (i % cols) * (S + gap), y: y0 + row * (S + gap) + (row >= 1 ? sep : 0), size: S };
   }
@@ -387,14 +378,14 @@ export class GameMenuScene extends Phaser.Scene {
     if (this.chest) {
       const c0 = this.cellRect(ALL_SLOTS + this.page * CHEST_PAGE);
       const pages = gameState.storage.length / CHEST_PAGE;
-      const head = pixelText(this, c0.x, AREA.y + 3, t('chest.title', { page: this.page + 1, pages }), { color: ui.textDim2 });
+      const head = pixelText(this, c0.x, this.AREA.y + 3, t('chest.title', { page: this.page + 1, pages }), { color: ui.textDim2 });
       this.content.add(head);
       let bx = c0.x + Math.ceil(head.width) + 6;
-      bx = this.button(bx, AREA.y, '◀', this.page > 0, () => this.flipPage(-1));
-      bx = this.button(bx, AREA.y, '▶', this.page < pages - 1, () => this.flipPage(1));
-      this.button(bx + 4, AREA.y, t('bag.sort') + sortKey, true, () => this.sort(true));
-      this.content.add(pixelText(this, r0.x, AREA.y + 3, t('bag.bagLabel'), { color: ui.textDim2 }));
-      this.button(r0.x + 40, AREA.y, t('bag.sort') + sortKey, true, () => this.sort(false));
+      bx = this.button(bx, this.AREA.y, '◀', this.page > 0, () => this.flipPage(-1));
+      bx = this.button(bx, this.AREA.y, '▶', this.page < pages - 1, () => this.flipPage(1));
+      this.button(bx + 4, this.AREA.y, t('bag.sort') + sortKey, true, () => this.sort(true));
+      this.content.add(pixelText(this, r0.x, this.AREA.y + 3, t('bag.bagLabel'), { color: ui.textDim2 }));
+      this.button(r0.x + 40, this.AREA.y, t('bag.sort') + sortKey, true, () => this.sort(false));
     } else {
       this.content.add(pixelText(this, r0.x - 6, r0.y + r0.size / 2, t('bag.toolbarLabel'), { color: ui.textDim2 }).setOrigin(1, 0.5));
       this.content.add(pixelText(this, r9.x - 6, r9.y + r9.size / 2, t('bag.bagLabel'), { color: ui.textDim2 }).setOrigin(1, 0.5));
@@ -404,15 +395,15 @@ export class GameMenuScene extends Phaser.Scene {
 
     // 底下：说明（鼠标停着的那格，没有就是选中的那格），再下面是选中那格能做的事
     const bottom = Math.max(...this.visibleCells().map((i) => this.cellRect(i).y + this.cellRect(i).size));
-    const left = this.chest ? AREA.x + 4 : this.cellRect(TOOLBAR_SLOTS * 3).x;
-    this.infoBox = { x: left, y: bottom + 6, w: (this.chest ? AREA.x + AREA.w - 4 : this.cellRect(ALL_SLOTS - 1).x + r0.size) - left };
+    const left = this.chest ? this.AREA.x + 4 : this.cellRect(TOOLBAR_SLOTS * 3).x;
+    this.infoBox = { x: left, y: bottom + 6, w: (this.chest ? this.AREA.x + this.AREA.w - 4 : this.cellRect(ALL_SLOTS - 1).x + r0.size) - left };
     this.info = this.add.container(0, 0);
     this.content.add(this.info);
     this.drawInfo();
     const sel = slotAt(this.slot);
     const why = whyCantDiscard(this.slot);
     let bx = left;
-    const by = Math.min(this.infoBox.y + LINE_H * 3 + 6, AREA.y + AREA.h - 20);
+    const by = Math.min(this.infoBox.y + LINE_H * 3 + 6, this.AREA.y + this.AREA.h - 20);
     bx = this.button(bx, by, t('bag.discard') + (keys ? ' X' : ''), !!sel && !why, () => this.discard());
     bx = this.button(bx, by, (sel?.locked ? t('bag.unlock') : t('bag.lock')) + (keys ? ' L' : ''), !!sel, () => this.lock());
     if (sel && isFood(sel.id) && this.slot < ALL_SLOTS) bx = this.button(bx, by, t('bag.eat') + (keys ? ' E' : ''), true, () => this.eat());
@@ -495,7 +486,7 @@ export class GameMenuScene extends Phaser.Scene {
     const s = slotAt(from);
     this.note = '';
     if (moveSlot(from, to)) this.slot = to;
-    else if (s) this.note = t('chest.cantStore', { name: localName(itemInfo(s.id)?.name) });
+    else if (s) this.note = t('chest.cantStore', { name: itemName(s.id) });
     normalizeChest();
     this.redraw();
   }
@@ -530,7 +521,7 @@ export class GameMenuScene extends Phaser.Scene {
   private transfer() {
     const s = slotAt(this.slot);
     if (!s) return;
-    const name = localName(itemInfo(s.id)?.name);
+    const name = itemName(s.id);
     if (!canStore(s.id)) this.note = t('chest.cantStore', { name });
     else {
       const n = transferSlot(this.slot);
@@ -549,7 +540,7 @@ export class GameMenuScene extends Phaser.Scene {
       return this.redraw();
     }
     const s = slotAt(i)!;
-    const name = localName(itemInfo(s.id)?.name);
+    const name = itemName(s.id);
     const confirm = (n: number) =>
       this.confirm(t('bag.discardConfirm', { name, n }), t('bag.discardYes'), () => {
         takeFromSlot(i, n);
@@ -572,7 +563,7 @@ export class GameMenuScene extends Phaser.Scene {
   private eat() {
     const ate = this.slot < ALL_SLOTS ? eatFromSlot(this.slot) : null;
     if (!slotAt(this.slot) && !ate) return;
-    this.note = ate ? t('msg.ate', { name: localName(itemInfo(ate.id)?.name), n: ate.gain }) : t('bag.cantEat');
+    this.note = ate ? t('msg.ate', { name: itemName(ate.id), n: ate.gain }) : t('bag.cantEat');
     this.redraw();
   }
 
@@ -581,7 +572,7 @@ export class GameMenuScene extends Phaser.Scene {
     const s = slotAt(this.slot);
     if (!s) return;
     toggleLock(this.slot);
-    const name = localName(itemInfo(s.id)?.name);
+    const name = itemName(s.id);
     this.note = t(s.locked ? 'bag.lockedNow' : 'bag.unlockedNow', { name });
     this.redraw();
   }
@@ -602,13 +593,13 @@ export class GameMenuScene extends Phaser.Scene {
         { label: t('settings.cancel'), run: close },
       ],
       { title, ownKeys: true, onCancel: close, width: 200 },
-    ).centerAt(W / 2, H / 2);
+    ).centerAt(this.W / 2, this.H / 2);
     this.modal = { destroy: close };
   }
 
   /** 弹框下面垫一层：点不到后面的格子 */
   private blocker() {
-    return this.add.zone(0, 0, W, H).setOrigin(0).setInteractive().setDepth(59);
+    return this.add.zone(0, 0, this.W, this.H).setOrigin(0).setInteractive().setDepth(59);
   }
 
   // ---------------- 笔记本 ----------------
@@ -616,17 +607,17 @@ export class GameMenuScene extends Phaser.Scene {
   private drawNotebook() {
     const ui = SETTINGS.ui;
     if (!hasItem('notebook')) {
-      this.content.add(pixelText(this, W / 2, H / 2, t('notebook.noNotebook'), { color: ui.textDim }).setOrigin(0.5));
+      this.content.add(pixelText(this, this.W / 2, this.H / 2, t('notebook.noNotebook'), { color: ui.textDim }).setOrigin(0.5));
       return;
     }
     // 左边一列：主线 / 操作 / 已学会
     const colW = 58;
     NOTEBOOK_SECTIONS.forEach((s, i) => {
-      const y = AREA.y + 2 + i * 20;
+      const y = this.AREA.y + 2 + i * 20;
       const g = this.add.graphics();
-      if (s.id === this.section) g.fillStyle(toColor(ui.highlight)).fillRect(AREA.x, y, colW, 18);
-      const label = pixelText(this, AREA.x + 6, y + 3, t(s.label), { title: true });
-      const hit = this.add.zone(AREA.x, y, colW, 18).setOrigin(0).setInteractive();
+      if (s.id === this.section) g.fillStyle(toColor(ui.highlight)).fillRect(this.AREA.x, y, colW, 18);
+      const label = pixelText(this, this.AREA.x + 6, y + 3, t(s.label), { title: true });
+      const hit = this.add.zone(this.AREA.x, y, colW, 18).setOrigin(0).setInteractive();
       hit.on('pointerdown', () => {
         this.section = s.id;
         this.scroll = 0;
@@ -634,11 +625,11 @@ export class GameMenuScene extends Phaser.Scene {
       });
       this.content.add([g, label, hit]);
     });
-    const sep = this.add.graphics().fillStyle(toColor(ui.innerBorder)).fillRect(AREA.x + colW + 4, AREA.y, 1, AREA.h);
+    const sep = this.add.graphics().fillStyle(toColor(ui.innerBorder)).fillRect(this.AREA.x + colW + 4, this.AREA.y, 1, this.AREA.h);
     this.content.add(sep);
 
     // 右边：能上下滚的一页
-    const box = { x: AREA.x + colW + 10, y: AREA.y + 2, w: AREA.w - colW - 12, h: AREA.h - 4 };
+    const box = { x: this.AREA.x + colW + 10, y: this.AREA.y + 2, w: this.AREA.w - colW - 12, h: this.AREA.h - 4 };
     const layer = this.add.container(box.x, box.y);
     const mask = this.make.graphics({}).fillRect(box.x, box.y, box.w, box.h).createGeometryMask();
     layer.setMask(mask);
@@ -724,6 +715,7 @@ export class GameMenuScene extends Phaser.Scene {
 
   // ---------------- 日历 ----------------
 
+  /** 日历往前 / 往后翻几个月（0 = 不翻，只重画） */
   private flipMonth(delta: number) {
     const months = TIME.calendar.months.length;
     this.calMonth = ((this.calMonth - 1 + delta + months) % months) + 1;
@@ -746,25 +738,25 @@ export class GameMenuScene extends Phaser.Scene {
       market: toColor(PALETTE.orange),
     };
     // 顶上：月份 + 季节，两边箭头
-    const head = pixelText(this, W / 2, AREA.y + 2, t('calendarTab.header', { month: monthName(this.calMonth), season: localName(seasonOf(this.calMonth).name) }), { color: ui.money }).setOrigin(0.5, 0);
+    const head = pixelText(this, this.W / 2, this.AREA.y + 2, t('calendarTab.header', { month: monthName(this.calMonth), season: localName(seasonOf(this.calMonth).name) }), { color: ui.money }).setOrigin(0.5, 0);
     this.content.add(head);
     const arrow = (label: string, x: number, delta: number) => {
-      const a = pixelText(this, x, AREA.y + 2, label).setOrigin(0.5, 0);
-      const hit = this.add.zone(x - 14, AREA.y - 2, 28, 22).setOrigin(0).setInteractive();
+      const a = pixelText(this, x, this.AREA.y + 2, label).setOrigin(0.5, 0);
+      const hit = this.add.zone(x - 14, this.AREA.y - 2, 28, 22).setOrigin(0).setInteractive();
       hit.on('pointerdown', () => this.flipMonth(delta));
       this.content.add([a, hit]);
     };
-    arrow('◀', W / 2 - head.width / 2 - 18, -1);
-    arrow('▶', W / 2 + head.width / 2 + 18, 1);
+    arrow('◀', this.W / 2 - head.width / 2 - 18, -1);
+    arrow('▶', this.W / 2 + head.width / 2 + 18, 1);
 
     // 格子大小：按面板大小算（手机上会小一点）
     const cols = cal.daysPerWeek;
     const rows = Math.ceil(cal.daysPerMonth / cols);
-    const top = AREA.y + 22;
+    const top = this.AREA.y + 22;
     const bottomSpace = 52; // 图例 + 说明两行
-    const cellW = Math.min(84, Math.floor((AREA.w - 8) / cols));
-    const cellH = Math.max(30, Math.min(56, Math.floor((AREA.y + AREA.h - top - 14 - bottomSpace) / rows)));
-    const x0 = Math.round((W - cellW * cols) / 2);
+    const cellW = Math.min(84, Math.floor((this.AREA.w - 8) / cols));
+    const cellH = Math.max(30, Math.min(56, Math.floor((this.AREA.y + this.AREA.h - top - 14 - bottomSpace) / rows)));
+    const x0 = Math.round((this.W - cellW * cols) / 2);
     const weekdays = t('calendar.weekdays').split(',');
     weekdays.forEach((w, i) => this.content.add(pixelText(this, x0 + i * cellW + cellW / 2, top, w, { color: ui.textDim2 }).setOrigin(0.5, 0)));
     const gy = top + 14;
@@ -844,7 +836,7 @@ export class GameMenuScene extends Phaser.Scene {
     const ui = SETTINGS.ui;
     const list = gameState.mail;
     if (!list.length) {
-      this.content.add(pixelText(this, W / 2, H / 2, t('mail.empty'), { color: ui.textDim }).setOrigin(0.5));
+      this.content.add(pixelText(this, this.W / 2, this.H / 2, t('mail.empty'), { color: ui.textDim }).setOrigin(0.5));
       return;
     }
     this.mailSel = Phaser.Math.Clamp(this.mailSel, 0, list.length - 1);
@@ -852,8 +844,8 @@ export class GameMenuScene extends Phaser.Scene {
     // 左边：能上下滚的信件列表
     const colW = 116;
     const rowH = 20;
-    const layer = this.add.container(AREA.x, AREA.y + 2);
-    layer.setMask(this.make.graphics({}).fillRect(AREA.x, AREA.y + 2, colW, AREA.h - 4).createGeometryMask());
+    const layer = this.add.container(this.AREA.x, this.AREA.y + 2);
+    layer.setMask(this.make.graphics({}).fillRect(this.AREA.x, this.AREA.y + 2, colW, this.AREA.h - 4).createGeometryMask());
     list.forEach((m, i) => {
       const y = i * rowH;
       const g = this.add.graphics();
@@ -864,14 +856,14 @@ export class GameMenuScene extends Phaser.Scene {
       hit.on('pointerup', (p: Phaser.Input.Pointer) => p.getDistance() < 6 && this.pickMail(i));
       layer.add([g, pixelText(this, 12, y + 3, title, { color: m.read ? ui.textDim2 : ui.text }), hit]);
     });
-    this.content.add([layer, this.add.graphics().fillStyle(toColor(ui.innerBorder)).fillRect(AREA.x + colW + 4, AREA.y, 1, AREA.h)]);
+    this.content.add([layer, this.add.graphics().fillStyle(toColor(ui.innerBorder)).fillRect(this.AREA.x + colW + 4, this.AREA.y, 1, this.AREA.h)]);
     this.scrollLayer = layer;
-    this.maxScroll = Math.max(0, list.length * rowH - (AREA.h - 4));
+    this.maxScroll = Math.max(0, list.length * rowH - (this.AREA.h - 4));
     // 选中的那封要露出来
-    this.scroll = Phaser.Math.Clamp(this.scroll, this.mailSel * rowH + rowH - (AREA.h - 4), this.mailSel * rowH);
+    this.scroll = Phaser.Math.Clamp(this.scroll, this.mailSel * rowH + rowH - (this.AREA.h - 4), this.mailSel * rowH);
     this.scroll = Phaser.Math.Clamp(this.scroll, 0, this.maxScroll);
-    layer.setY(AREA.y + 2 - this.scroll);
-    this.drawLetter(list[this.mailSel], { x: AREA.x + colW + 10, y: AREA.y + 2, w: AREA.w - colW - 12, h: AREA.h - 4 });
+    layer.setY(this.AREA.y + 2 - this.scroll);
+    this.drawLetter(list[this.mailSel], { x: this.AREA.x + colW + 10, y: this.AREA.y + 2, w: this.AREA.w - colW - 12, h: this.AREA.h - 4 });
   }
 
   /** 一封信：信纸、标题、正文（黄字线索照对话的规矩）、落款，有附件的话下面是附件和「收下」 */
@@ -939,7 +931,7 @@ export class GameMenuScene extends Phaser.Scene {
     const m = gameState.mail[this.mailSel];
     if (!m || (!Object.keys(m.items).length && !m.money)) return;
     const { got, money, left } = takeAttachments(m);
-    const parts = Object.entries(got).map(([id, n]) => `${localName(itemInfo(id)?.name)} ×${n}`);
+    const parts = Object.entries(got).map(([id, n]) => `${itemName(id)} ×${n}`);
     if (money) parts.push(t('mail.money', { n: money }));
     const said = parts.length ? t('mail.taken', { items: parts.join('、') }) : '';
     this.note = [said, left ? t('mail.bagFull') : ''].filter(Boolean).join(' ');
@@ -951,6 +943,6 @@ export class GameMenuScene extends Phaser.Scene {
   private scrollBy(dy: number) {
     if (!this.scrollLayer || (this.tab !== 'notebook' && this.tab !== 'mail')) return;
     this.scroll = Phaser.Math.Clamp(this.scroll + dy, 0, this.maxScroll);
-    this.scrollLayer.setY(AREA.y + 2 - this.scroll);
+    this.scrollLayer.setY(this.AREA.y + 2 - this.scroll);
   }
 }

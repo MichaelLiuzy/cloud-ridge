@@ -8,6 +8,7 @@
  * 对话框画在界面层，整体再放大 SETTINGS.ui.dialogueScale 倍（比别的界面字大一档）；
  * 里面按「界面大小 ÷ 放大倍数」（大约 320×180）排版。颜色在 src/config/settings.ts 的 ui 里。
  */
+import { displayName } from '../systems/playerName';
 import { noteMet } from '../systems/weekStats';
 import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
@@ -151,7 +152,7 @@ export class DialogueBox {
         this.container.add([pg, img]);
         nameX = PORTRAIT.x + PORTRAIT.size + 6;
       }
-      const name = line.speaker === 'player' ? gameState.playerName || t('names.playerUnknown') : t(`names.${line.speaker}`);
+      const name = line.speaker === 'player' ? displayName() : t(`names.${line.speaker}`);
       const label = pixelText(this.scene, nameX + 5, BOX.y - 14, name, { title: true });
       const ng = this.scene.add.graphics();
       drawPanel(ng, nameX, BOX.y - 17, Math.ceil(label.width) + 10, 18);

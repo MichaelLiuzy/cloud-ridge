@@ -15,7 +15,7 @@ export function isFood(id: string | undefined) {
 export function eatFromSlot(i: number): { id: string; gain: number } | null {
   const s = gameState.slots[i];
   if (!s || !isFood(s.id)) return null;
-  const info = itemInfo(s.id) as { stamina?: number } | undefined;
+  const info = itemInfo(s.id);
   takeFromSlot(i, 1);
   const before = gameState.stamina;
   gameState.stamina = Math.min(gameState.maxStamina, before + (info?.stamina ?? 0));

@@ -7,14 +7,15 @@
  *  - 过场最后一格的图留着当医馆对话的背景，对话剧本在 src/story/zh/prologue.ink。
  *  - 对话播完 → 黑屏淡出 → 进农场。
  */
+import { enterFarm } from './FarmScene';
 import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
-import { VIEW_EVENTS, setupWorldCamera, uiSize } from '../config/view';
+import { followView, setupWorldCamera, uiSize } from '../config/view';
 import { loadPrefs } from '../systems/prefs';
 import { PALETTE, toColor } from '../config/palette';
 import { CUTSCENES, type CutsceneFrame } from '../data/cutscenes';
 import { t } from '../locales/i18n';
-import { gameState } from '../systems/GameState';
+import { gameState, type PrologueStep } from '../systems/GameState';
 import { currentSave } from '../systems/save/snapshot';
 import { saveToSlot } from '../systems/save/saveManager';
 import { isTouchDevice } from '../input/Controls';
@@ -44,12 +45,10 @@ export class StoryScene extends Phaser.Scene {
   }
 
   /** step：opening = 从过场开始；clinic = 直接从医馆对话开始（中途退出后重来） */
-  create(data: { step: 'opening' | 'clinic' }) {
+  create(data: { step: Extract<PrologueStep, 'opening' | 'clinic'> }) {
     this.cameras.main.setBackgroundColor('#000000');
     // 过场的图按地图的倍数放大；对话框和提示画在上面的界面层（UiOverlay，更细）
-    setupWorldCamera(this);
-    const rezoom = () => setupWorldCamera(this);
-    this.game.events.on(VIEW_EVENTS.changed, rezoom);
+    followView(this, () => setupWorldCamera(this));
     this.layer = this.add.container(0, 0);
     this.frames = CUTSCENES.opening;
     this.index = -1;
@@ -71,7 +70,6 @@ export class StoryScene extends Phaser.Scene {
     this.input.on('pointerdown', () => this.step());
     this.events.once('shutdown', () => {
       this.input.keyboard?.off('keydown', onKey);
-      this.game.events.off(VIEW_EVENTS.changed, rezoom);
       this.dialogue?.destroy();
       this.dialogue = undefined;
       this.hint = undefined;
@@ -238,9 +236,7 @@ export class StoryScene extends Phaser.Scene {
     void saveToSlot(currentSave());
     this.cameras.main.fadeOut(1200, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
-      this.scene.start('Farm');
-      this.scene.launch('Atmosphere');
-      this.scene.launch('Hud', { touch: isTouchDevice() });
+      enterFarm(this);
     });
   }
 }

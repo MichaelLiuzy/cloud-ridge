@@ -29,6 +29,11 @@ export function itemInfo(id: string) {
   return ITEMS.items.find((it) => it.id === id);
 }
 
+/** 物品的名字（当前语言） */
+export function itemName(id: string) {
+  return localName(itemInfo(id)?.name);
+}
+
 export function isTool(id: string) {
   return itemInfo(id)?.type === 'tool';
 }
@@ -58,8 +63,9 @@ export function canStore(id: string) {
   return !isTool(id) && !isKeyItem(id);
 }
 
+/** 全空的工具栏 + 背包（GameState 建新档时也用；这里直接读 SETTINGS，不用 ALL_SLOTS，免得两个文件互相导入时它还没算好） */
 export function emptySlots(): (Slot | null)[] {
-  return Array.from({ length: ALL_SLOTS }, () => null);
+  return Array.from({ length: SETTINGS.inventory.toolbarSlots + SETTINGS.inventory.bagSlots }, () => null);
 }
 
 /** 一共有几个（locked: false = 不算上锁的） */
@@ -213,7 +219,7 @@ export function sortSlots(list: (Slot | null)[], from = 0, to = list.length) {
     if (t) t.n += s.n;
     else total.set(key, { ...s });
   }
-  const name = (id: string) => localName(itemInfo(id)?.name) || id;
+  const name = (id: string) => itemName(id) || id;
   const sorted = [...total.values()].sort((a, b) => rank(a.id) - rank(b.id) || name(a.id).localeCompare(name(b.id), 'zh') || Number(!!a.locked) - Number(!!b.locked));
   let i = from;
   for (const s of sorted) {

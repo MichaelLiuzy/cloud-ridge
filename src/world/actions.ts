@@ -19,6 +19,7 @@
  *  - crop：这一格上的作物要是什么样子才算数。none = 没种东西，growing = 正在长，
  *    ripe = 熟了，dead = 枯死了。不写 = 只在没种东西时算。
  */
+import type { StaminaAction } from '../data/types';
 
 
 export type CropState = 'none' | 'growing' | 'ripe' | 'dead';
@@ -39,7 +40,7 @@ export interface HeldAction {
   /** 做完后这一格变成什么（地图字符）。不写就是不变。 */
   turnsInto?: string;
   /** 体力消耗，对应 time.ts 里 stamina.costs 的名字 */
-  cost: string;
+  cost: StaminaAction | 'none';
   /** 做完后显示的话（可选） */
   doneHint?: string;
   /** 掉什么材料 */

@@ -10,32 +10,31 @@
  */
 import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
-import { VIEW, VIEW_EVENTS } from '../config/view';
+import { VIEW, followView } from '../config/view';
 import { GROUND_TILES, WALK_SHEET, frameIndex } from '../config/assets';
 import { PALETTE, toColor } from '../config/palette';
 import { BASKET_CELL, FARM_MAP, HOUSE_SITE, MAILBOX_CELL, TILE_TYPES, scatterRuins } from '../world/farmMap';
 import { deliverMail, hasUnreadMail } from '../systems/mail';
 import { PLAIN_ACTIONS, heldActionFor, rollAmount, type CropState, type HeldAction } from '../world/actions';
-import { KeyboardControls } from '../input/Controls';
+import { KeyboardControls, isTouchDevice } from '../input/Controls';
 import { PLACEHOLDERS } from './BootScene';
 import { gameState } from '../systems/GameState';
-import { addItem, countItem, heldItem, inventoryCounts, itemInfo, roomFor, takeFromSlot } from '../systems/inventory';
+import { addItem, countItem, heldItem, inventoryCounts, itemInfo, itemName, roomFor, takeFromSlot } from '../systems/inventory';
 import { basketPrice } from '../systems/economy/shop';
 import { CROP_LOOKS, cropFromSeed, cropInfo, cropLook, growOvernight, harvest, inSowWindow, isFrozen, isRipe, nextSowTerm, plant } from '../systems/farming/crops';
 import { reshuffleDebris, treesOvernight } from '../systems/farming/trees';
 import { FIELD_DEBRIS } from '../data/trees';
-import { buildOvernight, dwelling, requestBuild, ruinCleared, stageInfo } from '../systems/home/house';
+import { buildOvernight, requestBuild, ruinCleared, stageInfo } from '../systems/home/house';
 import { putInBasket, sellableInBag, settleBasket, takeFromBasket } from '../systems/economy/pickup';
 import { HOUSING } from '../data/housing';
 import type { SaveData } from '../systems/save/saveFormat';
 import { stateFields } from '../systems/save/snapshot';
 import { clearTemp, saveTemp, saveToSlot } from '../systems/save/saveManager';
-import { findPath, type Cell } from '../systems/pathfind';
+import { cellKey, findPath, parseCellKey, type Cell } from '../systems/pathfind';
 import { localName, t } from '../locales/i18n';
 import { UI_EVENTS } from './HudScene';
 import type { MenuOption } from '../ui/ListMenu';
 import { TIME as timeData } from '../data/time';
-import { ITEMS as itemsData } from '../data/items';
 import { isLastDayOfWeek, rollWeather, weekdayIndex } from '../systems/days';
 import { emptyWeek, noteHarvest, noteRuin, noteTilled, spend } from '../systems/weekStats';
 import { buildWeekSummary, type WeekSummary } from '../systems/weekSummary';
@@ -188,10 +187,7 @@ export class FarmScene extends Phaser.Scene {
     cam.startFollow(this.feet, true, 0.2, 0.2);
     cam.setRoundPixels(true);
     // 地图放大 VIEW.world 倍（画布是屏幕的真实像素）；窗口大小变了就跟着改
-    const zoomCam = () => cam.setSize(this.scale.width, this.scale.height).setZoom(VIEW.world);
-    zoomCam();
-    this.game.events.on(VIEW_EVENTS.changed, zoomCam);
-    this.events.once('shutdown', () => this.game.events.off(VIEW_EVENTS.changed, zoomCam));
+    followView(this, () => cam.setSize(this.scale.width, this.scale.height).setZoom(VIEW.world));
     if (SETTINGS.debugPhysics) this.physics.world.createDebugGraphic();
 
     // ---- 操作（界面场景先处理，没被对话框/菜单拦下才轮到这里）----
@@ -262,7 +258,7 @@ export class FarmScene extends Phaser.Scene {
     this.feetBody().setVelocity(x * speed, y * speed);
     this.moving = x !== 0 || y !== 0;
     if (this.moving) {
-      this.facing = Math.abs(x) > Math.abs(y) ? (x > 0 ? 'right' : 'left') : y > 0 ? 'down' : 'up';
+      this.facing = facingOf(x, y);
       if (this.hasWalkSheet) this.sprite.anims.play(`walk-${this.facing}`, true);
       else this.sprite.setFrame(DIR_FRAME[this.facing]);
     } else {
@@ -420,7 +416,7 @@ export class FarmScene extends Phaser.Scene {
     const held = heldItem();
     const cell = this.facingCell();
     const rule = this.heldRule(cell);
-    if (!rule) return this.say(held ? 'msg.cantUseTool' : 'msg.noTool', { tool: held ? this.itemName(held) : '' });
+    if (!rule) return this.say(held ? 'msg.cantUseTool' : 'msg.noTool', { tool: held ? itemName(held) : '' });
     this.doHeld(rule, cell);
   }
 
@@ -445,7 +441,7 @@ export class FarmScene extends Phaser.Scene {
    */
   infoAt(cell: Cell): string | null {
     const ch = this.grid[cell.y]?.[cell.x];
-    if (!ch || (this.zhou && this.zhou.cell.x === cell.x && this.zhou.cell.y === cell.y)) return null;
+    if (!ch || this.isZhouAt(cell)) return null;
     const crop = gameState.crops[cellKey(cell)];
     if (crop) return t(this.cropHint(crop), { name: localName(cropInfo(crop.crop).name) });
     const kind = this.kindAt(cell);
@@ -503,7 +499,7 @@ export class FarmScene extends Phaser.Scene {
   private optionsFor(cell: Cell, opts: { walk: boolean }): (MenuOption & { needReach: boolean })[] {
     const kind = this.kindAt(cell);
     const list: (MenuOption & { needReach: boolean })[] = [];
-    if (this.zhou && this.zhou.cell.x === cell.x && this.zhou.cell.y === cell.y) {
+    if (this.isZhouAt(cell)) {
       return [{ label: t('action.talk'), run: () => this.talkToZhou(), needReach: true }];
     }
     const key = cellKey(cell);
@@ -579,7 +575,7 @@ export class FarmScene extends Phaser.Scene {
       noteRuin();
       this.afterRuinCleared();
     }
-    this.spendStamina((timeData.stamina.costs as Record<string, number>)[rule.cost] ?? 0);
+    this.spendStamina(rule.cost === 'none' ? 0 : timeData.stamina.costs[rule.cost]);
   }
 
   /** 割草、砍树、敲石头掉的材料：直接进背包，放不下的掉在这一格地上 */
@@ -595,7 +591,7 @@ export class FarmScene extends Phaser.Scene {
       pile[id] = (pile[id] ?? 0) + left;
     }
     if (spilled) this.refreshDrop(cellKey(cell));
-    this.say(spilled ? 'msg.gotSpilled' : 'msg.got', { items: got.map(([id, n]) => `${this.itemName(id)}×${n}`).join('、') });
+    this.say(spilled ? 'msg.gotSpilled' : 'msg.got', { items: got.map(([id, n]) => `${itemName(id)}×${n}`).join('、') });
   }
 
   /** 站到有掉落的格子上：能放进背包的都捡起来 */
@@ -606,7 +602,7 @@ export class FarmScene extends Phaser.Scene {
     const took: string[] = [];
     for (const [id, n] of Object.entries(pile)) {
       const k = addItem(id, n);
-      if (k > 0) took.push(`${this.itemName(id)}×${k}`);
+      if (k > 0) took.push(`${itemName(id)}×${k}`);
       if (k >= n) delete pile[id];
       else pile[id] = n - k;
     }
@@ -622,7 +618,7 @@ export class FarmScene extends Phaser.Scene {
     this.dropViews.delete(key);
     const pile = gameState.drops[key];
     if (!pile) return;
-    const [x, y] = key.split(',').map(Number);
+    const { x, y } = parseCellKey(key);
     const s = SETTINGS.tileSize;
     const icons = Object.keys(pile).map((id, i) =>
       this.textures.exists(`icon_${id}`) ? this.add.image(i * 3, -i * 2, `icon_${id}`).setScale(0.6) : this.add.rectangle(i * 3, -i * 2, 6, 6, toColor(PALETTE.ochre)),
@@ -660,7 +656,7 @@ export class FarmScene extends Phaser.Scene {
     if (!got) return;
     addItem(got.item, got.amount);
     noteHarvest(got.item, got.amount);
-    this.say('msg.harvested', { name: this.itemName(got.item), n: got.amount });
+    this.say('msg.harvested', { name: itemName(got.item), n: got.amount });
     this.spendStamina(timeData.stamina.costs.harvest);
   }
 
@@ -685,7 +681,7 @@ export class FarmScene extends Phaser.Scene {
       this.cropViews.delete(key);
       return;
     }
-    const [x, y] = key.split(',').map(Number);
+    const { x, y } = parseCellKey(key);
     const s = SETTINGS.tileSize;
     const tex = `crop_${p.crop}`;
     const frame = CROP_LOOKS.indexOf(cropLook(p));
@@ -705,11 +701,7 @@ export class FarmScene extends Phaser.Scene {
     const done = ruinCleared();
     if (!done) return;
     this.say('house.ruinsCleared');
-    if (done.page) this.sayDiary(done.page);
-  }
-
-  private sayDiary(page: { where: string; readable: boolean }) {
-    this.say(page.readable ? 'diary.foundReadable' : 'diary.foundPaper', { where: t(page.where) });
+    if (done.page) this.say(...diaryNews(done.page));
   }
 
   private sayHouseStatus() {
@@ -718,7 +710,7 @@ export class FarmScene extends Phaser.Scene {
     if (gameState.houseStage < 1) return this.say('house.statusRuins', { left: this.grid.flat().filter((c) => TILE_TYPES[c]?.ruin).length });
     const next = stageInfo(gameState.houseStage + 1);
     if (!next) return this.say('house.allDone');
-    const mats = Object.entries(next.materials).map(([id, n]) => `${this.itemName(id)}×${n}`).join('、');
+    const mats = Object.entries(next.materials).map(([id, n]) => `${itemName(id)}×${n}`).join('、');
     this.say('house.statusNext', { name: localName(next.name), mats, cost: next.cost });
   }
 
@@ -765,11 +757,11 @@ export class FarmScene extends Phaser.Scene {
    */
   private pickItemAndCount(from: Record<string, number>, ids: string[], menuTitle: string, askKey: string, move: (id: string, n: number) => void) {
     const options: MenuOption[] = ids.map((id) => ({
-      label: `${this.itemName(id)} ×${from[id]}`,
+      label: `${itemName(id)} ×${from[id]}`,
       run: () => {
         const max = from[id] ?? 0;
         if (max <= 0) return;
-        this.game.events.emit(UI_EVENTS.askQuantity, t(askKey, { name: this.itemName(id) }), max, (n: number | null) => n && move(id, n));
+        this.game.events.emit(UI_EVENTS.askQuantity, t(askKey, { name: itemName(id) }), max, (n: number | null) => n && move(id, n));
       },
     }));
     this.game.events.emit(UI_EVENTS.showMenu, options, menuTitle);
@@ -784,7 +776,7 @@ export class FarmScene extends Phaser.Scene {
     if (!ids.length) return this.say(locked ? 'msg.lockedCantSell' : 'msg.nothingToSell');
     this.pickItemAndCount(have, ids, t('action.basketPut'), 'quantity.askBasket', (id, n) => {
       const k = putInBasket(id, n);
-      this.say('msg.basketPut', { name: this.itemName(id), n: k });
+      this.say('msg.basketPut', { name: itemName(id), n: k });
     });
   }
 
@@ -793,7 +785,7 @@ export class FarmScene extends Phaser.Scene {
     this.pickItemAndCount(gameState.basket, Object.keys(gameState.basket), t('action.basketTake'), 'quantity.askTake', (id, n) => {
       const k = takeFromBasket(id, n);
       if (k < n) this.say('msg.bagFull');
-      if (k > 0) this.say('msg.taken', { name: this.itemName(id), n: k });
+      if (k > 0) this.say('msg.taken', { name: itemName(id), n: k });
     });
   }
 
@@ -931,7 +923,7 @@ export class FarmScene extends Phaser.Scene {
     clock.nextDay();
     // 作物：昨晚浇过水的长一天；霜降、冻土、休眠按节气算
     const grew = growOvernight(clock, (key) => {
-      const [x, y] = key.split(',').map(Number);
+      const { x, y } = parseCellKey(key);
       return this.grid[y]?.[x] === 'O';
     });
     if (grew.frostKilled) news.push(['msg.frost', { n: grew.frostKilled }]);
@@ -950,14 +942,14 @@ export class FarmScene extends Phaser.Scene {
     // 树：长大一点，或者在空地上长出新的（冻土期不长）
     for (const c of treesOvernight(this.grid, isFrozen(clock), this.doorTile)) this.setTile(c, c.ch);
     // 木匠
+    const wasShed = gameState.hutIsShed;
     const built = buildOvernight();
     if (built) {
       news.push(['house.finished', { name: localName(stageInfo(built.stage)!.name) }]);
       if (stageInfo(built.stage)!.learns.length) news.push(['house.learned']);
-      if (built.page) news.push([built.page.readable ? 'diary.foundReadable' : 'diary.foundPaper', { where: t(built.page.where) }]);
-      gameState.maxStamina = Math.max(gameState.maxStamina, dwelling().maxStamina);
+      if (built.page) news.push(diaryNews(built.page));
       this.refreshHouse();
-      if (gameState.hutIsShed && !this.hutImage?.texture.key.includes('woodshed')) news.push(['house.hutToShed']);
+      if (gameState.hutIsShed && !wasShed) news.push(['house.hutToShed']);
       this.refreshHut();
     }
     // 收货筐
@@ -1012,7 +1004,7 @@ export class FarmScene extends Phaser.Scene {
       { x: target.x - 1, y: target.y },
       { x: target.x + 1, y: target.y },
     ];
-    const path = findPath(here, goals, (c) => this.isWalkable(c));
+    const path = findPath(here, goals, (c) => !this.isSolid(c));
     if (!path) return this.say('msg.cantReach');
     this.route = path;
     this.onArrive = face;
@@ -1020,7 +1012,7 @@ export class FarmScene extends Phaser.Scene {
 
   /** 走到某一格上 */
   private walkOnto(target: Cell) {
-    const path = findPath(this.playerCell(), [target], (c) => this.isWalkable(c));
+    const path = findPath(this.playerCell(), [target], (c) => !this.isSolid(c));
     if (!path) return this.say('msg.cantReach');
     this.route = path;
     this.onArrive = undefined;
@@ -1077,7 +1069,7 @@ export class FarmScene extends Phaser.Scene {
     const here = this.playerCell();
     const dx = target.x - here.x;
     const dy = target.y - here.y;
-    this.facing = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up';
+    this.facing = facingOf(dx, dy);
     this.showStanding();
   }
 
@@ -1086,14 +1078,15 @@ export class FarmScene extends Phaser.Scene {
     return ch ? (TILE_TYPES[ch]?.kind ?? 'grass') : 'none';
   }
 
-  private isSolid(c: Cell) {
-    if (this.zhou && this.zhou.cell.x === c.x && this.zhou.cell.y === c.y) return true;
-    const ch = this.grid[c.y]?.[c.x];
-    return ch === undefined || (TILE_TYPES[ch]?.solid ?? false);
+  /** 周里正站在这一格吗（序章教学时他在田边） */
+  private isZhouAt(c: Cell) {
+    return !!this.zhou && this.zhou.cell.x === c.x && this.zhou.cell.y === c.y;
   }
 
-  private isWalkable(c: Cell) {
-    return !this.isSolid(c);
+  private isSolid(c: Cell) {
+    if (this.isZhouAt(c)) return true;
+    const ch = this.grid[c.y]?.[c.x];
+    return ch === undefined || (TILE_TYPES[ch]?.solid ?? false);
   }
 
   /** 水面：每隔 SETTINGS.waterShimmerMs 在「平静」「波光」两格之间换一次 */
@@ -1162,9 +1155,6 @@ export class FarmScene extends Phaser.Scene {
     }
   }
 
-  private itemName(id: string) {
-    return localName(itemsData.items.find((it) => it.id === id)?.name);
-  }
 
   // =================================================================
   //  序章：周里正
@@ -1193,7 +1183,7 @@ export class FarmScene extends Phaser.Scene {
     const here = this.playerCell();
     const dx = here.x - zhou.cell.x;
     const dy = here.y - zhou.cell.y;
-    zhou.sprite.setFrame(DIR_FRAME[Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up']);
+    zhou.sprite.setFrame(DIR_FRAME[facingOf(dx, dy)]);
     const first = gameState.prologue === 'tutorial';
     this.game.events.emit(UI_EVENTS.playDialogue, first ? 'tutorial' : 'zhou_idle', () => {
       if (!first) return;
@@ -1239,9 +1229,21 @@ export class FarmScene extends Phaser.Scene {
   }
 }
 
-/** 作物、收货筐按「x,y」记格子 */
-function cellKey(c: Cell) {
-  return `${c.x},${c.y}`;
+/** 进农场：地图、昼夜色层、界面三个场景一起开（标题画面「继续」、序章结束都走这里） */
+export function enterFarm(from: Phaser.Scene) {
+  from.scene.start('Farm');
+  from.scene.launch('Atmosphere');
+  from.scene.launch('Hud', { touch: isTouchDevice() });
+}
+
+/** 找到日记时说的那句：能读 / 只是一张纸片 */
+function diaryNews(page: { where: string; readable: boolean }): News {
+  return [page.readable ? 'diary.foundReadable' : 'diary.foundPaper', { where: t(page.where) }];
+}
+
+/** 朝哪个方向：dx、dy 是往右、往下走了多少 */
+function facingOf(dx: number, dy: number): Facing {
+  return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up';
 }
 
 /** 农场场景另外听的消息（M 菜单的测试选项、开通收货服务） */

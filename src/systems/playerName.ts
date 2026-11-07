@@ -2,8 +2,14 @@
  * 玩家名字的规则：只能用汉字、英文字母和数字；按「汉字宽度」算长度。
  * 具体数字在 src/config/settings.ts 的 nameRules 里改。
  */
+import { gameState } from './GameState';
 import { SETTINGS } from '../config/settings';
 import { t } from '../locales/i18n';
+
+/** 主角显示的名字（还没起名时是 zh.ts 的 names.playerUnknown） */
+export function displayName() {
+  return gameState.playerName || t('names.playerUnknown');
+}
 
 /** 名字有多长：一个汉字算 cjkWidth，一个字母或数字算 latinWidth */
 export function nameWidth(name: string) {

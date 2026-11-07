@@ -6,7 +6,7 @@ import { WEEK_SUMMARY_ITEMS } from '../data/weekSummary';
 import { TIME } from '../data/time';
 import { localName, t } from '../locales/i18n';
 import { stageInfo } from './home/house';
-import { itemInfo } from './inventory';
+import { itemName } from './inventory';
 import { dayEvents, dayName, monthName, weekdayName } from './days';
 import type { WeekStats } from './weekStats';
 
@@ -36,7 +36,7 @@ export function buildWeekSummary(week: WeekStats, month: number, day: number, ne
       if (entries.length) {
         const total = entries.reduce((a, [, n]) => a + n, 0);
         const [id, most] = entries.sort((a, b) => b[1] - a[1])[0];
-        lines.push(t('weekSummary.harvest', { n: total, name: localName(itemInfo(id)?.name), most }));
+        lines.push(t('weekSummary.harvest', { n: total, name: itemName(id), most }));
       }
     }
     if (item === 'land') {

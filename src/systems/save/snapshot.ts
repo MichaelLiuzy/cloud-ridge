@@ -3,6 +3,7 @@
  *  - 在农场里：由农场场景提供地图和主角位置。
  *  - 不在农场（比如还在看开场过场、医馆对话）：地图和位置用读档时的，新游戏就用开局的。
  */
+import { SETTINGS } from '../../config/settings';
 import { gameState } from '../GameState';
 import { FARM_MAP } from '../../world/farmMap';
 import { SAVE_VERSION, type SaveData } from './saveFormat';
@@ -63,5 +64,6 @@ export function currentSave(): SaveData {
 function spawnPoint() {
   const y = FARM_MAP.findIndex((row) => row.includes('P'));
   const x = FARM_MAP[y].indexOf('P');
-  return { x: x * 16 + 8, y: y * 16 + 12, facing: 'down' };
+  const s = SETTINGS.tileSize;
+  return { x: x * s + s / 2, y: y * s + s - 4, facing: 'down' };
 }

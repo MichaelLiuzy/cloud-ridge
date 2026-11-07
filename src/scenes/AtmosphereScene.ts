@@ -8,7 +8,7 @@
  */
 import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
-import { VIEW_EVENTS, setupWorldCamera } from '../config/view';
+import { followView, setupWorldCamera } from '../config/view';
 import { ATMOSPHERE } from '../config/atmosphere';
 import { toColor } from '../config/palette';
 import { gameState } from '../systems/GameState';
@@ -39,10 +39,7 @@ export class AtmosphereScene extends Phaser.Scene {
     const { gameWidth: w, gameHeight: h } = SETTINGS;
     this.makeBrush();
     // 和地图一样放大（色层按 320×180 画）
-    setupWorldCamera(this);
-    const rezoom = () => setupWorldCamera(this);
-    this.game.events.on(VIEW_EVENTS.changed, rezoom);
-    this.events.once('shutdown', () => this.game.events.off(VIEW_EVENTS.changed, rezoom));
+    followView(this, () => setupWorldCamera(this));
     this.layer = this.add.renderTexture(0, 0, w, h).setOrigin(0).setDepth(0);
     this.brush = this.make.image({ key: 'light-brush', add: false }).setOrigin(0.5);
     const mem = ATMOSPHERE.memory;

@@ -7,14 +7,20 @@
 import { FIELD_DEBRIS, TREES } from '../../data/trees';
 import { FARM_MAP } from '../../world/farmMap';
 import { gameState } from '../GameState';
+import { cellKey } from '../pathfind';
 
 export const TREE_CHARS = { sapling: 'y', small: 'u', big: 'Y' } as const;
 const TREE_SET = new Set<string>(Object.values(TREE_CHARS));
 
+/** 上下左右四格的地图字符（出了地图是 undefined） */
+function neighbors(grid: string[][], x: number, y: number) {
+  return [grid[y - 1]?.[x], grid[y + 1]?.[x], grid[y]?.[x - 1], grid[y]?.[x + 1]];
+}
+
 /** 能长新树的空地：草地、没种东西，而且四周没有路、门、田、房子、废墟（不挡路） */
 function isOpenGround(grid: string[][], x: number, y: number) {
-  if ((grid[y]?.[x] !== '.' && grid[y]?.[x] !== ',') || gameState.crops[`${x},${y}`]) return false;
-  const near = [grid[y - 1]?.[x], grid[y + 1]?.[x], grid[y]?.[x - 1], grid[y]?.[x + 1]];
+  if ((grid[y]?.[x] !== '.' && grid[y]?.[x] !== ',') || gameState.crops[cellKey({ x, y })]) return false;
+  const near = neighbors(grid, x, y);
   return near.every((c) => c !== undefined && '.,TyuYrgsx#~'.includes(c));
 }
 
@@ -29,7 +35,7 @@ export function treesOvernight(grid: string[][], frozen: boolean, avoid: { x: nu
   grid.forEach((row, y) =>
     row.forEach((ch, x) => {
       if (!TREE_SET.has(ch)) return;
-      if (!gameState.plantedTrees.includes(`${x},${y}`)) wild++;
+      if (!gameState.plantedTrees.includes(cellKey({ x, y }))) wild++;
       if (ch === TREE_CHARS.sapling && rand() < TREES.grow.sapling) changes.push({ x, y, ch: TREE_CHARS.small });
       else if (ch === TREE_CHARS.small && rand() < TREES.grow.small) changes.push({ x, y, ch: TREE_CHARS.big });
     }),
@@ -72,8 +78,8 @@ export function reshuffleDebris(grid: string[][], avoid: { x: number; y: number 
       const was = DEBRIS.includes(ch);
       if (was) changes.push({ x, y, ch: '.' });
       const ground = was || ch === '.' || ch === ',';
-      const nearGate = [grid[y - 1]?.[x], grid[y + 1]?.[x], grid[y]?.[x - 1], grid[y]?.[x + 1]].includes('G');
-      if (ground && !nearGate && !gameState.crops[`${x},${y}`] && !(x === avoid.x && y === avoid.y)) spots.push({ x, y });
+      const nearGate = neighbors(grid, x, y).includes('G');
+      if (ground && !nearGate && !gameState.crops[cellKey({ x, y })] && !(x === avoid.x && y === avoid.y)) spots.push({ x, y });
     }),
   );
   for (const [ch, n] of want) {

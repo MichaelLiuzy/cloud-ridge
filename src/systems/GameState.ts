@@ -4,13 +4,11 @@
  * 开局数值来自 src/data/start.ts，体力上限来自 src/data/housing.ts。
  */
 import { START as startData } from '../data/start';
-import { ITEMS as itemsData } from '../data/items';
 import { HOUSING as housingData } from '../data/housing';
 import { Clock } from './Clock';
 import type { SaveData } from './save/saveFormat';
 import type { PlantedCrop } from './farming/crops';
-import { SETTINGS } from '../config/settings';
-import { addItem, isTool, type Slot } from './inventory';
+import { addItem, emptySlots, isTool, itemInfo, type Slot } from './inventory';
 import { emptyWeek, type WeekStats } from './weekStats';
 import { normalizeChest } from './home/storage';
 import type { Weather } from '../data/types';
@@ -45,8 +43,8 @@ function freshState() {
     basket: {} as Record<string, number>,
     /** 地里种的东西：「x,y」→ 这一格的作物 */
     crops: {} as Record<string, PlantedCrop>,
-    maxStamina: hut.maxStamina as number,
-    stamina: hut.maxStamina as number,
+    maxStamina: hut.maxStamina,
+    stamina: hut.maxStamina,
     /** 今天（从早上醒来起）吃过东西没有。一整天没吃，第二天醒来体力最多 80（src/data/time.ts 的 hunger） */
     ateToday: false,
     /** 今天的天气（每天早上 6 点抽，见 src/systems/days.ts）。开局那天是晴天 */
@@ -56,7 +54,7 @@ function freshState() {
     /** 认识了哪些人（第一次说话就算认识；names 里的 id） */
     metNpcs: [] as string[],
     /** 水桶里还有多少水（满是 src/data/time.ts 的 stamina.bucket.capacity） */
-    water: timeData.stamina.bucket.capacity as number,
+    water: timeData.stamina.bucket.capacity,
     /** 玩家自己种的树在哪几格（「x,y」）：不算进自然长树的上限 */
     plantedTrees: [] as string[],
     /** 背包满了掉在地上的东西：「x,y」→ { 物品 id: 数量 }，走过去就捡起来 */
@@ -70,7 +68,7 @@ function freshState() {
     /** 门口灯笼灭了没有（点一下开关；新档是亮着的） */
     lanternOff: false,
     /** 工具栏 + 背包的格子（前 9 格是工具栏），见 src/systems/inventory.ts */
-    slots: Array.from({ length: SETTINGS.inventory.toolbarSlots + SETTINGS.inventory.bagSlots }, () => null) as (Slot | null)[],
+    slots: emptySlots(),
     /** 手上拿的是工具栏第几格（0 ~ 8） */
     selected: 0,
     /** 重要物品（笔记本、烧焦的纸）：不占格子 */
@@ -160,7 +158,7 @@ export function giveStartKit() {
   gameState.flags.startKitGiven = true;
   gameState.cash += startData.cash;
   // 工具栏依次放：工具、种子、别的东西
-  const rank = (id: string) => (isTool(id) ? 0 : itemsData.items.find((it) => it.id === id)?.type === 'seed' ? 1 : 2);
+  const rank = (id: string) => (isTool(id) ? 0 : itemInfo(id)?.type === 'seed' ? 1 : 2);
   const kit = Object.entries(startData.inventory).sort(([a], [b]) => rank(a) - rank(b));
   for (const [id, n] of kit) addItem(id, n ?? 0);
 }

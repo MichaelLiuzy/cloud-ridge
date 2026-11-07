@@ -19,7 +19,6 @@ import { drawCoin } from '../ui/tinyDigits';
 import { DialogueBox } from '../ui/DialogueBox';
 import { askName } from '../ui/nameInput';
 import { CHAPTERS, type ChapterId } from '../data/clues';
-import { localName as nameOf } from '../locales/i18n';
 import { fillNames } from '../story/text';
 import { STORY_EVENTS, debugNextChapter, fireStoryEvent, storyEvents } from '../systems/story/notebook';
 import { FARM_EVENTS, type FarmScene } from './FarmScene';
@@ -27,7 +26,7 @@ import { debugSetAffection } from '../systems/affection';
 import { AFFECTION } from '../data/affection';
 import { pickupOfferReady, unlockPickup } from '../systems/economy/pickup';
 import { SERVICES } from '../data/services';
-import { TOOLBAR_SLOTS, hasItem } from '../systems/inventory';
+import { TOOLBAR_SLOTS, hasItem, itemName } from '../systems/inventory';
 import { drawItemSlot } from '../ui/itemSlot';
 import { wrapText } from '../ui/richText';
 import type { MenuTabId } from '../data/menuTabs';
@@ -36,7 +35,6 @@ import { ListMenu, type MenuOption } from '../ui/ListMenu';
 import { QuantityPicker } from '../ui/QuantityPicker';
 import { downloadText } from '../ui/fileTransfer';
 import { exportText } from '../systems/save/saveManager';
-import { ITEMS as itemsData } from '../data/items';
 import { eatFromSlot, isFood } from '../systems/food';
 import { sendLetter } from '../systems/mail';
 
@@ -223,7 +221,7 @@ export class HudScene extends Phaser.Scene {
       [UI_EVENTS.playDialogue, (knot: string, onDone?: () => void) => this.playStory(knot, onDone)],
     ];
     const onNew = () => this.flashNotebook();
-    const onChapter = (id: ChapterId) => this.say('notebook.newChapter', { name: fillNames(nameOf(CHAPTERS[id].name)) });
+    const onChapter = (id: ChapterId) => this.say('notebook.newChapter', { name: fillNames(localName(CHAPTERS[id].name)) });
     storyEvents.on(STORY_EVENTS.notebookNew, onNew);
     storyEvents.on(STORY_EVENTS.chapterStart, onChapter);
     for (const [name, fn] of handlers) ev.on(name, fn);
@@ -702,9 +700,6 @@ export class HudScene extends Phaser.Scene {
     drawFrame(this.toolCursor, 0, 0, SL + 2, SL + 2, toColor(SETTINGS.ui.toolSelected));
   }
 
-  private itemName(id: string) {
-    return localName(itemsData.items.find((it) => it.id === id)?.name);
-  }
 
   private selectTool(i: number) {
     if (i >= 0 && i < TOOLBAR_SLOTS) gameState.selected = i;
@@ -714,7 +709,7 @@ export class HudScene extends Phaser.Scene {
   private offerEat() {
     const s = gameState.slots[gameState.selected];
     if (!s || !isFood(s.id)) return false;
-    const name = this.itemName(s.id);
+    const name = itemName(s.id);
     const eat = () => {
       const ate = eatFromSlot(gameState.selected);
       if (ate) this.say('msg.ate', { name, n: ate.gain });

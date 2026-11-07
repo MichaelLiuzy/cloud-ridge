@@ -10,6 +10,7 @@ import type { PlantedCrop } from '../farming/crops';
 import type { Slot } from '../inventory';
 import type { WeekStats } from '../weekStats';
 import type { Weather } from '../../data/types';
+import type { PrologueStep } from '../GameState';
 
 export const SAVE_VERSION = 15;
 
@@ -91,7 +92,7 @@ export interface SaveData {
   /** 笔记本「操作」「已学会」两栏的条目 */
   notebook: { controls: string[]; learned: string[] };
   /** 序章走到哪一步：opening / clinic / tutorial / done */
-  prologue: 'opening' | 'clinic' | 'tutorial' | 'done';
+  prologue: PrologueStep;
 }
 
 /**

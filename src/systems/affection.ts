@@ -25,5 +25,5 @@ export function addAffection(npc: NpcId, points: number) {
 
 /** （测试用）直接设成多少点 */
 export function debugSetAffection(npc: NpcId, points: number) {
-  gameState.affection[npc] = Math.max(0, Math.min(MAX_POINTS, points));
+  addAffection(npc, points - affectionOf(npc));
 }

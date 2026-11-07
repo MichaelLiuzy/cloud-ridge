@@ -6,8 +6,7 @@ import { SETTINGS } from '../config/settings';
 import { PALETTE, toColor } from '../config/palette';
 import { TIME } from '../data/time';
 import { gameState } from '../systems/GameState';
-import { localName } from '../locales/i18n';
-import { itemInfo, type Slot } from '../systems/inventory';
+import { itemName, type Slot } from '../systems/inventory';
 import { artIcon, pixelText } from './pixelUi';
 
 /** 在 (x, y) 开始、边长 size 的格子里画 slot 的东西，画出来的东西都放进 into */
@@ -17,7 +16,7 @@ export function drawItemSlot(scene: Phaser.Scene, into: Phaser.GameObjects.Conta
   const key = `icon_${slot.id}`;
   const icon = scene.textures.exists(key)
     ? scene.add.image(x + size / 2, y + size / 2, key).setScale(size >= 16 * ui.iconScale ? ui.iconScale : 1) // 格子太小（开着箱子时）就按原大小画
-    : pixelText(scene, x + size / 2, y + size / 2, localName(itemInfo(slot.id)?.name).slice(0, 1)).setOrigin(0.5);
+    : pixelText(scene, x + size / 2, y + size / 2, itemName(slot.id).slice(0, 1)).setOrigin(0.5);
   icon.setAlpha(alpha);
   into.add(icon);
   if (slot.n > 1) {

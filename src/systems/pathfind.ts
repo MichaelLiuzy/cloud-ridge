@@ -7,6 +7,17 @@ export interface Cell {
   y: number;
 }
 
+/** 作物、树、收货筐、掉落物按「x,y」记格子 */
+export function cellKey(c: Cell) {
+  return `${c.x},${c.y}`;
+}
+
+/** 「x,y」→ 格子 */
+export function parseCellKey(key: string): Cell {
+  const [x, y] = key.split(',').map(Number);
+  return { x, y };
+}
+
 /**
  * 从 start 走到 goals 里任意一格，返回要经过的格子（不含起点）。
  * 走不到返回 null；已经站在目标上返回空数组。

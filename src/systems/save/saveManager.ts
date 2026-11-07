@@ -7,6 +7,8 @@
  */
 import { storage } from './storage';
 import { migrate, type SaveData } from './saveFormat';
+import { describeClock } from '../Clock';
+import { t } from '../../locales/i18n';
 
 export const SLOT_COUNT = 3;
 const slotKey = (n: number) => `slot${n}`;
@@ -14,12 +16,7 @@ const TEMP_KEY = 'temp';
 
 async function read(key: string): Promise<SaveData | null> {
   const text = await storage.get(key);
-  if (!text) return null;
-  try {
-    return migrate(JSON.parse(text));
-  } catch {
-    return null;
-  }
+  return text ? parseImport(text) : null;
 }
 
 export async function saveToSlot(data: SaveData) {
@@ -55,6 +52,11 @@ export function exportText(data: SaveData) {
 }
 
 /** 导入：读文件内容，升级到最新版本。认不出来返回 null。 */
+/** 存档位那一行字：「存档 1：正月十八 午时 · 500 文」，空的是「存档 1：（空）」 */
+export function slotLabel(save: SaveData | null, n: number) {
+  return save ? t('title.slotFull', { n, ...describeClock(save.clock), cash: save.cash }) : t('title.slotEmpty', { n });
+}
+
 export function parseImport(text: string): SaveData | null {
   try {
     return migrate(JSON.parse(text));
