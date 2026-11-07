@@ -153,7 +153,7 @@ export const TIME: TimeTable = {
       flatten: 2,  // 用镐把田填平成普通地
       remove_fence: 2,  // 用镐拆一节栅栏（放栅栏、铺路、敲掉小路不花体力）
     },
-    bucket: { capacity: 100, perWater: 7 },  // 水桶：装满 100 点水，浇一格用 7 点（满桶能浇 14 格）。对着池塘用水桶一次加满
+    bucket: { capacity: 200, perWater: 7 },  // 水桶：装满 200 点水，浇一格用 7 点（满桶能浇 28 格）。对着池塘用水桶一次加满
   },
   sleep: { beforeMidnightRestore: 1.0, afterMidnightRestore: 0.9 },  // 睡觉
   // 饿肚子：某一天从早上醒来到睡着（或昏倒）一口东西都没吃，第二天醒来体力最多只有这么多（点数）。

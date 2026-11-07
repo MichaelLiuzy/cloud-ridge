@@ -12,7 +12,6 @@ import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
 import { toColor } from '../config/palette';
 import { uiSize } from '../config/view';
-import { pixelText, artIcon } from '../ui/pixelUi';
 
 /** 指令名称。游戏里用 game.events.on(INPUT_EVENTS.xxx, ...) 来接收。 */
 /** 这一下按的是不是 names 里的键（names 用 settings.ts 里 keys 的写法，比如 ['W', 'UP']） */
@@ -21,7 +20,7 @@ export function keyIs(names: readonly string[], e: KeyboardEvent) {
 }
 
 export const INPUT_EVENTS = {
-  /** 交互 / 确认（回车、手机「使用」键） */
+  /** 交互 / 确认（回车、手机右下角的交互按钮） */
   action: 'input:action',
   /** 用工具（空格） */
   useTool: 'input:useTool',
@@ -169,21 +168,21 @@ export class PointerControls {
   }
 }
 
-/** 做一个圆形触屏按钮（手机右下角的「使用」「背包」「菜单」） */
-export function makeRoundButton(scene: Phaser.Scene, label: string, radius: number, onPress: () => void, icon?: string) {
+/** 手机右下角的交互按钮：像手柄按键，外面一圈、中间一个实心圆点，没有字；按下去变暗、缩一点 */
+export function makeRoundButton(scene: Phaser.Scene, radius: number, onPress: () => void) {
   const alpha = SETTINGS.touch.buttonAlpha;
   const fill = toColor(SETTINGS.ui.panel);
-  const circle = scene.add.circle(0, 0, radius, fill, alpha).setStrokeStyle(1, toColor(SETTINGS.ui.border), 0.8);
-  // icon：有这张图标就用图代替文字（比如背包按钮）
-  const text = (icon && artIcon(scene, icon, 0, 0, 1)) || pixelText(scene, 0, 0, label).setOrigin(0.5);
-  const c = scene.add.container(0, 0, [circle, text]).setDepth(100).setSize(radius * 2, radius * 2);
+  const circle = scene.add.circle(0, 0, radius, fill, alpha).setStrokeStyle(2, toColor(SETTINGS.ui.border), 0.9);
+  const dot = scene.add.circle(0, 0, radius * 0.45, toColor(SETTINGS.ui.border), 0.75);
+  const c = scene.add.container(0, 0, [circle, dot]).setDepth(100).setSize(radius * 2, radius * 2);
   // 感应区的坐标从按钮方框的左上角算起，所以圆心在 (radius, radius)（以前写 (0, 0)，只有左上四分之一按得到）
   c.setInteractive(new Phaser.Geom.Circle(radius, radius, radius), Phaser.Geom.Circle.Contains);
   c.on('pointerdown', () => {
     circle.setFillStyle(toColor(SETTINGS.ui.innerBorder), 0.9);
+    c.setScale(SETTINGS.touch.actionButtonPressScale);
     onPress();
   });
-  const release = () => circle.setFillStyle(fill, alpha);
+  const release = () => (circle.setFillStyle(fill, alpha), c.setScale(1));
   c.on('pointerup', release);
   c.on('pointerout', release);
   return c;

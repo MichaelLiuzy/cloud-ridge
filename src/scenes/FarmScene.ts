@@ -31,7 +31,7 @@ import { HOUSING } from '../data/housing';
 import type { SaveData } from '../systems/save/saveFormat';
 import { stateFields } from '../systems/save/snapshot';
 import { clearTemp, saveTemp, saveToSlot } from '../systems/save/saveManager';
-import { cellKey, findPath, parseCellKey, type Cell } from '../systems/pathfind';
+import { cellKey, findPath, findPathNear, parseCellKey, type Cell } from '../systems/pathfind';
 import { localName, t } from '../locales/i18n';
 import type { MenuOption } from '../ui/ListMenu';
 import { TIME as timeData } from '../data/time';
@@ -422,7 +422,7 @@ export class FarmScene extends Phaser.Scene {
     this.doHeld(rule, cell);
   }
 
-  /** 手机「使用」键：手上的东西对面前那一格有用就直接用，没用就「交互」（多件事才弹菜单） */
+  /** 手机右下角的交互按钮：手上的东西对面前那一格有用就直接用，没用就「交互」（多件事才弹菜单） */
   private smartFacing() {
     const cell = this.facingCell();
     const rule = this.heldRule(cell);
@@ -470,7 +470,10 @@ export class FarmScene extends Phaser.Scene {
     // 手上的东西对这一格有用：走过去直接做，不弹菜单
     const rule = this.heldRule(cell);
     if (rule) return this.walkNextTo(cell, () => this.heldRule(cell) === rule && this.doHeld(rule, cell));
-    this.runOptions(this.optionsFor(cell, { walk: true }), cell, true);
+    const options = this.optionsFor(cell, { walk: true });
+    // 什么都做不了的地方（水塘、林子……）：尽量走过去，到了再说「走不过去」
+    if (!options.length) return this.walkNear(cell);
+    this.runOptions(options, cell, true);
   }
 
   /** 这一格的作物现在什么样（没种东西 = none） */
@@ -1023,15 +1026,34 @@ export class FarmScene extends Phaser.Scene {
       { x: target.x + 1, y: target.y },
     ];
     const path = findPath(here, goals, (c) => !this.isSolid(c));
-    if (!path) return this.say('msg.cantReach');
+    if (!path) return this.walkNear(target);
     this.route = path;
     this.onArrive = face;
+  }
+
+  /**
+   * 去不到 target（水塘中央、栅栏那边的人……）：走到离它最近、能走到的格子，面朝它。
+   * 到了以后，面前那一格和 target 是同一种地方（比如同一片水塘），手上的东西又能对它用，就直接用；
+   * 不然说「走不过去」。
+   */
+  private walkNear(target: Cell) {
+    const arrive = () => {
+      this.faceToward(target);
+      const front = this.facingCell();
+      const rule = this.heldRule(front);
+      if (rule && this.kindAt(front) === this.kindAt(target)) return this.doHeld(rule, front);
+      this.say('msg.cantReach');
+    };
+    const path = findPathNear(this.playerCell(), target, (c) => !this.isSolid(c));
+    if (!path.length) return arrive();
+    this.route = path;
+    this.onArrive = arrive;
   }
 
   /** 走到某一格上 */
   private walkOnto(target: Cell) {
     const path = findPath(this.playerCell(), [target], (c) => !this.isSolid(c));
-    if (!path) return this.say('msg.cantReach');
+    if (!path) return this.walkNear(target);
     this.route = path;
     this.onArrive = undefined;
   }

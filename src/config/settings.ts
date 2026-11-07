@@ -96,6 +96,9 @@ export const SETTINGS = {
 
   // ---------------- 触屏（iPhone） ----------------
   /** 下面的大小都按界面层算（大约 640×360，见 ui.scale） */
+  /** 自动走路找路时最多看多少格（点到很远或走不到的地方时不至于卡） */
+  pathMaxSteps: 4000,
+
   touch: {
     /** 摇杆底盘的半径（像素）。手指拖多远算「推到底」。 */
     joystickRadius: 40,
@@ -103,10 +106,12 @@ export const SETTINGS = {
     joystickDeadZone: 6,
     /** 手指按下又很快抬起、几乎没移动，算作「点一下」而不是摇杆（毫秒） */
     tapMaxMs: 280,
-    /** 右下角「使用」大按钮的半径（按一下 = 对面前那一格做最合适的事） */
+    /** 右下角交互按钮（外面一圈、中间一个实心圆点；按一下 = 对面前那一格做最合适的事）的半径 */
     actionButtonRadius: 28,
-    /** 背包小按钮的半径 */
-    smallButtonRadius: 20,
+    /** 交互按钮离屏幕右边、下边多远（像素）：右手拇指好按的位置 */
+    actionButtonMargin: { right: 14, bottom: 12 },
+    /** 按下时按钮缩到多大（1 = 不缩） */
+    actionButtonPressScale: 0.88,
     /** 按钮透明度：0 完全透明，1 完全不透明 */
     buttonAlpha: 0.55,
   },
