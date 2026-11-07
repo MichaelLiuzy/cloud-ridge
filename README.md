@@ -134,6 +134,8 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
 | 农场里自己长树：每天几成概率长新树、新树是树苗 / 小树 / 大树的概率、长大的概率、最多几棵 | `src/data/trees.ts` | `spawnChance`、`spawnStage`、`grow`、`maxWild`（自己种的不算） |
 | 田里的杂草、石头、木头每周哪天重新摆、要不要回到开局的数量 | `src/data/trees.ts` | `FIELD_DEBRIS` 的 `weekday`（0 = 周一）、`keepCount`；开局数量就是 `src/world/farmMap.ts` 地图里篱笆里面画的 `g r s x` |
 | 右下角提示字幕：停几秒、多久淡出、最多几行、多宽、颜色 | `src/config/settings.ts` | `ui.subtitle` |
+| 来信：哪封信什么时候寄到、附什么东西和钱；加一封新信 | `src/data/letters.ts` | `LETTERS`（文件开头写了怎么加）；信的标题和正文在 `src/locales/zh.ts` 的 `letters.<信的 id>` |
+| 信箱放在哪、读信界面信纸的颜色 | `src/world/farmMap.ts`、`src/config/settings.ts` | 地图里的 `M` 和 `MAILBOX_CELL`；`ui.letter` |
 | 下雨、下雪的画面：变暗变亮多少、雨丝雪花多少、多快、手机上少多少 | `src/config/settings.ts` | `weatherFx` |
 | 水桶装多少水、浇一次用多少 | `src/data/time.ts` | `stamina.bucket` 的 `capacity`、`perWater`（拿水桶点池塘打满，不花体力） |
 | 设置项的默认值（文字速度、界面大小、音量……） | `src/config/settings.ts` | `prefsDefaults`；四档文字速度各多快在 `textSpeedMs` |

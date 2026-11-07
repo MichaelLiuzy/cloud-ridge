@@ -14,6 +14,7 @@ import { addItem, isTool, type Slot } from './inventory';
 import { emptyWeek, type WeekStats } from './weekStats';
 import { normalizeChest } from './home/storage';
 import type { Weather } from '../data/types';
+import type { MailEntry } from './mail';
 import { TIME as timeData } from '../data/time';
 
 export type PrologueStep = 'opening' | 'clinic' | 'tutorial' | 'done';
@@ -62,6 +63,10 @@ function freshState() {
     drops: {} as Record<string, Record<string, number>>,
     /** 田里的杂物上次是哪天重新摆的（「月-日」），同一天不会摆两次 */
     debrisDay: '',
+    /** 信箱里的信（新的在前面），见 src/systems/mail.ts */
+    mail: [] as MailEntry[],
+    /** 已经寄出过的信 id（同一封不寄两次） */
+    mailSent: [] as string[],
     /** 工具栏 + 背包的格子（前 9 格是工具栏），见 src/systems/inventory.ts */
     slots: Array.from({ length: SETTINGS.inventory.toolbarSlots + SETTINGS.inventory.bagSlots }, () => null) as (Slot | null)[],
     /** 手上拿的是工具栏第几格（0 ~ 8） */
@@ -125,6 +130,8 @@ export function resetGameState(slot: number, load: SaveData | null = null) {
       plantedTrees: [...load.plantedTrees],
       drops: JSON.parse(JSON.stringify(load.drops)),
       debrisDay: load.debrisDay,
+      mail: JSON.parse(JSON.stringify(load.mail)),
+      mailSent: [...load.mailSent],
       slots: load.slots.map((x) => (x ? { ...x } : null)),
       selected: load.selected,
       keyItems: { ...load.keyItems },

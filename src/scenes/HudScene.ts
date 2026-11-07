@@ -38,6 +38,7 @@ import { downloadText } from '../ui/fileTransfer';
 import { exportText } from '../systems/save/saveManager';
 import { ITEMS as itemsData } from '../data/items';
 import { eatFromSlot, isFood } from '../systems/food';
+import { sendLetter } from '../systems/mail';
 
 /** 界面和地图之间互相传的消息 */
 export const UI_EVENTS = {
@@ -555,6 +556,7 @@ export class HudScene extends Phaser.Scene {
         { label: t('menu.debugDay1'), run: () => ev.emit(FARM_EVENTS.debugDays, 1) },
         { label: t('menu.debugDay7'), run: () => ev.emit(FARM_EVENTS.debugDays, 7) },
         { label: t('menu.debugToSunday'), run: () => ev.emit(FARM_EVENTS.debugToSunday) },
+        { label: t('menu.debugLetter'), run: () => (sendLetter('debug_test'), this.say('msg.mailArrived')) },
         { label: t('menu.debugBuild'), run: () => ev.emit(FARM_EVENTS.debugBuild) },
         { label: t('menu.debugPickup'), run: () => this.debugPickup() },
         { label: t('menu.debugPoster'), run: () => fireStoryEvent('saw_missing_poster') },

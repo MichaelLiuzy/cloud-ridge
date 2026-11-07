@@ -26,7 +26,12 @@ import { ListMenu } from '../ui/ListMenu';
 import { QuantityPicker } from '../ui/QuantityPicker';
 import { chaptersInOrder, chapterStarted, questionState } from '../systems/story/notebook';
 import { drawFrame, drawPanel, pixelText } from '../ui/pixelUi';
-import { wrapText } from '../ui/richText';
+import { drawLines, wrapRuns, wrapText, type Run } from '../ui/richText';
+import { parseClueMarks } from '../story/text';
+import { canGetClue, giveClue } from '../systems/story/notebook';
+import { letterInfo, takeAttachments, type MailEntry } from '../systems/mail';
+import { PLACEHOLDERS } from './BootScene';
+import { UI_EVENTS } from './HudScene';
 import { PALETTE } from '../config/palette';
 import { TIME } from '../data/time';
 import { eatFromSlot, isFood } from '../systems/food';
@@ -40,7 +45,7 @@ let AREA = { x: 8, y: 28, w: W - 16, h: H - 34 };
 const LINE_H = 14;
 
 export class GameMenuScene extends Phaser.Scene {
-  private tab: MenuTabId = 'bag';
+  private tab: MenuTabId | 'mail' = 'bag';
   private section: NotebookSectionId = 'story';
   /** 栏目条和内容各放一层，切栏目时只重画内容 */
   private tabBar!: Phaser.GameObjects.Container;
@@ -74,14 +79,19 @@ export class GameMenuScene extends Phaser.Scene {
   /** 日历：正在看几月、选中了哪一天 */
   private calMonth = 1;
   private calDay = 1;
+  /** 开着信箱；选中第几封信 */
+  private mail = false;
+  private mailSel = 0;
 
   constructor() {
     super('GameMenu');
   }
 
-  create(data: { tab?: MenuTabId; chest?: boolean }) {
+  create(data: { tab?: MenuTabId; chest?: boolean; mail?: boolean }) {
     this.chest = !!data?.chest;
-    this.tab = this.chest ? 'bag' : (data?.tab ?? 'bag');
+    this.mail = !!data?.mail;
+    this.mailSel = 0;
+    this.tab = this.mail ? 'mail' : this.chest ? 'bag' : (data?.tab ?? 'bag');
     this.slot = gameState.selected;
     this.hover = null;
     this.page = 0;
@@ -100,7 +110,7 @@ export class GameMenuScene extends Phaser.Scene {
     ({ w: W, h: H } = uiSize());
     AREA = { x: 8, y: 28, w: W - 16, h: H - 34 };
     // 界面大小变了（转屏）：重新打开
-    const relayout = () => this.scene.restart({ tab: this.tab, chest: this.chest });
+    const relayout = () => this.scene.restart({ tab: this.tab === 'mail' ? 'bag' : this.tab, chest: this.chest, mail: this.mail });
     this.game.events.on(VIEW_EVENTS.changed, relayout);
     this.events.once('shutdown', () => {
       this.game.events.off(VIEW_EVENTS.changed, relayout);
@@ -156,7 +166,7 @@ export class GameMenuScene extends Phaser.Scene {
         return;
       }
       if (this.modal) return;
-      if (e.key === 'Tab' && !this.chest) return this.switchTab(e.shiftKey ? -1 : 1);
+      if (e.key === 'Tab' && !this.chest && !this.mail) return this.switchTab(e.shiftKey ? -1 : 1);
       if (is(keys.bag, e) || is(keys.cancel, e)) return this.close();
       if (this.tab === 'bag') {
         if (is(keys.action, e)) return this.select(this.slot);
@@ -167,6 +177,7 @@ export class GameMenuScene extends Phaser.Scene {
         if (e.key === 'l' || e.key === 'L') return this.lock();
         if (e.key === 'e' || e.key === 'E') return this.eat();
       }
+      if (this.tab === 'mail' && is(keys.action, e)) return this.takeMail();
       if (this.tab === 'calendar' && (e.key === '[' || e.key === ']')) return this.flipMonth(e.key === ']' ? 1 : -1);
       const dir = is(keys.up, e) ? 'up' : is(keys.down, e) ? 'down' : is(keys.left, e) ? 'left' : is(keys.right, e) ? 'right' : null;
       if (dir) this.nav(dir, e.shiftKey);
@@ -202,6 +213,8 @@ export class GameMenuScene extends Phaser.Scene {
     } else if (this.tab === 'notebook') {
       if (dir === 'up' || dir === 'down') this.scrollBy(dir === 'down' ? LINE_H : -LINE_H);
       else this.switchSection(dir === 'right' ? 1 : -1);
+    } else if (this.tab === 'mail') {
+      if (dir === 'up' || dir === 'down') this.pickMail(this.mailSel + (dir === 'down' ? 1 : -1));
     } else if (this.tab === 'calendar') {
       // 选日子：左右一天、上下一周；翻过这个月的头尾就到上个月 / 下个月
       const step = { up: -7, down: 7, left: -1, right: 1 }[dir];
@@ -252,6 +265,7 @@ export class GameMenuScene extends Phaser.Scene {
     if (this.tab === 'bag') this.drawBag();
     else if (this.tab === 'notebook') this.drawNotebook();
     else if (this.tab === 'calendar') this.drawCalendar();
+    else if (this.tab === 'mail') this.drawMail();
     else this.content.add(pixelText(this, W / 2, H / 2, t('map.placeholder'), { color: SETTINGS.ui.textDim }).setOrigin(0.5));
   }
 
@@ -260,7 +274,7 @@ export class GameMenuScene extends Phaser.Scene {
     this.tabBar.removeAll(true);
     const ui = SETTINGS.ui;
     let x = 8;
-    const tabs = this.chest ? [{ id: 'bag' as MenuTabId, label: 'chest.tab' }] : MENU_TABS;
+    const tabs = this.chest ? [{ id: 'bag' as const, label: 'chest.tab' }] : this.mail ? [{ id: 'mail' as const, label: 'mail.tab' }] : MENU_TABS;
     for (const tab of tabs) {
       const label = pixelText(this, 0, 0, t(tab.label));
       const w = Math.ceil(label.width) + 12;
@@ -823,8 +837,119 @@ export class GameMenuScene extends Phaser.Scene {
     this.content.add(pixelText(this, x0, ly, `${title}　${parts.join('　')}`, { wrap: cellW * cols }));
   }
 
+  // ---------------- 信箱（信的内容在 src/data/letters.ts，收信规则在 src/systems/mail.ts）----------------
+
+  /** 左边一列信（新的在上面，没读过的有个小红点），右边是选中的那封信 */
+  private drawMail() {
+    const ui = SETTINGS.ui;
+    const list = gameState.mail;
+    if (!list.length) {
+      this.content.add(pixelText(this, W / 2, H / 2, t('mail.empty'), { color: ui.textDim }).setOrigin(0.5));
+      return;
+    }
+    this.mailSel = Phaser.Math.Clamp(this.mailSel, 0, list.length - 1);
+    list[this.mailSel].read = true;
+    // 左边：能上下滚的信件列表
+    const colW = 116;
+    const rowH = 20;
+    const layer = this.add.container(AREA.x, AREA.y + 2);
+    layer.setMask(this.make.graphics({}).fillRect(AREA.x, AREA.y + 2, colW, AREA.h - 4).createGeometryMask());
+    list.forEach((m, i) => {
+      const y = i * rowH;
+      const g = this.add.graphics();
+      if (i === this.mailSel) g.fillStyle(toColor(ui.highlight)).fillRect(0, y, colW, rowH - 2);
+      if (!m.read) g.fillStyle(toColor(ui.letter.unread)).fillCircle(6, y + 9, 2.5);
+      const title = wrapText(t(`letters.${m.id}.title`), colW - 16)[0];
+      const hit = this.add.zone(0, y, colW, rowH - 2).setOrigin(0).setInteractive();
+      hit.on('pointerup', (p: Phaser.Input.Pointer) => p.getDistance() < 6 && this.pickMail(i));
+      layer.add([g, pixelText(this, 12, y + 3, title, { color: m.read ? ui.textDim2 : ui.text }), hit]);
+    });
+    this.content.add([layer, this.add.graphics().fillStyle(toColor(ui.innerBorder)).fillRect(AREA.x + colW + 4, AREA.y, 1, AREA.h)]);
+    this.scrollLayer = layer;
+    this.maxScroll = Math.max(0, list.length * rowH - (AREA.h - 4));
+    // 选中的那封要露出来
+    this.scroll = Phaser.Math.Clamp(this.scroll, this.mailSel * rowH + rowH - (AREA.h - 4), this.mailSel * rowH);
+    this.scroll = Phaser.Math.Clamp(this.scroll, 0, this.maxScroll);
+    layer.setY(AREA.y + 2 - this.scroll);
+    this.drawLetter(list[this.mailSel], { x: AREA.x + colW + 10, y: AREA.y + 2, w: AREA.w - colW - 12, h: AREA.h - 4 });
+  }
+
+  /** 一封信：信纸、标题、正文（黄字线索照对话的规矩）、落款，有附件的话下面是附件和「收下」 */
+  private drawLetter(m: MailEntry, box: { x: number; y: number; w: number; h: number }) {
+    const ui = SETTINGS.ui;
+    const c = this.content;
+    // 信纸：有 ui_letter 的图就铺图，没有就浅色底加一圈细朱红框
+    if (!PLACEHOLDERS.has('ui_letter')) c.add(this.add.image(box.x, box.y, 'ui_letter').setOrigin(0).setDisplaySize(box.w, box.h));
+    else {
+      const g = this.add.graphics().fillStyle(toColor(ui.letter.paper)).fillRect(box.x, box.y, box.w, box.h);
+      drawFrame(g, box.x + 3, box.y + 3, box.w - 6, box.h - 6, toColor(ui.letter.border));
+      c.add(g);
+    }
+    const pad = 12;
+    const x = box.x + pad;
+    const w = box.w - pad * 2;
+    let y = box.y + pad;
+    c.add(pixelText(this, x, y, t(`letters.${m.id}.title`), { color: ui.money }));
+    y += LINE_H + 6;
+    const runs: Run[] = parseClueMarks(fillNames(t(`letters.${m.id}.body`))).map((p) => {
+      if (p.clue && canGetClue(p.clue)) {
+        giveClue(p.clue);
+        return { text: p.text, color: ui.clueText, mark: ui.clueMark };
+      }
+      return { text: p.text, color: ui.text };
+    });
+    const lines = runs.length ? wrapRuns(runs, w) : [];
+    c.add(drawLines(this, lines, x, y, LINE_H));
+    y += lines.length * LINE_H + 6;
+    const from = letterInfo(m.id)?.from ?? 'unknown';
+    const sign = t('mail.sign', { name: t(`names.${from}`), date: `${monthName(m.month)}${dayName(m.day)}` });
+    c.add(pixelText(this, x + w, y, sign, { color: ui.textDim2 }).setOrigin(1, 0));
+    // 附件
+    const items = Object.entries(m.items);
+    if (!items.length && !m.money) return;
+    const S = 20;
+    const ay = box.y + box.h - pad - S - (this.note ? LINE_H : 0);
+    c.add(pixelText(this, x, ay + 4, t('mail.attach'), { color: ui.textDim2 }));
+    let ax = x + 64;
+    for (const [id, n] of items) {
+      const g = this.add.graphics();
+      drawFrame(g, ax, ay, S, S, toColor(ui.innerBorder));
+      c.add(g);
+      drawItemSlot(this, c, ax, ay, S, { id, n });
+      ax += S + 4;
+    }
+    if (m.money) {
+      const money = pixelText(this, ax + 2, ay + 4, t('mail.money', { n: m.money }), { color: ui.money });
+      c.add(money);
+      ax += Math.ceil(money.width) + 10;
+    }
+    this.button(ax, ay + 1, t('mail.take') + (this.touch ? '' : ' ↵'), true, () => this.takeMail());
+    if (this.note) c.add(pixelText(this, x, ay + S + 4, this.note, { color: ui.textDim2, wrap: w }));
+  }
+
+  private pickMail(i: number) {
+    if (i < 0 || i >= gameState.mail.length) return;
+    this.mailSel = i;
+    this.note = '';
+    this.redraw();
+  }
+
+  /** 收下选中那封信的附件：放不下的留在信里 */
+  private takeMail() {
+    const m = gameState.mail[this.mailSel];
+    if (!m || (!Object.keys(m.items).length && !m.money)) return;
+    const { got, money, left } = takeAttachments(m);
+    const parts = Object.entries(got).map(([id, n]) => `${localName(itemInfo(id)?.name)} ×${n}`);
+    if (money) parts.push(t('mail.money', { n: money }));
+    const said = parts.length ? t('mail.taken', { items: parts.join('、') }) : '';
+    this.note = [said, left ? t('mail.bagFull') : ''].filter(Boolean).join(' ');
+    if (said) this.game.events.emit(UI_EVENTS.say, 'mail.taken', { items: parts.join('、') });
+    if (left) this.game.events.emit(UI_EVENTS.say, 'mail.bagFull');
+    this.redraw();
+  }
+
   private scrollBy(dy: number) {
-    if (!this.scrollLayer || this.tab !== 'notebook') return;
+    if (!this.scrollLayer || (this.tab !== 'notebook' && this.tab !== 'mail')) return;
     this.scroll = Phaser.Math.Clamp(this.scroll + dy, 0, this.maxScroll);
     this.scrollLayer.setY(AREA.y + 2 - this.scroll);
   }

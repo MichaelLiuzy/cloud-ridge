@@ -110,6 +110,8 @@ export const SETTINGS = {
      * holdMs 停多久（毫秒）、fadeMs 渐隐多久、maxLines 最多同时几条、maxW 一条最宽多少（超过就折行）、
      * right 离右边多远、gap 条与条之间空多少，字的颜色和描边颜色。
      */
+    /** 读信：信纸底色、边框、信件列表里「没读过」的小红点（有 ui_letter 的图时信纸用图） */
+    letter: { paper: '#EFE4C8', border: '#A8402F', unread: '#A8402F' },
     subtitle: { holdMs: 3000, fadeMs: 600, maxLines: 3, maxW: 260, right: 8, gap: 2, color: '#EFE4C8', stroke: '#2B2622' },
     /**
      * 界面层比地图细几倍。地图按 320×180 放大；界面按「地图倍数 ÷ 这个数」放大，

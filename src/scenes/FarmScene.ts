@@ -13,7 +13,8 @@ import { SETTINGS } from '../config/settings';
 import { VIEW, VIEW_EVENTS } from '../config/view';
 import { GROUND_TILES, WALK_SHEET, frameIndex } from '../config/assets';
 import { PALETTE, toColor } from '../config/palette';
-import { BASKET_CELL, FARM_MAP, HOUSE_SITE, TILE_TYPES, scatterRuins } from '../world/farmMap';
+import { BASKET_CELL, FARM_MAP, HOUSE_SITE, MAILBOX_CELL, TILE_TYPES, scatterRuins } from '../world/farmMap';
+import { deliverMail, hasUnreadMail } from '../systems/mail';
 import { PLAIN_ACTIONS, heldActionFor, rollAmount, type CropState, type HeldAction } from '../world/actions';
 import { KeyboardControls } from '../input/Controls';
 import { PLACEHOLDERS } from './BootScene';
@@ -96,6 +97,8 @@ export class FarmScene extends Phaser.Scene {
   private cropViews = new Map<string, Phaser.GameObjects.Image>();
   /** 地上掉落的东西的图（「x,y」→ 图） */
   private dropViews = new Map<string, Phaser.GameObjects.Container>();
+  /** 信箱的小旗现在是不是竖着 */
+  private mailFlag = false;
   /** 重建中的老宅的图 */
   private houseImage?: Phaser.GameObjects.Image;
   private houseLight?: LightSpot;
@@ -266,6 +269,11 @@ export class FarmScene extends Phaser.Scene {
       this.showStanding();
     }
     if (!paused && Object.keys(gameState.drops).length) this.pickUpDrops();
+    // 信箱的小旗：有没读的信就竖起来（来信、读信以后跟着变）
+    if (this.mailFlag !== hasUnreadMail()) {
+      this.mailFlag = hasUnreadMail();
+      if (this.grid[MAILBOX_CELL.y]?.[MAILBOX_CELL.x] === 'M') this.refreshTile(MAILBOX_CELL.x, MAILBOX_CELL.y);
+    }
   }
 
   // =================================================================
@@ -444,6 +452,7 @@ export class FarmScene extends Phaser.Scene {
     const kind = this.kindAt(cell);
     if (kind === 'tilled' || kind === 'watered') return t('hint.sowHow');
     if (kind === 'hut' && gameState.hutIsShed) return t('hint.shed');
+    if (kind === 'mailbox' && hasUnreadMail()) return t('hint.mailboxNew');
     const hint = GROUND_KINDS.includes(kind) ? undefined : TILE_TYPES[ch]?.hint;
     return hint ? t(hint) : null;
   }
@@ -512,6 +521,7 @@ export class FarmScene extends Phaser.Scene {
       list.push({ label: t('action.houseStatus'), run: () => this.sayHouseStatus(), needReach: false });
     }
     if (kind === 'hut') list.push({ label: t('action.chest'), run: () => this.scene.launch('GameMenu', { chest: true }), needReach: true });
+    if (kind === 'mailbox') list.push({ label: t('action.mailbox'), run: () => this.scene.launch('GameMenu', { mail: true }), needReach: true });
     for (const plain of PLAIN_ACTIONS) {
       // 草棚改成柴房以后不能睡、不能存档（去老宅）
       if (kind === 'hut' && gameState.hutIsShed) continue;
@@ -934,6 +944,8 @@ export class FarmScene extends Phaser.Scene {
       for (const c of reshuffleDebris(this.grid, this.doorTile)) this.setTile(c, c.ch);
       news.push(['msg.weeklyDebris']);
     }
+    // 驿卒一早送信：有新信就提醒一句（信箱的小旗在 update 里跟着竖起来）
+    if (deliverMail()) news.push(['msg.mailArrived']);
     // 树：长大一点，或者在空地上长出新的（冻土期不长）
     for (const c of treesOvernight(this.grid, isFrozen(clock), this.doorTile)) this.setTile(c, c.ch);
     // 木匠
@@ -1123,7 +1135,9 @@ export class FarmScene extends Phaser.Scene {
     // 不挡路的东西（篱笆门）：没图时不画色块（免得看着像挡路），画的话贴在地面上、人从上面走过
     if (info.object && (info.solid || !PLACEHOLDERS.has(info.object))) {
       const bottom = (ty + 1) * s;
-      view.object = this.add.image(tx * s + s / 2, bottom, info.object, 0).setOrigin(0.5, 1).setDepth(info.solid ? bottom : 0.5);
+      // 信箱：有没读的信时用第 1 格（小旗竖起来）
+      const frame = info.kind === 'mailbox' && hasUnreadMail() ? 1 : 0;
+      view.object = this.add.image(tx * s + s / 2, bottom, info.object, frame).setOrigin(0.5, 1).setDepth(info.solid ? bottom : 0.5);
       if (info.light) {
         this.lightSpots.push({ x: tx * s + s / 2, y: bottom - 22, radius: 30, fire: info.fire ? view.object : undefined });
       }

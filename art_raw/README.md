@@ -47,7 +47,9 @@ ChatGPT 每次出完图会告诉你文件名，照着存就行。
 | `house_old_ruin.png` | 烧毁的老宅（64×64） | 1 格，整栋烧毁的房子。立在宅基地上，四周废墟里的杂草、碎石、焦木（用的是 `debris_` 那几张图）清完、木匠搭好梁架后换成 `house_timber_frame` |
 | `portrait_player.png` | 主角头像 | 1 行 4 格：平常、笑、担忧、惊讶 |
 | `player_walk.png` | 主角走路（以后再画） | 4 行 5 格：每行一个方向（下、左、右、上），每行是站立 + 走路 4 格。有了它游戏会自动改用真的走路动画 |
-| `prop_lantern.png` | 灯笼 | 1 格（16×32） |
+| `prop_lantern.png` | 灯笼（可用火光色） | 1 行 2 格（每格 16×32）：`on` 点着、`off` 灭了 |
+| `prop_mailbox.png` | 家门口的信箱 | 1 行 2 格（每格 16×32，脚底占 1 格）：`empty` 小旗放下、`flag` 小旗竖起露出信封 |
+| `ui_letter.png` | 读信界面的信纸 | 整张画，横版 16:10，四边内侧淡朱红边框，纸面留空；没图时用浅色底加细边框 |
 | `prop_tree.png` | 农场边缘的林子 | 1 格（16×32） |
 | `tree_sapling.png` / `tree_small.png` / `tree_big.png` | 农场里自己长的树：树苗、小树、大树 | 1 格；树苗 16×16，小树 16×32，大树 32×48 |
 | `portrait_zhou.png` / `portrait_doctor.png` / `portrait_fan.png` | 周里正 / 大夫 / 老范的头像 | 同主角头像 |

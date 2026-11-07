@@ -60,6 +60,8 @@ export const zh = {
     daoist: "老道",
     /** 从首都调来的年轻士兵 */
     soldier: "陆安",
+    /** 没署名的信 */
+    unknown: "无名氏",
     /** 主角还没起名字时，对话框上显示的名字 */
     playerUnknown: "？？？",
   },
@@ -282,6 +284,7 @@ export const zh = {
     basketTake: "把筐里的东西拿回来",
     houseStatus: "看看老宅",
     chest: "打开箱子",
+    mailbox: "打开信箱",
   },
 
   // ===== 一格的说明：鼠标停在上面、手机长按、键盘面朝它时显示 =====
@@ -315,6 +318,8 @@ export const zh = {
     shed: "以前住的草棚，现在当柴房用。里面的箱子还在。",
     path: "通往镇上的小路。",
     lantern: "门口挂着一盏灯笼，天黑了会点上。",
+    mailbox: "信箱",
+    mailboxNew: "信箱 · 有新来信",
   },
 
   // ===== 各种提示消息（对话框里显示） =====
@@ -344,6 +349,7 @@ export const zh = {
     bucketEmpty: "水桶空了，去池塘打水吧",
     refilled: "水桶打满了水。",
     weeklyDebris: "新的一周，田里又长出了杂草。",
+    mailArrived: "信箱里好像有东西。",
     noTreeOnField: "田里不能种树。",
     frost: "霜降了。地里 {n} 棵怕冷的菜一夜之间冻死了。",
     dormant: "韭菜的叶子枯了，根还活着，要过冬了。",
@@ -354,6 +360,25 @@ export const zh = {
     taken: "拿回了 {n} 个{name}。",
     debugDays: "（测试）过了 {n} 天，今天是{date}。",
     debugToSunday: "（测试）到本周日了，今天是{date}。今晚睡觉会看到本周总结。",
+  },
+
+  // ===== 信箱 =====
+  mail: {
+    tab: "信箱",
+    empty: "信箱里什么都没有。",
+    sign: "{name} · {date}",
+    attach: "随信附上：",
+    money: "{n} 文",
+    take: "收下",
+    taken: "收下了 {items}",
+    bagFull: "背包满了，先腾点地方吧",
+  },
+
+  /** 信的标题和正文（哪封信什么时候寄到在 src/data/letters.ts）。正文里可以用 <<clue:id=字>> 标黄字线索 */
+  letters: {
+    // 草稿
+    zhou_greeting: { title: "周里正的问候", body: "身子好些了没？缺什么就来镇上找我。地里要是种不过来，先种些小白菜，长得快。这几包种子你先拿着。" },
+    debug_test: { title: "测试信", body: "这是一封测试用的信，附了 1 个馒头和 10 文。" },
   },
 
   // ===== 重建老宅 =====
@@ -488,6 +513,7 @@ export const zh = {
     debugDay1: "测试：直接睡到明天",
     debugDay7: "测试：快进 7 天",
     debugToSunday: "测试：跳到本周日（本周统计不清空）",
+    debugLetter: "测试：寄一封测试信",
     debugBuild: "测试：请木匠修下一阶段（材料不够直接给）",
     debugPickup: "测试：杂货铺掌柜好感加到 200 点（2 颗心）",
     debugChapter: "测试：直接进入下一章",

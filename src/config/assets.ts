@@ -64,6 +64,8 @@ export const ASSETS: Record<string, AssetSpec> = {
   cg_clinic_wake: cg('ochreLight'),
   /** 标题画面背景（没图时标题画面保持纯色底，不画色块） */
   cg_title: cg('ink'),
+  /** 读信界面的信纸（256×160；没图时用浅色底加细边框，不画色块） */
+  ui_letter: { w: 256, h: 160, frames: ['main'], color: 'paper', shape: 'cg' },
 
   // ---- 地面 ----
   /** 农田地面：草地、黄土、锄过的地、浇过水的地、小路、篱笆 */
@@ -91,7 +93,10 @@ export const ASSETS: Record<string, AssetSpec> = {
   tree_sapling: { w: 16, h: 16, frames: ['main'], color: 'leafLight', shape: 'object' },
   tree_small: { w: 16, h: 32, frames: ['main'], color: 'leaf', shape: 'tree' },
   tree_big: { w: 32, h: 48, frames: ['main'], color: 'leafDark', shape: 'tree' },
-  prop_lantern: { w: 16, h: 32, frames: ['main'], color: 'vermilion', shape: 'lantern' },
+  /** 门口的灯笼：开着、关着 */
+  prop_lantern: { w: 16, h: 32, frames: ['on', 'off'], color: ['vermilion', 'ash'], shape: 'lantern' },
+  /** 家门口的信箱：没信（小旗放下）、有新信（小旗竖起） */
+  prop_mailbox: { w: 16, h: 32, frames: ['empty', 'flag'], color: ['brown', 'vermilion'], shape: 'object' },
 
   // ---- 房子 ----
   house_straw_hut: { w: 48, h: 48, frames: ['main'], color: 'ochreLight', shape: 'building' },

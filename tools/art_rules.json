@@ -89,10 +89,22 @@
       "out": "objects/tree_{id}.png"
     },
     {
+      "name": "prop_lantern",
+      "fire": true,
+      "rows": 1, "cols": 2, "cell": [16, 32],
+      "frames": ["on", "off"],
+      "out": "objects/prop_lantern.png"
+    },
+    {
+      "name": "prop_mailbox",
+      "rows": 1, "cols": 2, "cell": [16, 32],
+      "frames": ["empty", "flag"],
+      "out": "objects/prop_mailbox.png"
+    },
+    {
       "name": "prop_{id}",
       "rows": 1, "cols": 1, "cell": [16, 32],
-      "sizes": { "tree": [16, 32], "lantern": [16, 32], "basket": [16, 16], "gate": [16, 16] },
-      "fire": ["lantern"],
+      "sizes": { "tree": [16, 32], "basket": [16, 16], "gate": [16, 16] },
       "frames": ["main"],
       "out": "objects/prop_{id}.png"
     },
@@ -180,6 +192,12 @@
       "rows": 1, "cols": 4, "cell": [64, 64],
       "frames": ["normal", "smile", "worried", "surprised"],
       "out": "portraits/portrait_{id}.png"
+    },
+    {
+      "name": "ui_letter",
+      "full": true,
+      "rows": 1, "cols": 1, "cell": [256, 160],
+      "out": "ui/ui_letter.png"
     },
     {
       "name": "cg_{id}",

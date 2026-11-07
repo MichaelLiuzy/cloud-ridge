@@ -6,7 +6,8 @@
  *  读档时会一步一步升级，所以很早以前的存档也能继续玩。
  */
 
-import { FARM_MAP, RUIN_TILES } from '../../world/farmMap';
+import { FARM_MAP, MAILBOX_CELL, RUIN_TILES } from '../../world/farmMap';
+import type { MailEntry } from '../mail';
 import type { PlantedCrop } from '../farming/crops';
 import { slotsFromOld, type Slot } from '../inventory';
 import { emptyWeek, type WeekStats } from '../weekStats';
@@ -14,7 +15,7 @@ import { chestFromOld } from '../home/storage';
 import type { Weather } from '../../data/types';
 import { TIME } from '../../data/time';
 
-export const SAVE_VERSION = 12;
+export const SAVE_VERSION = 13;
 
 /** 存档里存了什么 */
 export interface SaveData {
@@ -47,6 +48,10 @@ export interface SaveData {
   drops: Record<string, Record<string, number>>;
   /** 田里的杂物上次是哪天重新摆的（「月-日」） */
   debrisDay: string;
+  /** 信箱里的信（哪封、哪天到、读过没有、还没收下的附件） */
+  mail: MailEntry[];
+  /** 已经寄出过的信 id */
+  mailSent: string[];
   /** 重建老宅到第几阶段（0 = 住草棚、废墟没清完；1 = 废墟清完；2~4 = 木匠修好的阶段） */
   houseStage: number;
   /** 废墟清了几格 */
@@ -214,6 +219,13 @@ const MIGRATIONS: Record<number, (old: any) => any> = {
   },
   // 11 → 12：田里的杂物每周一重新摆，记下上次摆的是哪天（旧存档还没摆过）
   11: (old) => ({ ...old, saveVersion: 12, debrisDay: '' }),
+  // 12 → 13：家门口加了信箱（地图上的 M）。旧存档信箱是空的；日期已过的信下一个早上补寄
+  12: (old) => {
+    const farm: string[] = [...old.farm];
+    const { x, y } = MAILBOX_CELL;
+    farm[y] = farm[y].slice(0, x) + 'M' + farm[y].slice(x + 1);
+    return { ...old, saveVersion: 13, farm, mail: [], mailSent: [] };
+  },
 };
 
 /** 把任意版本的存档升级到最新。认不出来的返回 null。 */

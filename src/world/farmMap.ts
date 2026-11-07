@@ -24,6 +24,7 @@
  *    K  重建好的老宅（挡路；第 2 阶段修好后，地基上会自动盖起来，见下面的 HOUSE_SITE）
  *    E  老宅门口（能走）
  *    B  收货筐（挡路；开通杂货铺上门收货后自动出现在 BASKET_CELL）
+ *    M  家门口的信箱（挡路；有新信时竖起小旗，见 src/data/letters.ts）
  *
  *  中间被篱笆 # 围起来的就是 15×12 的农田区（数值来自 src/data/start.ts）。
  *  田有两个门 G：左边小路通进来一个、下面一排篱笆中间一个，都是 2 格宽。
@@ -38,7 +39,7 @@ export const FARM_MAP: string[] = [
   'T..HHH.RRQQQQRRR......~~.T',
   'T..HHH.RRQQQQRRR.....~~~.T',
   'T..LD..RRQQQQRRR......~..T',
-  'T...=..RRRRRRRRR.........T',
+  'T...=M.RRRRRRRRR.........T',
   'T...=.#################..T',
   'T...=.#ooo.....g.....x#..T',
   'T...=.#ooo..r.....g..x#..T',
@@ -106,6 +107,7 @@ export const TILE_TYPES: Record<string, TileType> = {
   '_': { kind: 'site', solid: false, hint: 'hint.site', ground: 'dirt' },
   'K': { kind: 'house', solid: true, hint: 'hint.house', ground: 'dirt' },
   'E': { kind: 'path', solid: false, hint: 'hint.house', ground: 'path' },
+  'M': { kind: 'mailbox', solid: true, hint: 'hint.mailbox', ground: 'grass', object: 'prop_mailbox' },
   'B': { kind: 'basket', solid: true, hint: 'hint.basket', ground: 'grass', object: 'prop_basket' },
   'L': { kind: 'lantern', solid: true, hint: 'hint.lantern', ground: 'grass', object: 'prop_lantern', light: true, fire: true },
 };
@@ -122,6 +124,9 @@ export const HOUSE_SITE = {
 
 /** 收货筐放在哪一格（开通上门收货后出现） */
 export const BASKET_CELL = { x: 6, y: 4 };
+
+/** 信箱在哪一格（地图上的 M；旧存档读进来时补上） */
+export const MAILBOX_CELL = { x: 5, y: 5 };
 
 /** 地图上一共有几格废墟 */
 export const RUIN_TILES = FARM_MAP.reduce((n, row) => n + [...row].filter((ch) => ch === 'R').length, 0);
