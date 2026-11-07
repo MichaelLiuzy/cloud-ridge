@@ -37,6 +37,7 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
 - **点草棚**会出床边菜单：「睡觉」= 结束这一天并自动存档；「存档（不睡）」= 白天也能存，存完接着玩。
   时间、位置、体力、钱、每一格田（包括今天浇没浇水）都会记下来。
 - **临时进度**：游戏切到后台（切 app、锁屏、关网页）时会自动存一份，和存档位分开。下次打开会问你要不要接着玩。
+- **查看存档**：标题画面「查看存档」列出每个存档的名字、日期、钱、章节、游玩时长和存档时间，选一个可以删除（会先问一次）。游玩时长只算在玩的时候，标题画面、切到后台、开着设置都不算。
 - **备份**：游戏里按 M（或点「菜单」）→「导出存档」，会下载一个 `.json` 文件；标题画面「导入存档」可以把它读回来，换设备也能用。
 
 **iPhone 离线玩：** 用 Safari 打开游戏网址 → 点「分享」→「添加到主屏幕」。之后从主屏幕图标打开，没网也能玩，存档也不容易被系统清掉。
@@ -68,7 +69,8 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
 |---|---|---|
 | 走路速度 | `src/config/settings.ts` | `playerSpeed` |
 | 开场过场不操作时，等几秒自动翻页 | `src/config/settings.ts` | `cutscene.autoAdvanceMs` |
-| 过场某一格单独停久一点或短一点 | `src/data/cutscenes.ts` | 那一格的 `autoMs` |
+| 过场某一格单独停久一点或短一点 | `src/data/cutscenes.ts` | 那一格的 `autoMs`（医馆醒来那一格现在是 3000，停 3 秒再进对话） |
+| 「查看存档」每个存档显示的字（名字、日期、章节、游玩时长……） | `src/locales/zh.ts` | `title.summary`、`title.playHours`、`title.deleteAsk` |
 | 过场时最上方「按任意键翻页」的提示：文字 / 颜色、透明度、闪烁快慢 | `src/locales/zh.ts`、`src/config/settings.ts` | `cutscene.hintKey`、`cutscene.hintTap`；`cutscene.hintColor`、`hintAlpha`、`hintBlinkMs` |
 | 被墙角、门框卡住时自动往通道挪多少（贴边滑入） | `src/config/settings.ts` | `cornerSlidePixels`（0 = 关掉） |
 | 按键（比如把背包改成 B） | `src/config/settings.ts` | `keys` 里的 `bag: ['Q']` 改成 `['B']`；所有界面（背包、设置、数量框、对话）都认这里的键，背包里整理 / 丢弃 / 上锁 / 吃 / 放进箱子、翻页也在这里（`bagSort`、`bagDiscard`……），按钮上的字母跟着变 |
@@ -175,7 +177,7 @@ src/
   world/actions.ts     ★ 拿着什么、对着什么就做什么（顺手规则表、床边菜单）
   scenes/
     BootScene.ts       读美术图；缺的画占位色块
-    TitleScene.ts      标题画面：继续 / 新游戏 / 导入存档
+    TitleScene.ts      标题画面：新游戏 / 继续 / 查看存档 / 导入存档
     FarmScene.ts       农场：地图、走路、点东西、开垦浇水、睡觉存档
     AtmosphereScene.ts 昼夜色层、灯笼光圈、回忆模式
     HudScene.ts        界面：日期时间体力、工具栏、对话框、小菜单、手机按钮

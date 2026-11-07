@@ -12,7 +12,7 @@ import type { WeekStats } from '../weekStats';
 import type { Weather } from '../../data/types';
 import type { PrologueStep } from '../GameState';
 
-export const SAVE_VERSION = 16;
+export const SAVE_VERSION = 17;
 
 /** 存档里存了什么 */
 export interface SaveData {
@@ -75,6 +75,8 @@ export interface SaveData {
   selected: number;
   /** 重要物品（笔记本、烧焦的纸）：不占格子 */
   keyItems: Record<string, number>;
+  /** 游玩时长（毫秒，现实时间） */
+  playMs: number;
   /** 农场地图（每行一串字符，含开垦、浇水情况），见 src/world/farmMap.ts */
   farm: string[];
   /** 镇上的人：好感度、位置和状态（位置等有小镇地图后再加） */
@@ -132,6 +134,7 @@ export const SAVED_KEYS = [
   'clues',
   'playerName',
   'chapter',
+  'playMs',
   'notebook',
   'prologue',
 ] as const;

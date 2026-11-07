@@ -60,16 +60,19 @@ export class ListMenu {
       titleText = pixelText(scene, w / 2, top, opts.title, { wrap: w - PAD * 2 - 4, align: 'center', title: true }).setOrigin(0.5, 0);
       top += Math.ceil(titleText.height) + 3;
     }
+    // 每行至少 ROW_H 高；选项写了两行字（比如「查看存档」）就跟着变高
+    let y = top;
     options.forEach((_, i) => {
-      const y = top + i * ROW_H;
-      const row = scene.add.rectangle(PAD, y, w - PAD * 2, ROW_H, toColor(ui.highlight), 0).setOrigin(0);
+      const rowH = Math.max(ROW_H, Math.ceil(labels[i].height) + 4);
+      const row = scene.add.rectangle(PAD, y, w - PAD * 2, rowH, toColor(ui.highlight), 0).setOrigin(0);
       row.setInteractive().on('pointerdown', () => this.choose(i));
       row.on('pointerover', () => this.highlight(i));
-      labels[i].setPosition(PAD + 4, Math.round(y + (ROW_H - labels[i].height) / 2));
+      labels[i].setPosition(PAD + 4, Math.round(y + (rowH - labels[i].height) / 2));
       items.push(row, labels[i]);
       this.rows.push(row);
+      y += rowH;
     });
-    const h = top + options.length * ROW_H + PAD;
+    const h = y + PAD;
     drawPanel(bg, 0, 0, w, h);
     if (titleText) {
       items.push(titleText);

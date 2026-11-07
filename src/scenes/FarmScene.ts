@@ -19,7 +19,7 @@ import { deliverMail, hasUnreadMail } from '../systems/mail';
 import { PLAIN_ACTIONS, heldActionFor, rollAmount, type CropState, type HeldAction } from '../world/actions';
 import { KeyboardControls, isTouchDevice } from '../input/Controls';
 import { PLACEHOLDERS } from './BootScene';
-import { gameState } from '../systems/GameState';
+import { addPlayTime, gameState } from '../systems/GameState';
 import { addItem, countItem, heldItem, inventoryCounts, itemInfo, itemName, roomFor, takeFromSlot } from '../systems/inventory';
 import { basketPrice } from '../systems/economy/shop';
 import { CROP_LOOKS, cropFromSeed, cropInfo, cropLook, growOvernight, harvest, inSowWindow, isFrozen, isRipe, nextSowTerm, plant } from '../systems/farming/crops';
@@ -237,6 +237,7 @@ export class FarmScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number) {
+    addPlayTime(this, delta);
     const paused = gameState.uiBusy || gameState.menuOpen;
     if (gameState.clock) gameState.clock.paused = paused;
     gameState.clock?.update(delta);

@@ -15,7 +15,7 @@ import { loadPrefs } from '../systems/prefs';
 import { PALETTE, toColor } from '../config/palette';
 import { CUTSCENES, type CutsceneFrame } from '../data/cutscenes';
 import { t } from '../locales/i18n';
-import { gameState, type PrologueStep } from '../systems/GameState';
+import { addPlayTime, gameState, type PrologueStep } from '../systems/GameState';
 import { currentSave } from '../systems/save/snapshot';
 import { saveToSlot } from '../systems/save/saveManager';
 import { isTouchDevice, keyIs } from '../input/Controls';
@@ -83,8 +83,8 @@ export class StoryScene extends Phaser.Scene {
       this.dialogue = new DialogueBox(overlay);
       this.showHint();
       if (data?.step === 'clinic') {
-        this.index = this.frames.length - 1;
-        this.showFrame(this.frames[this.index], true);
+        this.showFrame(this.frames[this.frames.length - 1], true);
+        this.index = this.frames.length;
         this.startClinic();
       } else {
         this.next();
@@ -106,9 +106,10 @@ export class StoryScene extends Phaser.Scene {
     this.next();
   }
 
-  /** 自动翻页：出场效果播完后开始计时，到时间没操作就翻下一格（对话里、最后一格不翻） */
-  update() {
-    if (!this.dialogue || this.leaving || this.dialogue.active || this.index < 0 || this.index >= this.frames.length - 1) return;
+  /** 自动翻页：出场效果播完后开始计时，到时间没操作就翻下一格（最后一格到时间就进医馆对话；对话里不翻） */
+  update(_time: number, delta: number) {
+    addPlayTime(this, delta);
+    if (!this.dialogue || this.leaving || this.dialogue.active || this.index < 0 || this.index >= this.frames.length) return;
     if (this.effects.some((tw) => tw.isPlaying())) return;
     const now = this.time.now;
     if (this.settledAt === null) this.settledAt = now;
@@ -139,18 +140,10 @@ export class StoryScene extends Phaser.Scene {
   private next() {
     this.index += 1;
     this.settledAt = null;
-    if (this.index >= this.frames.length) return;
-    const frame = this.frames[this.index];
-    this.showFrame(frame);
-    if (this.index === this.frames.length - 1) {
-      // 最后一格：进入医馆对话，这张图留着当背景
-      this.time.delayedCall(700, () => {
-        if (!this.dialogue?.active) {
-          for (const tw of this.effects) tw.complete();
-          this.startClinic();
-        }
-      });
-    }
+    // 最后一格停够了（或按了键）：进入医馆对话，这张图留着当背景
+    if (this.index === this.frames.length) return this.startClinic();
+    if (this.index > this.frames.length) return;
+    this.showFrame(this.frames[this.index]);
   }
 
   /** 画一格 */

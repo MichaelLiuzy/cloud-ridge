@@ -1,5 +1,5 @@
 /**
- * 标题画面：游戏名 + 「继续游戏 / 新游戏 / 导入存档」。
+ * 标题画面：游戏名 + 「新游戏 / 继续游戏 / 查看存档 / 导入存档」。
  *  - 如果上次没存档就离开了（切到后台时自动存了临时进度），会先问要不要接着玩。
  *  - 游戏名在 src/locales/zh.ts 的 game.title 里改。
  */
@@ -17,7 +17,7 @@ import { describeClock } from '../systems/Clock';
 import { gameState, resetGameState } from '../systems/GameState';
 import { currentSave } from '../systems/save/snapshot';
 import type { SaveData } from '../systems/save/saveFormat';
-import { clearTemp, listSlots, loadTemp, parseImport, saveToSlot, slotLabel } from '../systems/save/saveManager';
+import { clearTemp, deleteSlot, listSlots, loadTemp, parseImport, saveSummary, saveToSlot, slotLabel } from '../systems/save/saveManager';
 
 export class TitleScene extends Phaser.Scene {
   private menu?: ListMenu;
@@ -107,10 +107,37 @@ export class TitleScene extends Phaser.Scene {
     const slots = await listSlots();
     const any = slots.some(Boolean);
     this.show([
-      { label: t('title.continue'), run: () => this.slotMenu('continue'), disabled: !any },
       { label: t('title.newGame'), run: () => this.slotMenu('new') },
+      { label: t('title.continue'), run: () => this.slotMenu('continue'), disabled: !any },
+      { label: t('title.viewSaves'), run: () => this.viewSaves() },
       { label: t('title.importSave'), run: () => this.importFlow() },
     ]);
+  }
+
+  /** 查看存档：每个存档位（和临时进度）两行摘要，选一个可以删除 */
+  private async viewSaves() {
+    const slots = await listSlots();
+    const temp = await loadTemp();
+    const options: MenuOption[] = slots.map((save, i) =>
+      save
+        ? { label: saveSummary(save, t('title.slotName', { n: i + 1 })), run: () => this.confirmDelete(save, () => deleteSlot(i + 1)) }
+        : { label: t('title.slotEmpty', { n: i + 1 }), disabled: true, run: () => {} },
+    );
+    if (temp) options.push({ label: saveSummary(temp, t('title.temp')), run: () => this.confirmDelete(temp, clearTemp) });
+    options.push({ label: t('title.back'), run: () => this.mainMenu() });
+    this.show(options, t('title.viewTitle'), () => this.mainMenu());
+  }
+
+  private confirmDelete(save: SaveData, remove: () => Promise<void>) {
+    const back = () => this.viewSaves();
+    this.show(
+      [
+        { label: t('title.deleteNo'), run: back },
+        { label: t('title.deleteYes'), run: async () => { await remove(); void this.viewSaves(); } },
+      ],
+      t('title.deleteAsk', { name: save.playerName || t('names.playerUnknown') }),
+      back,
+    );
   }
 
   /** 选存档位：继续 / 新游戏 / 放导入的存档 */

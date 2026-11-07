@@ -8,7 +8,10 @@
 import { storage } from './storage';
 import { migrate, type SaveData } from './saveFormat';
 import { describeClock } from '../Clock';
-import { t } from '../../locales/i18n';
+import { dayName, monthName, weekNumber } from '../days';
+import { CHAPTERS } from '../../data/clues';
+import { localName, t } from '../../locales/i18n';
+import { fillNames } from '../../story/text';
 
 export const SLOT_COUNT = 3;
 const slotKey = (n: number) => `slot${n}`;
@@ -34,6 +37,11 @@ export async function listSlots(): Promise<(SaveData | null)[]> {
   return out;
 }
 
+/** 删掉一个存档位（删了就没了） */
+export async function deleteSlot(n: number) {
+  await storage.remove(slotKey(n));
+}
+
 export async function saveTemp(data: SaveData) {
   await storage.set(TEMP_KEY, JSON.stringify(data));
 }
@@ -55,6 +63,30 @@ export function exportText(data: SaveData) {
 /** 存档位那一行字：「存档 1：正月十八 午时 · 500 文」，空的是「存档 1：（空）」 */
 export function slotLabel(save: SaveData | null, n: number) {
   return save ? t('title.slotFull', { n, ...describeClock(save.clock), cash: save.cash }) : t('title.slotEmpty', { n });
+}
+
+/**
+ * 「查看存档」里一个存档的两行摘要（直接从存档里读，不用进游戏）：
+ * 「存档1　阿木　正月十六 · 第 1 周　500 文」/「序章：醒来　玩了 3 小时 25 分　11月7日 14:30 存」
+ * which = 「存档1」或「临时进度」
+ */
+export function saveSummary(save: SaveData, which: string) {
+  const { month, day } = save.clock;
+  const mins = Math.floor((save.playMs ?? 0) / 60000);
+  const play = mins >= 60 ? t('title.playHours', { h: Math.floor(mins / 60), m: mins % 60 }) : t('title.playMinutes', { m: mins });
+  const chapter = Object.values(CHAPTERS).find((c) => c.number === save.chapter);
+  const at = new Date(save.savedAt);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return t('title.summary', {
+    which,
+    name: save.playerName || t('names.playerUnknown'),
+    date: t('hud.shortDate', { month: monthName(month), day: dayName(day) }),
+    week: weekNumber(month, day),
+    cash: save.cash,
+    chapter: chapter ? fillNames(localName(chapter.name)) : '',
+    play,
+    saved: t('title.savedAt', { mo: at.getMonth() + 1, d: at.getDate(), time: `${pad(at.getHours())}:${pad(at.getMinutes())}` }),
+  });
 }
 
 export function parseImport(text: string): SaveData | null {

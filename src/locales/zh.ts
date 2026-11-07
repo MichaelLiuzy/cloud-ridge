@@ -40,6 +40,18 @@ export const zh = {
     discard: "不用了",
     importBad: "这个文件读不出来，不是云岭的存档，或者已经损坏了。",
     importDone: "已导入到存档{n}。",
+    /** 「查看存档」：每个存档两行字；选一个可以删除 */
+    viewSaves: "查看存档",
+    viewTitle: "存档一览（选一个可以删除）",
+    temp: "临时进度",
+    slotName: "存档{n}",
+    summary: "{which}　{name}　{date} · 第 {week} 周　{cash} 文\n{chapter}　玩了 {play}　{saved}",
+    playHours: "{h} 小时 {m} 分",
+    playMinutes: "{m} 分钟",
+    savedAt: "{mo}月{d}日 {time} 存",
+    deleteAsk: "删除后无法恢复，确定要删除「{name}」的存档吗？",
+    deleteYes: "删除",
+    deleteNo: "不要",
   },
 
   // ===== 左上角：日期、时间、钱、体力 =====

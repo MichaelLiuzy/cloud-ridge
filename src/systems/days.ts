@@ -6,6 +6,7 @@
  *  - 天气：每天早上 6 点按季节概率抽一次（weather.chances），每月 1 日固定（weather.firstDayOfMonth）。
  */
 import { TIME } from '../data/time';
+import { START } from '../data/start';
 import type { Weather } from '../data/types';
 import { localName, t } from '../locales/i18n';
 
@@ -24,6 +25,14 @@ export function weekdayName(day: number) {
 /** 今天是不是周日（一周的最后一天） */
 export function isLastDayOfWeek(day: number) {
   return weekdayIndex(day) === cal.daysPerWeek - 1;
+}
+
+/** 开局那天算第 1 周，这一天是第几周（周一换周；按 12 个月循环，以后有「第几年」再改） */
+export function weekNumber(month: number, day: number) {
+  const perMonth = Math.ceil(cal.daysPerMonth / cal.daysPerWeek);
+  const index = (m: number, d: number) => (m - 1) * perMonth + Math.floor((d - 1) / cal.daysPerWeek);
+  const n = index(month, day) - index(START.startDay.month, START.startDay.day);
+  return (n < 0 ? n + cal.months.length * perMonth : n) + 1;
 }
 
 /** 「正月」「二月」…… */

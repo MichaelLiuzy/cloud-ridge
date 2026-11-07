@@ -34,6 +34,6 @@ export const CUTSCENES: Record<string, CutsceneFrame[]> = {
     { image: 'cg_hospital_bed', text: 'cutscene.opening.hospital', effect: 'fade' },
     { image: null, effect: 'swirl', autoMs: 800 },
     { image: null, text: 'cutscene.opening.timePassed', effect: 'black', autoMs: 3000 },
-    { image: 'cg_clinic_wake', text: 'cutscene.opening.clinic', effect: 'fade' },
+    { image: 'cg_clinic_wake', text: 'cutscene.opening.clinic', effect: 'fade', autoMs: 3000 },  // 最后一格：停 3 秒（按键可提前）再进医馆对话
   ],
 };

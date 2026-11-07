@@ -83,6 +83,8 @@ function freshState() {
     clues: [] as string[],
     /** 玩家起的名字（还没起是空的） */
     playerName: '',
+    /** 游玩时长（毫秒，现实时间）：只算在玩的时候，标题画面、切到后台、开着设置都不算 */
+    playMs: 0,
     /** 现在是第几章（0 = 序章） */
     chapter: 0,
     /** 笔记本「操作」「已学会」两栏记了哪些条目（条目 id，文字在语言文件 notebook 里） */
@@ -108,6 +110,14 @@ function freshState() {
 }
 
 export const gameState = freshState();
+
+/**
+ * 累计游玩时长（农场、开场过场每帧调用）。开着设置时不算；切到后台时浏览器不刷新画面，自然也不算。
+ * 一帧最多算 250 毫秒，免得卡顿或从后台回来时一下子加很多。
+ */
+export function addPlayTime(scene: { scene: { isActive(key: string): boolean } }, delta: number) {
+  if (!scene.scene.isActive('Settings')) gameState.playMs += Math.min(delta, 250);
+}
 
 /** 开新游戏 / 回标题时，把状态清空回开局 */
 export function resetGameState(slot: number, load: SaveData | null = null) {
