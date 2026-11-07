@@ -4,10 +4,14 @@
  *  - 旁白：不显示名字和头像，字用另一种颜色。
  *  - 黄字：<<clue:id=字>>，这条线索能拿时标黄并给线索；不能拿时按普通字显示。
  *  - 一句太长时分几页，点一下翻一页。
- * 位置和颜色按 320×180 的画面排，颜色在 src/config/settings.ts 的 ui 里。
+ *  - 字一个一个出来（快慢看设置里的「文字速度」）；还没出完时点一下，先全部显示。
+ * 对话框画在界面层，整体再放大 SETTINGS.ui.dialogueScale 倍（比别的界面字大一档）；
+ * 里面按「界面大小 ÷ 放大倍数」（大约 320×180）排版。颜色在 src/config/settings.ts 的 ui 里。
  */
 import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
+import { VIEW, uiSize } from '../config/view';
+import { loadPrefs } from '../systems/prefs';
 import { MOOD_FRAMES } from '../config/assets';
 import { t } from '../locales/i18n';
 import { DialogueRunner, type DialogueLine } from '../story/runner';
@@ -18,9 +22,26 @@ import { askName } from './nameInput';
 import { drawPanel, pixelText } from './pixelUi';
 import { drawLines, wrapRuns, type Run } from './richText';
 
-const BOX = { x: 4, y: 124, w: 312, h: 52 };
-const TEXT = { x: 11, y: 129, w: 298, lineH: 14, lines: 3 };
-const PORTRAIT = { x: 4, y: 54, size: 64 };
+/** 框、字、头像的位置：按对话框自己的坐标（界面大小 ÷ 放大倍数）算，底部居中 */
+function layout() {
+  const { w: uw, h: uh } = uiSize();
+  // 放大倍数：按屏幕真实像素算，保证是整数倍（字才清楚）。
+  // 先用「界面倍数 × dialogueScale」，屏幕太窄（放不下 300 宽）就一档档减小，但不小于界面倍数。
+  let px = VIEW.ui * Math.max(1, SETTINGS.ui.dialogueScale);
+  while (px > VIEW.ui && VIEW.canvasW / px < 300) px -= 1;
+  const scale = px / VIEW.ui;
+  const lw = Math.floor(uw / scale);
+  const lh = Math.floor(uh / scale);
+  const w = Math.min(lw - 8, 400);
+  const x = Math.round((lw - w) / 2);
+  const BOX = { x, y: lh - 56, w, h: 52 };
+  return {
+    scale,
+    BOX,
+    TEXT: { x: x + 7, y: BOX.y + 5, w: w - 14, lineH: 14, lines: 3 },
+    PORTRAIT: { x, y: BOX.y - 70, size: 64 },
+  };
+}
 
 export class DialogueBox {
   private container: Phaser.GameObjects.Container;
@@ -32,10 +53,25 @@ export class DialogueBox {
   private waiting = false;
   private onDone?: () => void;
 
+  /** 逐字显示：每个字的文字对象和完整内容；timer 每次多显示一个字 */
+  private typing: { obj: Phaser.GameObjects.Text; full: string }[] = [];
+  private typed = 0;
+  private typeTimer?: Phaser.Time.TimerEvent;
+  private L = layout();
+
   constructor(private scene: Phaser.Scene) {
     this.container = scene.add.container(0, 0).setDepth(70).setVisible(false);
-    this.arrow = pixelText(scene, BOX.x + BOX.w - 12, BOX.y + BOX.h - 14, t('cutscene.next'), { color: SETTINGS.ui.text }).setDepth(71).setVisible(false);
+    this.arrow = pixelText(scene, 0, 0, t('cutscene.next'), { color: SETTINGS.ui.text }).setDepth(71).setVisible(false);
+    this.relayout();
     scene.tweens.add({ targets: this.arrow, alpha: 0.2, duration: 500, yoyo: true, repeat: -1 });
+  }
+
+  /** 按现在的界面大小重新算位置（界面大小变了以后，下一句开始生效） */
+  private relayout() {
+    this.L = layout();
+    const { BOX, scale } = this.L;
+    this.container.setScale(scale);
+    this.arrow.setScale(scale).setPosition((BOX.x + BOX.w - 12) * scale, (BOX.y + BOX.h - 14) * scale);
   }
 
   /** 正在播吗 */
@@ -54,6 +90,7 @@ export class DialogueBox {
   /** 点一下 / 回车：翻页或者下一句 */
   advance() {
     if (!this.runner || this.waiting) return;
+    if (this.typeTimer) return this.finishTyping();
     if (this.page < this.pages.length - 1) {
       this.page += 1;
       this.drawPage();
@@ -93,6 +130,8 @@ export class DialogueBox {
     this.applyTags(line);
 
     // 框、头像、名字
+    this.relayout();
+    const { BOX, PORTRAIT, TEXT } = this.L;
     this.container.removeAll(true);
     const g = this.scene.add.graphics();
     drawPanel(g, BOX.x, BOX.y, BOX.w, BOX.h);
@@ -126,10 +165,51 @@ export class DialogueBox {
   }
 
   private drawPage(narration = false) {
+    const { TEXT } = this.L;
     for (const o of this.content) o.destroy();
     const lines = this.pages[this.page];
     this.content = drawLines(this.scene, lines, TEXT.x, TEXT.y, TEXT.lineH, narration ? 'center' : 'left', TEXT.w);
     this.container.add(this.content);
+    this.startTyping();
+  }
+
+  /** 字一个一个出来（设置里的「文字速度」；「立即」就直接全出来） */
+  private startTyping() {
+    this.typeTimer?.remove();
+    this.typeTimer = undefined;
+    this.typing = this.content
+      .filter((o): o is Phaser.GameObjects.Text => o instanceof Phaser.GameObjects.Text)
+      .map((obj) => ({ obj, full: obj.text }));
+    const ms = SETTINGS.textSpeedMs[loadPrefs().textSpeed] ?? 0;
+    if (ms <= 0 || !this.typing.length) return this.finishTyping();
+    for (const it of this.typing) it.obj.setText('');
+    // 黄字底下的深色底块等文字出来再显示
+    for (const o of this.content) if (!(o instanceof Phaser.GameObjects.Text)) (o as unknown as Phaser.GameObjects.Components.Visible).setVisible?.(false);
+    this.typed = 0;
+    this.arrow.setVisible(false);
+    const total = this.typing.reduce((n, it) => n + [...it.full].length, 0);
+    this.typeTimer = this.scene.time.addEvent({
+      delay: ms,
+      loop: true,
+      callback: () => {
+        this.typed += 1;
+        let left = this.typed;
+        for (const it of this.typing) {
+          const chars = [...it.full];
+          it.obj.setText(chars.slice(0, Math.max(0, left)).join(''));
+          left -= chars.length;
+        }
+        if (this.typed >= total) this.finishTyping();
+      },
+    });
+  }
+
+  private finishTyping() {
+    this.typeTimer?.remove();
+    this.typeTimer = undefined;
+    for (const it of this.typing) it.obj.setText(it.full);
+    for (const o of this.content) (o as unknown as Phaser.GameObjects.Components.Visible).setVisible?.(true);
+    this.typing = [];
     this.arrow.setVisible(!this.waiting);
   }
 
@@ -147,6 +227,9 @@ export class DialogueBox {
   }
 
   private finish() {
+    this.typeTimer?.remove();
+    this.typeTimer = undefined;
+    this.typing = [];
     this.runner = undefined;
     this.container.removeAll(true);
     this.content = [];

@@ -27,7 +27,7 @@ export const INPUT_EVENTS = {
   toolSlot: 'input:toolSlot',
   /** 方向键按了一下（用于在小菜单里上下选）。参数：'up' | 'down' */
   nav: 'input:nav',
-  /** 点了屏幕（鼠标或手指）。参数：屏幕坐标 x, y */
+  /** 点了屏幕（鼠标或手指）。参数：界面坐标 x, y */
   tap: 'input:tap',
   /** （测试用）切换回忆模式 */
   debugMemory: 'input:debugMemory',
@@ -106,25 +106,28 @@ export class PointerControls {
     const knob = scene.add.circle(0, 0, Math.round(cfg.joystickRadius * 0.45), toColor(SETTINGS.ui.panel), 0.5).setDepth(101).setVisible(false);
     if (touch) scene.input.addPointer(2); // 允许同时按住摇杆和点别处
 
+    // 手指 / 鼠标在界面上的位置（画布坐标按这个场景的镜头换算）
+    const ui = (p: Phaser.Input.Pointer) => scene.cameras.main.getWorldPoint(p.x, p.y);
+
     scene.input.on('pointerdown', (p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
       if (over.length > 0) return; // 点在界面上了
       if (touch && p.x < scene.scale.width / 2 && stickId === null) {
         // 左半屏：先当作摇杆，抬手时如果很快、没怎么动，再算作「点」
         stickId = p.id;
         downAt = p.downTime;
-        downX = p.x;
-        downY = p.y;
-        base.setPosition(p.x, p.y);
-        knob.setPosition(p.x, p.y);
+        downX = ui(p).x;
+        downY = ui(p).y;
+        base.setPosition(ui(p).x, ui(p).y);
+        knob.setPosition(ui(p).x, ui(p).y);
         return;
       }
-      ev.emit(INPUT_EVENTS.tap, p.x, p.y);
+      ev.emit(INPUT_EVENTS.tap, ui(p).x, ui(p).y);
     });
 
     scene.input.on('pointermove', (p: Phaser.Input.Pointer) => {
       if (p.id !== stickId) return;
-      const dx = p.x - base.x;
-      const dy = p.y - base.y;
+      const dx = ui(p).x - base.x;
+      const dy = ui(p).y - base.y;
       const dist = Math.hypot(dx, dy);
       if (dist < cfg.joystickDeadZone) {
         touchMove.x = 0;
@@ -149,7 +152,7 @@ export class PointerControls {
       base.setVisible(false);
       knob.setVisible(false);
       const quick = p.upTime - downAt < cfg.tapMaxMs;
-      const still = Math.hypot(p.x - downX, p.y - downY) < cfg.joystickDeadZone * 2;
+      const still = Math.hypot(ui(p).x - downX, ui(p).y - downY) < cfg.joystickDeadZone * 2;
       if (quick && still) ev.emit(INPUT_EVENTS.tap, downX, downY);
     };
     scene.input.on('pointerup', end);

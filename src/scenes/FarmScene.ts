@@ -10,6 +10,7 @@
  */
 import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
+import { VIEW, VIEW_EVENTS } from '../config/view';
 import { GROUND_TILES, WALK_SHEET, frameIndex } from '../config/assets';
 import { PALETTE, toColor } from '../config/palette';
 import { BASKET_CELL, FARM_MAP, HOUSE_SITE, TILE_TYPES } from '../world/farmMap';
@@ -170,6 +171,11 @@ export class FarmScene extends Phaser.Scene {
     cam.setBackgroundColor(SETTINGS.backgroundColor);
     cam.startFollow(this.feet, true, 0.2, 0.2);
     cam.setRoundPixels(true);
+    // 地图放大 VIEW.world 倍（画布是屏幕的真实像素）；窗口大小变了就跟着改
+    const zoomCam = () => cam.setSize(this.scale.width, this.scale.height).setZoom(VIEW.world);
+    zoomCam();
+    this.game.events.on(VIEW_EVENTS.changed, zoomCam);
+    this.events.once('shutdown', () => this.game.events.off(VIEW_EVENTS.changed, zoomCam));
     if (SETTINGS.debugPhysics) this.physics.world.createDebugGraphic();
 
     // ---- 操作（界面场景先处理，没被对话框/菜单拦下才轮到这里）----
@@ -401,7 +407,8 @@ export class FarmScene extends Phaser.Scene {
 
   /** 点了屏幕上某个位置（鼠标或手指） */
   private tapScreen(sx: number, sy: number) {
-    const p = this.cameras.main.getWorldPoint(sx, sy);
+    // 点的位置是界面坐标：先换成画布坐标，再换成地图坐标
+    const p = this.cameras.main.getWorldPoint(sx * VIEW.ui, sy * VIEW.ui);
     const s = SETTINGS.tileSize;
     const cell = { x: Math.floor(p.x / s), y: Math.floor(p.y / s) };
     if (!this.grid[cell.y]?.[cell.x]) return;

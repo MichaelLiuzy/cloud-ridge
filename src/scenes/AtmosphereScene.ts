@@ -7,6 +7,7 @@
  */
 import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
+import { VIEW_EVENTS, setupWorldCamera } from '../config/view';
 import { ATMOSPHERE } from '../config/atmosphere';
 import { toColor } from '../config/palette';
 import { gameState } from '../systems/GameState';
@@ -30,6 +31,11 @@ export class AtmosphereScene extends Phaser.Scene {
   create() {
     const { gameWidth: w, gameHeight: h } = SETTINGS;
     this.makeBrush();
+    // 和地图一样放大（色层按 320×180 画）
+    setupWorldCamera(this);
+    const rezoom = () => setupWorldCamera(this);
+    this.game.events.on(VIEW_EVENTS.changed, rezoom);
+    this.events.once('shutdown', () => this.game.events.off(VIEW_EVENTS.changed, rezoom));
     this.layer = this.add.renderTexture(0, 0, w, h).setOrigin(0).setDepth(0);
     this.brush = this.make.image({ key: 'light-brush', add: false }).setOrigin(0.5);
     const mem = ATMOSPHERE.memory;
@@ -56,7 +62,7 @@ export class AtmosphereScene extends Phaser.Scene {
       if (light > 0) {
         for (const l of farm.lightSpots) {
           this.brush.setScale(l.radius / BRUSH_R).setAlpha(light);
-          this.layer.erase(this.brush, Math.round(l.x - cam.scrollX), Math.round(l.y - cam.scrollY));
+          this.layer.erase(this.brush, Math.round(l.x - cam.worldView.x), Math.round(l.y - cam.worldView.y));
         }
       }
     }
@@ -68,7 +74,7 @@ export class AtmosphereScene extends Phaser.Scene {
         .setDepth(2));
       glow
         .setVisible(light > 0)
-        .setPosition(Math.round(l.x - cam.scrollX), Math.round(l.y - cam.scrollY))
+        .setPosition(Math.round(l.x - cam.worldView.x), Math.round(l.y - cam.worldView.y))
         .setScale(l.radius / BRUSH_R)
         .setAlpha(light * ATMOSPHERE.light.glowAlpha);
     });
@@ -84,7 +90,7 @@ export class AtmosphereScene extends Phaser.Scene {
       copy
         .setTexture(src.texture.key, src.frame.name)
         .setOrigin(src.originX, src.originY)
-        .setPosition(Math.round(src.x - cam.scrollX), Math.round(src.y - cam.scrollY))
+        .setPosition(Math.round(src.x - cam.worldView.x), Math.round(src.y - cam.worldView.y))
         .setVisible(true);
     });
     this.fireCopies.slice(fires.length).forEach((c) => c.setVisible(false));

@@ -5,6 +5,7 @@
  */
 import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
+import { VIEW_EVENTS, setupWorldCamera } from '../config/view';
 import { t } from '../locales/i18n';
 import { pixelText } from '../ui/pixelUi';
 import { isTouchDevice } from '../input/Controls';
@@ -32,6 +33,11 @@ export class TitleScene extends Phaser.Scene {
     const ui = SETTINGS.ui;
     this.menu = undefined;
     this.cameras.main.setBackgroundColor(ui.titleBg);
+    // 标题画面和地图一样按 320×180 放大
+    setupWorldCamera(this);
+    const rezoom = () => setupWorldCamera(this);
+    this.game.events.on(VIEW_EVENTS.changed, rezoom);
+    this.events.once('shutdown', () => this.game.events.off(VIEW_EVENTS.changed, rezoom));
     // 游戏名：12 像素的字放大 3 倍，保持像素方块
     this.title = pixelText(this, W / 2, 34, t('game.title'), { color: ui.titleText }).setOrigin(0.5).setScale(3);
     this.sub = pixelText(this, W / 2, 60, t('game.subtitle'), { color: ui.titleSubText }).setOrigin(0.5);

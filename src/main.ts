@@ -2,11 +2,13 @@
  * 游戏入口：把所有场景接起来，启动 Phaser。
  * 场景顺序：Boot（读图）→ Title（标题）→ Farm（农场）+ Atmosphere（昼夜色层）+ Hud（界面叠在最上面）
  *
- * 画面：先按 320×180 画，再整数倍放大铺满屏幕，放不满的地方留黑边（美术规范定的）。
+ * 画面：地图按 320×180 画，再整数倍放大铺满屏幕，放不满的地方留黑边（美术规范定的）；
+ * 界面另外按大约 640×360 排版（两倍精度），字小一半但依然清晰。两层的倍数见 src/config/view.ts。
  */
 import Phaser from 'phaser';
 import { registerSW } from 'virtual:pwa-register';
 import { SETTINGS } from './config/settings';
+import { VIEW, VIEW_EVENTS, computeView, cssZoom } from './config/view';
 import { t } from './locales/i18n';
 import { gameState } from './systems/GameState';
 import { BootScene } from './scenes/BootScene';
@@ -16,20 +18,12 @@ import { AtmosphereScene } from './scenes/AtmosphereScene';
 import { HudScene } from './scenes/HudScene';
 import { StoryScene } from './scenes/StoryScene';
 import { GameMenuScene } from './scenes/GameMenuScene';
+import { SettingsScene } from './scenes/SettingsScene';
+import { UiOverlayScene } from './scenes/UiOverlayScene';
 
 document.title = t('game.title');
 const rotate = document.getElementById('rotate');
 if (rotate) rotate.textContent = t('game.rotateDevice');
-
-/**
- * 放大几倍：在屏幕的「真实像素」上取整数倍，这样每个游戏像素都是整整齐齐的小方块。
- * 返回的是网页里的倍数（Retina 屏上可能是 4.5 这种数，换成真实像素就是整数 9）。
- */
-function pixelZoom() {
-  const dpr = window.devicePixelRatio || 1;
-  const fit = Math.min((window.innerWidth * dpr) / SETTINGS.gameWidth, (window.innerHeight * dpr) / SETTINGS.gameHeight);
-  return Math.max(1, Math.floor(fit)) / dpr;
-}
 
 /** 先把像素字体读进来（不然第一屏的字会用系统字体） */
 async function loadFont() {
@@ -43,27 +37,32 @@ async function loadFont() {
 
 async function start() {
   await loadFont();
+  computeView();
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: 'game',
-    width: SETTINGS.gameWidth,
-    height: SETTINGS.gameHeight,
+    width: VIEW.canvasW,
+    height: VIEW.canvasH,
     backgroundColor: SETTINGS.backgroundColor,
     pixelArt: true,
     roundPixels: true,
-    scale: { mode: Phaser.Scale.NONE, zoom: pixelZoom(), autoCenter: Phaser.Scale.CENTER_BOTH },
+    scale: { mode: Phaser.Scale.NONE, zoom: cssZoom(), autoCenter: Phaser.Scale.CENTER_BOTH },
     physics: { default: 'arcade', arcade: { debug: false } },
     input: { activePointers: 3 },
-    scene: [BootScene, TitleScene, StoryScene, FarmScene, AtmosphereScene, HudScene, GameMenuScene],
+    scene: [BootScene, TitleScene, StoryScene, FarmScene, AtmosphereScene, HudScene, GameMenuScene, SettingsScene, UiOverlayScene],
   });
 
-  // 窗口变大小、手机转方向时，重新算放大倍数
+  // 窗口变大小、手机转方向、设置里改了界面大小时，重新算放大倍数；倍数变了就通知各个场景重新排版
   const refit = () => {
-    game.scale.setZoom(pixelZoom());
+    const changed = computeView();
+    if (changed) game.scale.resize(VIEW.canvasW, VIEW.canvasH);
+    game.scale.setZoom(cssZoom());
     game.scale.refresh();
+    if (changed) game.events.emit(VIEW_EVENTS.changed);
   };
   window.addEventListener('resize', refit);
   window.visualViewport?.addEventListener('resize', refit);
+  game.events.on(VIEW_EVENTS.refit, refit);
 
   // 方便调试：在浏览器控制台里可以用 __game、__gameState 看游戏状态
   Object.assign(window, { __game: game, __gameState: gameState });

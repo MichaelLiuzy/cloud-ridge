@@ -8,11 +8,13 @@
  */
 import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
+import { VIEW, VIEW_EVENTS, setupUiCamera, uiSize } from '../config/view';
+import { SETTINGS_EVENTS } from './SettingsScene';
 import { toColor } from '../config/palette';
 import { localName, t } from '../locales/i18n';
 import { INPUT_EVENTS, PointerControls, makeRoundButton } from '../input/Controls';
 import { drawFrame, drawPanel, pixelText } from '../ui/pixelUi';
-import { TINY_DIGIT_H, drawCoin, drawTinyNumber } from '../ui/tinyDigits';
+import { drawCoin } from '../ui/tinyDigits';
 import { DialogueBox } from '../ui/DialogueBox';
 import { askName } from '../ui/nameInput';
 import { CHAPTERS, type ChapterId } from '../data/clues';
@@ -53,8 +55,11 @@ export const UI_EVENTS = {
 } as const;
 
 
-/** 底部工具栏、对话框的大小和位置（左上角时辰框的大小在 settings.ts 的 ui.infoBox） */
-const SLOT = 18;
+/**
+ * 底部工具栏、提示框的大小（界面像素；左上角时辰框的大小在 settings.ts 的 ui.infoBox）。
+ * 工具栏格子随图标放大倍数（settings.ts 的 ui.iconScale）变；提示框整体再放大 ui.dialogueScale 倍。
+ */
+const SLOT = () => 16 * SETTINGS.ui.iconScale + 2;
 const SLOT_GAP = 2;
 const BAR_PAD = 3;
 const DIALOG = { w: 240, h: 46 };
@@ -62,12 +67,20 @@ const DIALOG = { w: 240, h: 46 };
 export class HudScene extends Phaser.Scene {
   private dateText!: Phaser.GameObjects.Text;
   private timeText!: Phaser.GameObjects.Text;
-  /** 时辰框的底板、钱数（迷你数字）、体力条：内容变了才重画 */
+  /** 钟点「6:00 am」（整点才变） */
+  private clockText!: Phaser.GameObjects.Text;
+  private moneyText!: Phaser.GameObjects.Text;
+  private staminaLabel!: Phaser.GameObjects.Text;
+  /** 时辰框的底板、铜钱和体力条：内容变了才重画 */
   private infoBg!: Phaser.GameObjects.Graphics;
   private infoMoney!: Phaser.GameObjects.Graphics;
-  private infoW = 0;
-  private shownCash = -1;
-  private shownStamina = -1;
+  /** 体力条上面的透明感应区，和弹出的「81/100」小提示 */
+  private staminaHit!: Phaser.GameObjects.Zone;
+  private staminaTip?: Phaser.GameObjects.Container;
+  private staminaTipTimer?: Phaser.Time.TimerEvent;
+  private infoKey = '';
+  /** 界面大小变了但正忙着（对话、菜单），等空下来再重新排版 */
+  private relayoutPending = false;
 
   private dialog!: Phaser.GameObjects.Container;
   private dialogText!: Phaser.GameObjects.Text;
@@ -79,6 +92,8 @@ export class HudScene extends Phaser.Scene {
   private naming = false;
   /** 右上角的笔记本图标（拿到笔记本后出现，有新内容会闪） */
   private notebookIcon!: Phaser.GameObjects.Container;
+  /** 右上角的齿轮（设置） */
+  private gearButton!: Phaser.GameObjects.Container;
 
   private toolCursor!: Phaser.GameObjects.Graphics;
   /** 工具栏的所有东西（工具变了时整个重画） */
@@ -98,52 +113,65 @@ export class HudScene extends Phaser.Scene {
   create(data: { touch: boolean }) {
     this.touch = !!data?.touch;
     this.toolSlotX = [];
-    const { gameWidth: W, gameHeight: H } = SETTINGS;
+    this.relayoutPending = false;
+    // 界面层：按大约 640×360 排版（倍数见 src/config/view.ts）
+    setupUiCamera(this);
+    const { w: W, h: H } = uiSize();
     const ui = SETTINGS.ui;
 
-    // ---- 左上角时辰框：第一行日期、时辰；第二行钱、体力条（大小在 settings.ts 的 ui.infoBox）----
+    // ---- 左上角时辰框：第一行日期、时辰、钟点；第二行钱、体力（大小在 settings.ts 的 ui.infoBox）----
     const box = ui.infoBox;
     this.infoBg = this.add.graphics();
     this.infoMoney = this.add.graphics();
-    this.dateText = pixelText(this, box.x + box.padding, box.y + box.padding + box.textNudgeY, '');
+    const row1 = box.y + box.padding + box.textNudgeY;
+    const row2 = row1 + box.lineH;
+    this.dateText = pixelText(this, box.x + box.padding, row1, '');
     // 时辰用褐色字，和日期分开
-    this.timeText = pixelText(this, 0, box.y + box.padding + box.textNudgeY, '', { color: ui.textDim2 }).setOrigin(1, 0);
-    this.infoW = 0;
-    this.shownCash = -1;
-    this.shownStamina = -1;
+    this.timeText = pixelText(this, 0, row1, '', { color: ui.textDim2 });
+    this.clockText = pixelText(this, 0, row1, '');
+    this.moneyText = pixelText(this, box.x + box.padding + 9, row2, '', { color: ui.money });
+    this.staminaLabel = pixelText(this, 0, row2, t('hud.staminaLabel'));
+    this.staminaHit = this.add.zone(0, 0, 1, 1).setOrigin(0).setInteractive();
+    this.staminaHit.on('pointerover', () => !this.touch && this.showStaminaTip());
+    this.staminaHit.on('pointerout', () => !this.touch && this.hideStaminaTip());
+    this.staminaHit.on('pointerdown', () => this.touch && this.showStaminaTip(ui.staminaTipMs));
+    this.infoKey = '';
+    this.staminaTip = undefined;
 
     // ---- 底部工具栏 ----
     this.buildToolbar(W, H);
 
-    // ---- 对话框（工具栏上面） ----
-    const dx = Math.round((W - DIALOG.w) / 2);
-    const dy = H - 2 - (SLOT + BAR_PAD * 2) - 2 - DIALOG.h;
+    // ---- 提示框（工具栏上面；和剧情对话框一样再放大 dialogueScale 倍，好读） ----
+    // 按屏幕真实像素取整数倍（字清楚），太窄就一档档减小，但不小于界面倍数
+    let px = VIEW.ui * Math.max(1, ui.dialogueScale);
+    while (px > VIEW.ui && VIEW.canvasW / px < DIALOG.w + 8) px -= 1;
+    const ds = px / VIEW.ui;
+    const dx = Math.round((W - DIALOG.w * ds) / 2);
+    const dy = H - 2 - (SLOT() + BAR_PAD * 2) - 2 - DIALOG.h * ds;
     const dialogBg = this.add.graphics();
     drawPanel(dialogBg, 0, 0, DIALOG.w, DIALOG.h);
     this.dialogText = pixelText(this, 6, 4, '', { wrap: DIALOG.w - 12 });
     const hit = this.add.zone(0, 0, DIALOG.w, DIALOG.h).setOrigin(0).setInteractive();
     hit.on('pointerdown', () => this.closeDialog());
-    this.dialog = this.add.container(dx, dy, [dialogBg, this.dialogText, hit]).setVisible(false).setDepth(50);
+    this.dialog = this.add.container(dx, dy, [dialogBg, this.dialogText, hit]).setScale(ds).setVisible(false).setDepth(50);
 
-    // ---- 剧情对话框、笔记本图标 ----
+    // ---- 剧情对话框、右上角的齿轮和笔记本 ----
     this.story = new DialogueBox(this);
-    this.buildNotebookIcon();
+    this.buildCornerButtons(W);
 
     // ---- 鼠标 / 手指 ----
     new PointerControls(this, this.touch);
     if (this.touch) {
       const cfg = SETTINGS.touch;
       const ev = this.game.events;
-      const [action, bag, menu] = (this.touchButtons = [
+      const [action, bag] = (this.touchButtons = [
         makeRoundButton(this, t('buttons.action'), cfg.actionButtonRadius, () => ev.emit(INPUT_EVENTS.action, 'smart')),
         makeRoundButton(this, t('buttons.bag'), cfg.smallButtonRadius, () => ev.emit(INPUT_EVENTS.bag)),
-        makeRoundButton(this, t('buttons.menu'), cfg.smallButtonRadius, () => ev.emit(INPUT_EVENTS.menu)),
       ]);
-      const ax = W - cfg.actionButtonRadius - 4;
-      const ay = H - cfg.actionButtonRadius - 4;
+      const ax = W - cfg.actionButtonRadius - 8;
+      const ay = H - cfg.actionButtonRadius - 8;
       action.setPosition(ax, ay);
-      bag.setPosition(ax - cfg.actionButtonRadius - cfg.smallButtonRadius - 4, ay + 4);
-      menu.setPosition(W - cfg.smallButtonRadius - 4, cfg.smallButtonRadius + 4);
+      bag.setPosition(ax - cfg.actionButtonRadius - cfg.smallButtonRadius - 8, ay + 8);
     }
 
     // ---- 接收指令 ----
@@ -151,9 +179,11 @@ export class HudScene extends Phaser.Scene {
     const handlers: [string, (...a: any[]) => void][] = [
       [INPUT_EVENTS.action, (mode?: string) => this.onAction(mode)],
       [INPUT_EVENTS.useTool, () => (this.story.active ? this.story.advance() : !this.busy() && ev.emit(UI_EVENTS.worldUseTool))],
-      [INPUT_EVENTS.cancel, () => !gameState.menuOpen && (this.picker ? this.picker.cancel() : this.menu ? this.closeMenu() : this.closeDialog())],
+      // Esc：先关掉正开着的东西；什么都没开就打开设置
+      [INPUT_EVENTS.cancel, () => this.onCancel()],
       [INPUT_EVENTS.bag, () => !this.busy() && this.openGameMenu('bag')],
-      [INPUT_EVENTS.menu, () => !this.busy() && this.gameMenu()],
+      [INPUT_EVENTS.menu, () => !this.busy() && this.openSettings()],
+      [SETTINGS_EVENTS.action, (id: string) => this.settingsAction(id)],
       [INPUT_EVENTS.toolSlot, (i: number) => !this.busy() && this.selectTool(i)],
       [INPUT_EVENTS.nav, (dir: 'up' | 'down') => (this.picker ? this.picker.nudge(dir) : this.menu?.move(dir === 'up' ? -1 : 1))],
       [INPUT_EVENTS.tap, (x: number, y: number) => this.onTap(x, y)],
@@ -161,6 +191,7 @@ export class HudScene extends Phaser.Scene {
       [UI_EVENTS.say, (key: string, params?: Record<string, string | number>) => this.say(key, params)],
       [UI_EVENTS.showMenu, (opts: MenuOption[], title?: string) => this.openMenu(opts, title)],
       [UI_EVENTS.toolsChanged, () => this.buildToolbar(W, H)],
+      [VIEW_EVENTS.changed, () => this.relayout()],
       [UI_EVENTS.askQuantity, (title: string, max: number, onDone: (n: number | null) => void) => this.askQuantity(title, max, onDone)],
       [UI_EVENTS.playDialogue, (knot: string, onDone?: () => void) => this.playStory(knot, onDone)],
     ];
@@ -185,44 +216,83 @@ export class HudScene extends Phaser.Scene {
   update() {
     const clock = gameState.clock;
     if (!clock) return;
-    this.refreshInfoBox(clock.shortDateText(), clock.shichen);
+    if (this.relayoutPending) this.relayout();
+    this.refreshInfoBox(clock.shortDateText(), clock.shichen, clock.clockText());
     const x = this.toolSlotX[gameState.toolIndex];
     if (x !== undefined) this.toolCursor.setX(x - 1);
   }
 
   // ---------------- 左上角时辰框 ----------------
 
-  /** 日期、时辰、钱、体力有变化时才重画（每帧都会调用） */
-  private refreshInfoBox(date: string, shichen: string) {
+  /** 日期、时辰、钟点、钱、体力有变化时才重画（每帧都会调用） */
+  private refreshInfoBox(date: string, shichen: string, hourText: string) {
     const ui = SETTINGS.ui;
     const box = ui.infoBox;
     const bar = ui.staminaBar;
-    if (this.dateText.text !== date) this.dateText.setText(date);
-    if (this.timeText.text !== shichen) this.timeText.setText(shichen);
-    // 框的宽度：至少 box.w；日期 + 时辰放不下就加宽
-    const need = Math.ceil(this.dateText.width + 2 + this.timeText.width) + box.padding * 2;
-    const w = Math.max(box.w, need);
-    const stamina = Math.round((Math.max(0, Math.min(1, gameState.stamina / gameState.maxStamina))) * bar.w);
-    if (w === this.infoW && gameState.cash === this.shownCash && stamina === this.shownStamina) return;
-    this.infoW = w;
-    this.shownCash = gameState.cash;
-    this.shownStamina = stamina;
-    this.timeText.setX(box.x + w - box.padding);
+    const stamina = Math.round(Math.max(0, Math.min(1, gameState.stamina / gameState.maxStamina)) * bar.w);
+    const key = [date, shichen, hourText, gameState.cash, stamina].join('|');
+    if (key === this.infoKey) return;
+    this.infoKey = key;
+    // 第一行：正月十六　卯时　6:00 am
+    this.dateText.setText(date);
+    this.timeText.setText(shichen).setX(this.dateText.x + Math.ceil(this.dateText.width) + 6);
+    this.clockText.setText(hourText).setX(this.timeText.x + Math.ceil(this.timeText.width) + 6);
+    // 第二行：铜钱 + 钱数（左），「体力」+ 体力条（右）
+    this.moneyText.setText(String(gameState.cash));
+    const row1W = this.clockText.x + Math.ceil(this.clockText.width) - box.x + box.padding;
+    const row2W = 9 + Math.ceil(this.moneyText.width) + 10 + Math.ceil(this.staminaLabel.width) + 4 + bar.w + box.padding * 2;
+    const w = Math.max(box.w, row1W, row2W);
     // 底板
     this.infoBg.clear();
     drawPanel(this.infoBg, box.x, box.y, w, box.h);
-    // 第二行：小铜钱 + 钱数（左），体力条（右），都贴着框的下边
-    const rowY = box.y + box.h - box.padding - TINY_DIGIT_H;
     const g = this.infoMoney.clear();
     const money = toColor(ui.money);
-    drawCoin(g, box.x + box.padding, rowY, money);
-    drawTinyNumber(g, box.x + box.padding + 7, rowY, gameState.cash, money);
+    const rowY = this.moneyText.y;
+    const midY = rowY + 7; // 字的中线
+    drawCoin(g, box.x + box.padding, midY - 2, money);
     const bx = box.x + w - box.padding - bar.w;
-    const by = rowY + Math.floor((TINY_DIGIT_H - bar.h) / 2);
+    const by = midY - Math.floor(bar.h / 2);
+    this.staminaLabel.setX(bx - 4 - Math.ceil(this.staminaLabel.width));
     const low = stamina <= bar.w * 0.25;
     g.fillStyle(toColor(ui.border)).fillRect(bx - 1, by - 1, bar.w + 2, bar.h + 2);
     g.fillStyle(toColor(ui.innerBorder)).fillRect(bx, by, bar.w, bar.h);
     g.fillStyle(toColor(low ? ui.staminaLow : ui.staminaFull)).fillRect(bx, by, stamina, bar.h);
+    // 鼠标移上去 / 手指点一下的感应区：「体力」两个字加体力条
+    this.staminaHit.setPosition(this.staminaLabel.x - 2, rowY - 1).setSize(bx + bar.w + 2 - this.staminaLabel.x + 2, 16);
+    this.staminaHit.input?.hitArea.setTo(0, 0, this.staminaHit.width, this.staminaHit.height);
+    if (this.staminaTip) this.showStaminaTip();
+  }
+
+  /** 体力条旁边弹出「81/100」。ms = 几毫秒后自动收起（手机）；不写就一直显示到鼠标移开 */
+  private showStaminaTip(ms?: number) {
+    this.staminaTip?.destroy();
+    const ui = SETTINGS.ui;
+    const text = pixelText(this, 5, 2, t('hud.staminaTip', { value: Math.round(gameState.stamina), max: gameState.maxStamina }), { size: ui.smallFontSize });
+    const g = this.add.graphics();
+    drawPanel(g, 0, 0, Math.ceil(text.width) + 10, 18);
+    const x = this.staminaHit.x + this.staminaHit.width - Math.ceil(text.width) - 10;
+    this.staminaTip = this.add.container(x, this.staminaHit.y + this.staminaHit.height + 3, [g, text]).setDepth(60);
+    if (ms) {
+      this.staminaTipTimer?.remove();
+      this.staminaTipTimer = this.time.delayedCall(ms, () => this.hideStaminaTip());
+    }
+  }
+
+  private hideStaminaTip() {
+    this.staminaTipTimer?.remove();
+    this.staminaTipTimer = undefined;
+    this.staminaTip?.destroy();
+    this.staminaTip = undefined;
+  }
+
+  /** 界面大小变了（转屏、设置里改了界面大小）：整个界面重新排一遍。正忙着就等空下来再排 */
+  private relayout() {
+    if (this.busy()) {
+      this.relayoutPending = true;
+      return;
+    }
+    this.relayoutPending = false;
+    this.scene.restart({ touch: this.touch });
   }
 
   // ---------------- 操作分配 ----------------
@@ -298,7 +368,7 @@ export class HudScene extends Phaser.Scene {
       },
     }));
     this.menu = new ListMenu(this, all, { title, width: 120 });
-    const { gameWidth: W, gameHeight: H } = SETTINGS;
+    const { w: W, h: H } = uiSize();
     this.menu.centerAt(W / 2, Math.min(H / 2, H - 30 - this.menu.container.height / 2));
     this.syncBusy();
   }
@@ -309,30 +379,35 @@ export class HudScene extends Phaser.Scene {
     this.syncBusy();
   }
 
-  /** 菜单键（M / 手机右上「菜单」）：导出存档、回标题 */
-  private gameMenu() {
-    this.openMenu(
-      [
-        {
-          label: t('menu.export'),
-          run: () => {
-            const snap = gameState.snapshot?.();
-            if (!snap) return;
-            const { filename, text } = exportText(snap);
-            downloadText(filename, text);
-            this.say('msg.exported');
-          },
-        },
-        {
-          label: t('menu.backToTitle'),
-          run: () => this.openMenu([{ label: t('menu.yes'), run: () => this.backToTitle() }], t('menu.backConfirm')),
-        },
-        { label: t('menu.rename'), run: () => void this.rename() },
-        // 测试用（settings.ts 的 debugMenu 改成 false 就没有了）
-        ...(SETTINGS.debugMenu ? [{ label: t('menu.debug'), run: () => this.debugMenu() }] : []),
-      ],
-      t('menu.title'),
-    );
+  /** Esc：先关掉正开着的小框；什么都没开，就打开设置 */
+  private onCancel() {
+    if (gameState.menuOpen || this.naming) return;
+    if (this.picker) return this.picker.cancel();
+    if (this.menu) return this.closeMenu();
+    if (this.dialog.visible) return this.closeDialog();
+    if (this.story.active) return;
+    this.openSettings();
+  }
+
+  /** 打开设置（齿轮、M 键、Esc） */
+  private openSettings() {
+    if (this.busy() || this.scene.isActive('Settings')) return;
+    this.hideStaminaTip();
+    this.scene.launch('Settings', { touch: this.touch });
+  }
+
+  /** 设置里要界面配合的几项：改名字、导出存档、回标题、测试菜单 */
+  private settingsAction(id: string) {
+    if (id === 'rename') return void this.rename();
+    if (id === 'export') {
+      const snap = gameState.snapshot?.();
+      if (!snap) return;
+      const { filename, text } = exportText(snap);
+      downloadText(filename, text);
+      return this.say('msg.exported');
+    }
+    if (id === 'backToTitle') return this.backToTitle();
+    if (id === 'debug' && SETTINGS.debugMenu) return this.debugMenu();
   }
 
   /** 测试用的选项（settings.ts 的 debugMenu 改成 false 就没有了） */
@@ -430,16 +505,22 @@ export class HudScene extends Phaser.Scene {
     this.notebookIcon.setAlpha(1);
   }
 
-  /** 右上角（手机上在菜单键左边）的笔记本图标：点一下打开笔记本 */
-  private buildNotebookIcon() {
-    const { gameWidth: W } = SETTINGS;
-    const x = this.touch ? W - 2 * SETTINGS.touch.smallButtonRadius - 8 - 22 : W - 22;
-    const g = this.add.graphics();
-    drawPanel(g, 0, 0, 20, 20);
-    const icon = this.add.image(10, 10, 'icon_notebook');
-    const hit = this.add.zone(0, 0, 20, 20).setOrigin(0).setInteractive();
-    hit.on('pointerdown', () => !this.busy() && this.openGameMenu('notebook'));
-    this.notebookIcon = this.add.container(x, 2, [g, icon, hit]).setDepth(45);
+  /** 右上角：最右边是齿轮（设置），左边是笔记本（拿到笔记本后出现，点一下打开） */
+  private buildCornerButtons(W: number) {
+    const size = SETTINGS.ui.cornerButton;
+    const button = (x: number, draw: (g: Phaser.GameObjects.Graphics) => Phaser.GameObjects.GameObject | null, onPress: () => void) => {
+      const g = this.add.graphics();
+      drawPanel(g, 0, 0, size, size);
+      const extra = draw(g);
+      const hit = this.add.zone(0, 0, size, size).setOrigin(0).setInteractive();
+      hit.on('pointerdown', onPress);
+      return this.add.container(x, 4, extra ? [g, extra, hit] : [g, hit]).setDepth(45);
+    };
+    this.gearButton = button(W - size - 4, (g) => {
+      drawGear(g, size / 2, size / 2, toColor(SETTINGS.ui.text));
+      return null;
+    }, () => this.openSettings());
+    this.notebookIcon = button(W - 2 * size - 8, () => this.add.image(size / 2, size / 2, 'icon_notebook'), () => !this.busy() && this.openGameMenu('notebook'));
     this.refreshNotebookIcon();
     if (!gameState.playerName && (gameState.prologue === 'tutorial' || gameState.prologue === 'done')) void this.fillInName();
   }
@@ -464,34 +545,36 @@ export class HudScene extends Phaser.Scene {
     this.toolbar?.destroy();
     this.toolSlotX = [];
     this.toolbar = this.add.container(0, 0).setDepth(40);
+    const SL = SLOT();
+    const iconScale = SETTINGS.ui.iconScale;
     const n = gameState.tools.length;
     if (!n) return; // 还没拿到工具（序章里周里正给之前）
-    const w = BAR_PAD * 2 + n * SLOT + (n - 1) * SLOT_GAP;
-    const h = BAR_PAD * 2 + SLOT;
+    const w = BAR_PAD * 2 + n * SL + (n - 1) * SLOT_GAP;
+    const h = BAR_PAD * 2 + SL;
     const x0 = Math.round((W - w) / 2);
     const y0 = H - 2 - h;
     const g = this.add.graphics();
     this.toolbar.add(g);
     drawPanel(g, x0, y0, w, h);
     gameState.tools.forEach((id, i) => {
-      const x = x0 + BAR_PAD + i * (SLOT + SLOT_GAP);
+      const x = x0 + BAR_PAD + i * (SL + SLOT_GAP);
       const y = y0 + BAR_PAD;
       this.toolSlotX.push(x);
-      g.fillStyle(toColor(SETTINGS.ui.innerBorder)).fillRect(x, y, SLOT, SLOT);
-      const slot = this.add.zone(x, y, SLOT, SLOT).setOrigin(0).setInteractive();
+      g.fillStyle(toColor(SETTINGS.ui.innerBorder)).fillRect(x, y, SL, SL);
+      const slot = this.add.zone(x, y, SL, SL).setOrigin(0).setInteractive();
       this.toolbar!.add(slot);
       slot.on('pointerdown', () => !this.busy() && this.selectTool(i));
       const key = `icon_${id}`;
       this.toolbar!.add(
         this.textures.exists(key)
-          ? this.add.image(x + SLOT / 2, y + SLOT / 2, key)
-          : pixelText(this, x + SLOT / 2, y + SLOT / 2, this.itemName(id).slice(0, 1)).setOrigin(0.5),
+          ? this.add.image(x + SL / 2, y + SL / 2, key).setScale(iconScale)
+          : pixelText(this, x + SL / 2, y + SL / 2, this.itemName(id).slice(0, 1)).setOrigin(0.5),
       );
     });
     // 当前工具的框：画在 (0,0)，每帧挪到选中的那格
     this.toolCursor = this.add.graphics().setY(y0 + BAR_PAD - 1);
     this.toolbar.add(this.toolCursor);
-    drawFrame(this.toolCursor, 0, 0, SLOT + 2, SLOT + 2, toColor(SETTINGS.ui.toolSelected));
+    drawFrame(this.toolCursor, 0, 0, SL + 2, SL + 2, toColor(SETTINGS.ui.toolSelected));
   }
 
   private itemName(id: string) {
@@ -501,4 +584,16 @@ export class HudScene extends Phaser.Scene {
   private selectTool(i: number) {
     if (i < gameState.tools.length) gameState.toolIndex = i;
   }
+}
+
+/** 画一个小齿轮（设置按钮），中心在 (cx, cy) */
+function drawGear(g: Phaser.GameObjects.Graphics, cx: number, cy: number, color: number) {
+  g.fillStyle(color);
+  // 八个齿
+  for (let i = 0; i < 8; i++) {
+    const a = (i * Math.PI) / 4;
+    g.fillRect(Math.round(cx + Math.cos(a) * 6.5) - 1, Math.round(cy + Math.sin(a) * 6.5) - 1, 3, 3);
+  }
+  g.fillCircle(cx, cy, 6);
+  g.fillStyle(toColor(SETTINGS.ui.panel)).fillCircle(cx, cy, 2.5);
 }

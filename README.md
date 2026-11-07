@@ -113,6 +113,11 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
 | 名字能多长、汉字和字母各算多宽 | `src/config/settings.ts` | `nameRules` |
 | 背包几行几列、格子多大 | `src/config/settings.ts` | `bag` |
 | 对话框里旁白、黄字的颜色 | `src/config/settings.ts` | `ui` 里的 `textDim2`、`clueText`、`clueMark` |
+| 界面层放大倍数（小 / 中 / 大三档各是多少） | `src/config/settings.ts` | `ui.scale`（数字越大界面越小；中档 2 = 按 640×360 排版） |
+| 各处字号 | `src/config/settings.ts` | `fontSize`（普通界面字）、`ui.smallFontSize`（最小的提示字）、`ui.dialogueScale`（对话框再放大几倍）、`ui.iconScale`（工具栏、背包图标） |
+| 时辰框、体力条的位置和大小 | `src/config/settings.ts` | `ui.infoBox`、`ui.staminaBar`；钟点格式在 `src/locales/zh.ts` 的 `hud.clock` |
+| 设置菜单里有哪些项目、顺序 | `src/data/settingsMenu.ts` | `SETTINGS_MENU`（文件开头有写法说明；名字在 `src/locales/zh.ts` 的 `settings.items`） |
+| 设置项的默认值（文字速度、界面大小、音量……） | `src/config/settings.ts` | `prefsDefaults`；四档文字速度各多快在 `textSpeedMs` |
 
 > 改错了，打包会报错（比如数字写成了文字、物品 id 拼错）。看报错信息里的文件名和行号，或者直接告诉编程窗口。
 > 每张数值表的完整格式说明在 `src/data/types.ts`。加新物品、新作物时，要把它的 id 也加进 `types.ts` 里对应的列表。

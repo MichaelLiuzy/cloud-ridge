@@ -171,6 +171,13 @@ export const zh = {
     time: "{shichen}（{hour}:{minute}）",
     money: "{amount} {unit}",
     stamina: "体力 {value}/{max}",
+    /** 时辰框里的钟点（整点）。am / pm 用小写 */
+    clock: "{hour}:00 {ampm}",
+    am: "am",
+    pm: "pm",
+    /** 体力条旁边的字，以及鼠标移上去 / 点一下弹出的数字 */
+    staminaLabel: "体力",
+    staminaTip: "{value}/{max}",
   },
 
   // ===== 手机右下角的按钮 =====
@@ -314,6 +321,45 @@ export const zh = {
   },
 
   // ===== 游戏中的「菜单」（M 键 / 右上菜单按钮） =====
+  // ===== 设置（右上角齿轮 / M / Esc）=====
+  settings: {
+    title: "设置",
+    /** 每一项的名字（项目列表在 src/data/settingsMenu.ts） */
+    items: {
+      rename: "改名字",
+      textSpeed: "文字速度",
+      autoAdvance: "过场自动翻页",
+      autoAdvanceSec: "自动翻页等几秒",
+      uiSize: "界面大小",
+      musicVolume: "音乐音量",
+      sfxVolume: "音效音量",
+      controls: "操作说明",
+      export: "导出存档（备份成文件）",
+      import: "导入存档",
+      backToTitle: "回到标题画面",
+      debug: "测试……",
+    },
+    /** 选项的叫法 */
+    options: {
+      slow: "慢",
+      medium: "中",
+      fast: "快",
+      instant: "立即",
+      small: "小",
+      large: "大",
+    },
+    on: "开",
+    off: "关",
+    seconds: "秒",
+    back: "返回",
+    cancel: "算了",
+    backConfirm: "上次睡觉存档之后的进度会丢失，确定吗？",
+    yesBackToTitle: "确定，回到标题画面",
+    importPick: "放进哪个存档位？（正在玩的这个不能覆盖）",
+    importDone: "已经导入到存档 {n}。回到标题画面就能读。",
+    controlsSettings: { keyboard: "设置：Esc 或 M，或点右上角齿轮", touch: "设置：点右上角齿轮" },
+  },
+
   menu: {
     title: "菜单",
     export: "导出存档（备份成文件）",

@@ -6,6 +6,7 @@
  */
 import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
+import { uiSize } from '../config/view';
 import { toColor } from '../config/palette';
 import { t } from '../locales/i18n';
 import { drawFrame, drawPanel, pixelText } from './pixelUi';
@@ -33,8 +34,9 @@ export class QuantityPicker {
   ) {
     const ui = SETTINGS.ui;
     this.value = max;
-    const x0 = Math.round((SETTINGS.gameWidth - W) / 2);
-    const y0 = Math.round((SETTINGS.gameHeight - H) / 2) - 10;
+    const { w: uw, h: uh } = uiSize();
+    const x0 = Math.round((uw - W) / 2);
+    const y0 = Math.round((uh - H) / 2) - 10;
     const g = scene.add.graphics();
     drawPanel(g, 0, 0, W, H);
     const parts: Phaser.GameObjects.GameObject[] = [g];

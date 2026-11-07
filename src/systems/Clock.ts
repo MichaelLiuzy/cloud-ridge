@@ -107,6 +107,13 @@ export class Clock {
     return t('hud.shortDate', { month: localName(month.name), day: days[this.day - 1] ?? String(this.day) });
   }
 
+  /** 左上角的钟点：「6:00 am」。只显示整点（每小时才跳一次，不用每十分钟一跳那么紧张） */
+  clockText() {
+    const h = this.hour;
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    return t('hud.clock', { hour: h12, ampm: t(h < 12 ? 'hud.am' : 'hud.pm') });
+  }
+
   /** 屏幕上显示的时间：「辰时（7:00）」 */
   timeText() {
     const minute = String(this.minutes % 60).padStart(2, '0');

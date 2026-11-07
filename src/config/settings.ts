@@ -77,18 +77,18 @@ export const SETTINGS = {
   },
 
   // ---------------- 触屏（iPhone） ----------------
-  /** 下面的大小都按 320×180 的原始画面算，屏幕上看到的会放大 2~3 倍 */
+  /** 下面的大小都按界面层算（大约 640×360，见 ui.scale） */
   touch: {
     /** 摇杆底盘的半径（像素）。手指拖多远算「推到底」。 */
-    joystickRadius: 22,
+    joystickRadius: 40,
     /** 手指只是轻轻碰一下、没超过这个距离时不走路（防误触）。 */
-    joystickDeadZone: 3,
+    joystickDeadZone: 6,
     /** 手指按下又很快抬起、几乎没移动，算作「点一下」而不是摇杆（毫秒） */
     tapMaxMs: 280,
     /** 右下角「使用」大按钮的半径（按一下 = 对面前那一格做最合适的事） */
-    actionButtonRadius: 16,
-    /** 背包、菜单小按钮的半径 */
-    smallButtonRadius: 13,
+    actionButtonRadius: 28,
+    /** 背包小按钮的半径 */
+    smallButtonRadius: 20,
     /** 按钮透明度：0 完全透明，1 完全不透明 */
     buttonAlpha: 0.55,
   },
@@ -100,6 +100,18 @@ export const SETTINGS = {
    * 地图、人物没有图时的占位色块颜色在 src/config/assets.ts 里改。
    */
   ui: {
+    /**
+     * 界面层比地图细几倍。地图按 320×180 放大；界面按「地图倍数 ÷ 这个数」放大，
+     * 所以 2 = 界面按大约 640×360 排版，字在屏幕上是原来的一半大，但依然清晰。
+     * 三档对应设置里的「界面大小」：数越大，界面越小。
+     */
+    scale: { small: 3, medium: 2, large: 1.5 } as Record<string, number>,
+    /** 对话框（剧情对话、医馆）再放大几倍（整数）：比别的界面字大一档，好读 */
+    dialogueScale: 2,
+    /** 背包、工具栏里的物品图标放大几倍（整数；图标原图 16×16） */
+    iconScale: 2,
+    /** 界面上最小的字（翻页提示、体力数字提示）的字号，像素字体只有 12 的倍数最清楚 */
+    smallFontSize: 12,
     /** 框的底色（米白） */
     panel: '#EFE4C8',
     /** 框的 1 像素外边 */
@@ -125,24 +137,30 @@ export const SETTINGS = {
     staminaFull: '#6F8A4C',
     staminaLow: '#A8402F',
     /**
-     * 左上角的时辰框（大小都按 320×180 的原始画面算，单位像素）。
-     * 第一行：日期（左）和时辰（右）；第二行：小铜钱 + 钱数（左）和体力条（右）。
+     * 左上角的时辰框（按界面层算，单位：界面像素）。
+     * 第一行：日期、时辰、钟点（6:00 am，每小时才跳一次）；第二行：铜钱 + 钱数（左），「体力」+ 体力条（右）。
      * 节气和完整的日期在 Q 菜单最上面一行。
      */
     infoBox: {
       /** 框的左上角在哪 */
-      x: 2,
-      y: 2,
-      /** 框多宽、多高。字放不下时（比如「十一月廿八」）框会自动变宽一点 */
-      w: 80,
-      h: 22,
+      x: 4,
+      y: 4,
+      /** 框至少多宽、多高。字放不下时框会自动变宽 */
+      w: 150,
+      h: 34,
       /** 框里的东西离框边几像素（框本身的边占 2 像素，这里算在里面） */
-      padding: 3,
-      /** 第一行字往上挪几像素（像素字体上面自带一点空白，挪掉能省地方；0 = 不挪） */
-      textNudgeY: -3,
+      padding: 4,
+      /** 两行字的行距 */
+      lineH: 14,
+      /** 字往上挪几像素（像素字体上面自带一点空白，挪掉能省地方；0 = 不挪） */
+      textNudgeY: -2,
     },
-    /** 体力条（在时辰框第二行右边）：长、粗 */
-    staminaBar: { w: 36, h: 3 },
+    /** 体力条（在时辰框第二行右边，「体力」两个字后面）：长、粗 */
+    staminaBar: { w: 44, h: 5 },
+    /** 鼠标移到体力条上（手机上点一下）弹出的「81/100」小提示：手机上几毫秒后自动消失 */
+    staminaTipMs: 2000,
+    /** 右上角齿轮（设置）、笔记本按钮的大小 */
+    cornerButton: 24,
     /** 标题画面：背景和字 */
     titleBg: '#1E1A1F',
     titleText: '#EFE4C8',
@@ -151,13 +169,31 @@ export const SETTINGS = {
   /** 字体：像素字体 Fusion Pixel（文件在 public/assets/fonts/），12 像素 */
   fontSize: 12,
 
+  // ---------------- 对话 ----------------
+  /** 对话逐字出现：每个字间隔多少毫秒（设置里的「文字速度」四档；0 = 一下子全出来） */
+  textSpeedMs: { slow: 70, medium: 35, fast: 12, instant: 0 } as Record<string, number>,
+
+  /**
+   * 设置菜单里各项的默认值（玩家改过以后存在这台设备上，见 src/systems/prefs.ts）。
+   *  uiSize 界面大小 small / medium / large；textSpeed 文字速度 slow / medium / fast / instant；
+   *  autoAdvance 过场自动翻页开不开；autoAdvanceSec 等几秒；musicVolume / sfxVolume 音量 0~100
+   */
+  prefsDefaults: {
+    uiSize: 'medium',
+    textSpeed: 'medium',
+    autoAdvance: true,
+    autoAdvanceSec: 4,
+    musicVolume: 70,
+    sfxVolume: 70,
+  },
+
   // ---------------- 开场过场 ----------------
   cutscene: {
     /**
-     * 自动翻页：每一格的出场效果播完后，等这么久（毫秒）没操作就自动翻到下一格。4000 = 4 秒。
+     * 自动翻页：每一格的出场效果播完后，等几秒没操作就自动翻到下一格。
+     * 默认几秒、开不开在上面的 prefsDefaults（autoAdvance、autoAdvanceSec），玩家可以在设置里改。
      * 某一格想停久一点或短一点，在 src/data/cutscenes.ts 里给那一格写 autoMs。
      */
-    autoAdvanceMs: 4000,
     /** 每一格至少显示多久（毫秒）才能手动翻走，防止手快一下翻过两格 */
     minShowMs: 400,
     /** 屏幕最上方「按任意键翻页」那行小字：颜色、透明度（0~1），以及慢慢闪一次要多久（毫秒） */
@@ -180,11 +216,11 @@ export const SETTINGS = {
   },
 
   // ---------------- 背包 ----------------
-  /** Q 菜单里背包的格子：每行几格、几行、每格多大（像素） */
+  /** Q 菜单里背包的格子：每行几格、几行、每格多大（界面像素；图标放大 ui.iconScale 倍后是 32） */
   bag: {
     cols: 9,
     rows: 4,
-    slotSize: 20,
+    slotSize: 36,
   },
 
   // ---------------- 调试 ----------------

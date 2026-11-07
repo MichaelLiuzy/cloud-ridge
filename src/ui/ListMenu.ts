@@ -37,7 +37,9 @@ export class ListMenu {
     opts: { title?: string; width?: number; ownKeys?: boolean; onCancel?: () => void } = {},
   ) {
     const ui = SETTINGS.ui;
-    const maxW = SETTINGS.gameWidth - 16;
+    // 最宽不超过这个场景的画面（界面层大约 640，标题画面 320）
+    const cam = scene.cameras.main;
+    const maxW = Math.floor(cam.width / cam.zoom) - 16;
     // 先把字写出来，量一下多宽
     const labels = options.map((opt) => pixelText(scene, 0, 0, opt.label, { color: opt.disabled ? ui.textDim : ui.text }));
     let widest = Math.max(0, ...labels.map((l) => l.width));

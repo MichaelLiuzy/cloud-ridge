@@ -2,13 +2,15 @@
  * 剧情场景：开场的漫画式过场 + 医馆对话。
  *  - 过场一次放一格（数据在 src/data/cutscenes.ts）。按任意键、点屏幕只翻一格：
  *    这一格的出场效果还没播完，就先直接播完；播完了才翻到下一格。没有「一键跳过整段」。
- *  - 不操作的话，出场效果播完后等几秒自动翻（settings.ts 的 cutscene.autoAdvanceMs，每格可单独设 autoMs）。
+ *  - 不操作的话，出场效果播完后等几秒自动翻（设置里可以关、可以改秒数；默认值在 settings.ts 的 prefsDefaults，每格可单独设 autoMs）。
  *  - 过场时屏幕最上方有一行淡淡的「按任意键翻页」，进入对话就消失。
  *  - 过场最后一格的图留着当医馆对话的背景，对话剧本在 src/story/zh/prologue.ink。
  *  - 对话播完 → 黑屏淡出 → 进农场。
  */
 import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
+import { VIEW_EVENTS, setupWorldCamera, uiSize } from '../config/view';
+import { loadPrefs } from '../systems/prefs';
 import { PALETTE, toColor } from '../config/palette';
 import { CUTSCENES, type CutsceneFrame } from '../data/cutscenes';
 import { t } from '../locales/i18n';
@@ -34,6 +36,8 @@ export class StoryScene extends Phaser.Scene {
   private layer!: Phaser.GameObjects.Container;
   private dialogue?: DialogueBox;
   private leaving = false;
+  /** 界面层（对话框、提示画在这里） */
+  private ui?: Phaser.Scene;
 
   constructor() {
     super('Story');
@@ -42,14 +46,17 @@ export class StoryScene extends Phaser.Scene {
   /** step：opening = 从过场开始；clinic = 直接从医馆对话开始（中途退出后重来） */
   create(data: { step: 'opening' | 'clinic' }) {
     this.cameras.main.setBackgroundColor('#000000');
+    // 过场的图按地图的倍数放大；对话框和提示画在上面的界面层（UiOverlay，更细）
+    setupWorldCamera(this);
+    const rezoom = () => setupWorldCamera(this);
+    this.game.events.on(VIEW_EVENTS.changed, rezoom);
     this.layer = this.add.container(0, 0);
     this.frames = CUTSCENES.opening;
     this.index = -1;
     this.effects = [];
     this.leaving = false;
     this.settledAt = null;
-    this.dialogue = new DialogueBox(this);
-    this.showHint();
+    this.dialogue = undefined;
 
     // 过场：任意键 / 点一下只前进一格；医馆对话：回车、空格、点一下。
     // 按住不放不会连着翻（忽略按键的自动重复）；输入名字时打的字不算
@@ -64,16 +71,28 @@ export class StoryScene extends Phaser.Scene {
     this.input.on('pointerdown', () => this.step());
     this.events.once('shutdown', () => {
       this.input.keyboard?.off('keydown', onKey);
+      this.game.events.off(VIEW_EVENTS.changed, rezoom);
       this.dialogue?.destroy();
+      this.dialogue = undefined;
+      this.hint = undefined;
+      this.scene.stop('UiOverlay');
     });
 
-    if (data?.step === 'clinic') {
-      this.index = this.frames.length - 1;
-      this.showFrame(this.frames[this.index], true);
-      this.startClinic();
-    } else {
-      this.next();
-    }
+    // 等界面层准备好，再开始放
+    const overlay = this.scene.get('UiOverlay');
+    overlay.events.once('create', () => {
+      this.ui = overlay;
+      this.dialogue = new DialogueBox(overlay);
+      this.showHint();
+      if (data?.step === 'clinic') {
+        this.index = this.frames.length - 1;
+        this.showFrame(this.frames[this.index], true);
+        this.startClinic();
+      } else {
+        this.next();
+      }
+    });
+    this.scene.launch('UiOverlay');
   }
 
   private step() {
@@ -91,11 +110,13 @@ export class StoryScene extends Phaser.Scene {
 
   /** 自动翻页：出场效果播完后开始计时，到时间没操作就翻下一格（对话里、最后一格不翻） */
   update() {
-    if (this.leaving || this.dialogue?.active || this.index < 0 || this.index >= this.frames.length - 1) return;
+    if (!this.dialogue || this.leaving || this.dialogue.active || this.index < 0 || this.index >= this.frames.length - 1) return;
     if (this.effects.some((tw) => tw.isPlaying())) return;
     const now = this.time.now;
     if (this.settledAt === null) this.settledAt = now;
-    const wait = this.frames[this.index].autoMs ?? SETTINGS.cutscene.autoAdvanceMs;
+    const prefs = loadPrefs();
+    if (!prefs.autoAdvance) return;
+    const wait = this.frames[this.index].autoMs ?? prefs.autoAdvanceSec * 1000;
     if (now - this.settledAt >= wait) this.next();
   }
 
@@ -103,15 +124,16 @@ export class StoryScene extends Phaser.Scene {
   private showHint() {
     const cfg = SETTINGS.cutscene;
     const text = t(isTouchDevice() ? 'cutscene.hintTap' : 'cutscene.hintKey');
-    this.hint = pixelText(this, SETTINGS.gameWidth / 2, 2, text, { color: cfg.hintColor }).setOrigin(0.5, 0).setAlpha(cfg.hintAlpha).setDepth(100);
+    const ui = this.ui!;
+    this.hint = pixelText(ui, uiSize().w / 2, 3, text, { color: cfg.hintColor, size: SETTINGS.ui.smallFontSize }).setOrigin(0.5, 0).setAlpha(cfg.hintAlpha).setDepth(100);
     // 1 像素的深色影子：亮的画面上也看得清
     this.hint.setShadow(1, 1, PALETTE.ink, 0, false, true);
-    this.tweens.add({ targets: this.hint, alpha: cfg.hintAlpha * 0.35, duration: cfg.hintBlinkMs / 2, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    ui.tweens.add({ targets: this.hint, alpha: cfg.hintAlpha * 0.35, duration: cfg.hintBlinkMs / 2, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
   }
 
   private hideHint() {
     if (!this.hint) return;
-    this.tweens.killTweensOf(this.hint);
+    this.ui?.tweens.killTweensOf(this.hint);
     this.hint.destroy();
     this.hint = undefined;
   }

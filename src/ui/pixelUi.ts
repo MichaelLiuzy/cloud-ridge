@@ -24,11 +24,11 @@ export function pixelText(
   x: number,
   y: number,
   text: string,
-  opts: { color?: string; wrap?: number; align?: 'left' | 'center' | 'right' } = {},
+  opts: { color?: string; wrap?: number; align?: 'left' | 'center' | 'right'; size?: number } = {},
 ) {
   const style: Phaser.Types.GameObjects.Text.TextStyle = {
     fontFamily: font(),
-    fontSize: `${SETTINGS.fontSize}px`,
+    fontSize: `${opts.size ?? SETTINGS.fontSize}px`,
     color: opts.color ?? SETTINGS.ui.text,
     align: opts.align ?? 'left',
     lineSpacing: 2,

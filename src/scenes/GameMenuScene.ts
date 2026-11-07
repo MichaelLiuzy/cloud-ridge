@@ -8,6 +8,7 @@
  */
 import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
+import { VIEW_EVENTS, setupUiCamera, uiSize } from '../config/view';
 import { toColor } from '../config/palette';
 import { CHAPTERS, CLUES, QUESTIONS, type ClueId, type QuestionId } from '../data/clues';
 import { MENU_TABS, NOTEBOOK_SECTIONS, type MenuTabId, type NotebookSectionId } from '../data/menuTabs';
@@ -20,9 +21,11 @@ import { chaptersInOrder, chapterStarted, questionState } from '../systems/story
 import { drawFrame, drawPanel, pixelText } from '../ui/pixelUi';
 import { wrapText } from '../ui/richText';
 
-const { gameWidth: W, gameHeight: H } = SETTINGS;
+/** 面板大小 = 界面层大小（大约 640×360，打开时按当前界面大小算） */
+let W = 640;
+let H = 360;
 /** 内容区（栏目条下面那块） */
-const AREA = { x: 8, y: 28, w: W - 16, h: H - 34 };
+let AREA = { x: 8, y: 28, w: W - 16, h: H - 34 };
 const LINE_H = 14;
 
 export class GameMenuScene extends Phaser.Scene {
@@ -52,6 +55,13 @@ export class GameMenuScene extends Phaser.Scene {
     this.touch = isTouchDevice();
     this.openedAt = this.time.now;
     gameState.menuOpen = true;
+    setupUiCamera(this);
+    ({ w: W, h: H } = uiSize());
+    AREA = { x: 8, y: 28, w: W - 16, h: H - 34 };
+    // 界面大小变了（转屏）：重新打开
+    const relayout = () => this.scene.restart({ tab: this.tab });
+    this.game.events.on(VIEW_EVENTS.changed, relayout);
+    this.events.once('shutdown', () => this.game.events.off(VIEW_EVENTS.changed, relayout));
 
     // 挡住下面的游戏：点在面板上不会穿到农场里
     this.add.zone(0, 0, W, H).setOrigin(0).setInteractive();
@@ -213,10 +223,10 @@ export class GameMenuScene extends Phaser.Scene {
       const e = entries[i];
       if (!e) continue;
       const key = `icon_${e.item.id}`;
-      if (this.textures.exists(key)) this.content.add(this.add.image(x + S / 2, y + S / 2, key));
+      if (this.textures.exists(key)) this.content.add(this.add.image(x + S / 2, y + S / 2, key).setScale(SETTINGS.ui.iconScale));
       else this.content.add(pixelText(this, x + S / 2, y + S / 2, localName(e.item.name).slice(0, 1)).setOrigin(0.5));
       if (e.item.type !== 'tool' && e.count > 1) {
-        this.content.add(pixelText(this, x + S, y + S + 2, String(e.count), { color: ui.text }).setOrigin(1, 1).setStroke(ui.panel, 3));
+        this.content.add(pixelText(this, x + S - 1, y + S + 1, String(e.count), { color: ui.text }).setOrigin(1, 1).setStroke(ui.panel, 3));
       }
       const hit = this.add.zone(x, y, S, S).setOrigin(0).setInteractive();
       hit.on('pointerdown', () => {
