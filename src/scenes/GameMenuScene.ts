@@ -426,7 +426,8 @@ export class GameMenuScene extends Phaser.Scene {
     info.add(name);
     if (s?.locked) {
       const lg = this.add.graphics();
-      drawLock(lg, x + Math.ceil(name.width) + 6, y + 2);
+      const art = drawLock(lg, x + Math.ceil(name.width) + 6, y + 2);
+      if (art) info.add(art);
       info.add([lg, pixelText(this, x + Math.ceil(name.width) + 16, y, t('bag.locked'), { color: ui.textDim2 })]);
     }
     const price = s && gameState.clock ? shopSellPrice(s.id, gameState.clock) : null;

@@ -91,7 +91,7 @@
     {
       "name": "prop_{id}",
       "rows": 1, "cols": 1, "cell": [16, 32],
-      "sizes": { "tree": [16, 32], "lantern": [16, 32], "basket": [16, 16] },
+      "sizes": { "tree": [16, 32], "lantern": [16, 32], "basket": [16, 16], "gate": [16, 16] },
       "fire": ["lantern"],
       "frames": ["main"],
       "out": "objects/prop_{id}.png"
@@ -108,6 +108,7 @@
       "uniformScale": true,
       "rows": 1, "cols": 5, "cell": [16, 32],
       "frames": ["seed", "sprout", "half", "ripe", "withered"],
+      "fire": ["pumpkin"],
       "out": "crops/crop_{id}.png"
     },
     {
@@ -121,6 +122,56 @@
       "rows": 1, "cols": 3, "cell": [16, 16],
       "frames": ["pickaxe", "notebook", "burnt_paper"],
       "out": "icons/icon_{frame}.png"
+    },
+    {
+      "name": "icons_batch3",
+      "rows": 1, "cols": 4, "cell": [16, 16],
+      "frames": ["wood", "thatch", "stone", "tree_seed"],
+      "out": "icons/icon_{frame}.png"
+    },
+    {
+      "name": "icons_materials",
+      "rows": 1, "cols": 3, "cell": [16, 16],
+      "frames": ["roof_tile", "brick", "firewood"],
+      "out": "icons/icon_{frame}.png"
+    },
+    {
+      "name": "icons_food",
+      "fire": true,
+      "rows": 1, "cols": 4, "cell": [16, 16],
+      "frames": ["tea", "veg_porridge", "radish_soup", "roast_sweet_potato"],
+      "out": "icons/icon_{frame}.png"
+    },
+    {
+      "name": "icons_crops_1",
+      "rows": 2, "cols": 2, "cell": [16, 16],
+      "frames": ["pea_seed", "potato_seed", "pea", "potato"],
+      "out": "icons/icon_{frame}.png"
+    },
+    {
+      "name": "icons_crops_2",
+      "fire": true,
+      "rows": 2, "cols": 5, "cell": [16, 16],
+      "frames": ["chive_seed", "chili_seed", "watermelon_seed", "taro_seed", "pumpkin_seed", "chive", "chili", "watermelon", "taro", "pumpkin"],
+      "out": "icons/icon_{frame}.png"
+    },
+    {
+      "name": "icons_crops_3",
+      "rows": 2, "cols": 4, "cell": [16, 16],
+      "frames": ["cucumber_seed", "eggplant_seed", "cowpea_seed", "sweet_potato_seed", "cucumber", "eggplant", "cowpea", "sweet_potato"],
+      "out": "icons/icon_{frame}.png"
+    },
+    {
+      "name": "icons_crops_4",
+      "rows": 2, "cols": 4, "cell": [16, 16],
+      "frames": ["napa_cabbage_seed", "spinach_seed", "garlic_seed", "mustard_greens_seed", "napa_cabbage", "spinach", "garlic", "mustard_greens"],
+      "out": "icons/icon_{frame}.png"
+    },
+    {
+      "name": "icons_ui",
+      "rows": 1, "cols": 5, "cell": [16, 16],
+      "frames": ["gear", "purse", "stamina", "lock", "backpack"],
+      "out": "ui/icon_{frame}.png"
     },
     {
       "name": "portrait_{id}",

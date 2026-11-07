@@ -126,7 +126,7 @@ function warnUnregistered(keys) {
   if (!fs.existsSync(assetsFile)) return;
   const text = fs.readFileSync(assetsFile, 'utf8');
   for (const key of keys) {
-    if (key.startsWith('crop_')) continue;
+    if (key.startsWith('crop_') || key.startsWith('icon_')) continue; // 作物图、物品图标按数据表自动登记；界面小图标有图才用，不用登记
     if (new RegExp(`\\b${key}\\s*:`).test(text)) continue;
     console.log(`⚠ ${key} 整理好了，但 src/config/assets.ts 里没有登记，游戏里可能用不上。请在 ASSETS 里加一行。`);
   }

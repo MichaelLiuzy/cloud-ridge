@@ -42,3 +42,11 @@ export function drawFrame(g: Phaser.GameObjects.Graphics, x: number, y: number, 
   g.fillStyle(color);
   g.fillRect(x, y, w, 1).fillRect(x, y + h - 1, w, 1).fillRect(x, y, 1, h).fillRect(x + w - 1, y, 1, h);
 }
+
+/**
+ * 界面小图标（齿轮、钱袋、体力、锁、背包）：art_raw 里有 icons_ui 的图就用图，返回这张图；
+ * 没有图返回 null，调用的地方接着用代码画的。scale 0.5 = 16×16 的图在界面上占 8 格（屏幕上正好是原图像素）。
+ */
+export function artIcon(scene: Phaser.Scene, key: string, x: number, y: number, scale = 0.5) {
+  return scene.textures.exists(key) ? scene.add.image(x, y, key).setScale(scale) : null;
+}

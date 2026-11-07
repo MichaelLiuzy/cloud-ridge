@@ -13,6 +13,7 @@
  */
 import type { PaletteName } from './palette';
 import { CROPS } from '../data/crops';
+import { ITEMS } from '../data/items';
 
 export interface AssetSpec {
   /** 每格宽、高（像素） */
@@ -40,12 +41,19 @@ export const ASSETS: Record<string, AssetSpec> = {
   npc_zhou_stand: { w: 16, h: 32, frames: DIRS, color: 'indigo', shape: 'char' },
   npc_doctor_stand: { w: 16, h: 32, frames: DIRS, color: 'vermilion', shape: 'char' },
   npc_fan_stand: { w: 16, h: 32, frames: DIRS, color: 'ochre', shape: 'char' },
+  /** 杂货铺掌柜（上门收货的剧情里说话） */
+  npc_store_keeper_stand: { w: 16, h: 32, frames: DIRS, color: 'ochreLight', shape: 'char' },
+  /** Eric（先登记，暂时不用） */
+  npc_eric_stand: { w: 16, h: 32, frames: DIRS, color: 'indigo', shape: 'char' },
 
   // ---- 头像 64×64：平常、笑、担忧、惊讶 ----
   portrait_player: { w: 64, h: 64, frames: MOODS, color: 'leaf', shape: 'portrait' },
   portrait_zhou: { w: 64, h: 64, frames: MOODS, color: 'indigo', shape: 'portrait' },
   portrait_doctor: { w: 64, h: 64, frames: MOODS, color: 'mist', shape: 'portrait' },
   portrait_fan: { w: 64, h: 64, frames: MOODS, color: 'ochre', shape: 'portrait' },
+  portrait_store_keeper: { w: 64, h: 64, frames: MOODS, color: 'ochreLight', shape: 'portrait' },
+  /** Eric 的头像（先登记，暂时不用） */
+  portrait_eric: { w: 64, h: 64, frames: MOODS, color: 'indigo', shape: 'portrait' },
 
   // ---- 剧情画面 320×180（开场过场；没图时是色块加说明） ----
   cg_office: cg('stone'),
@@ -54,6 +62,8 @@ export const ASSETS: Record<string, AssetSpec> = {
   cg_headlights: cg('paper'),
   cg_hospital_bed: cg('mist'),
   cg_clinic_wake: cg('ochreLight'),
+  /** 标题画面背景（没图时标题画面保持纯色底，不画色块） */
+  cg_title: cg('ink'),
 
   // ---- 地面 ----
   /** 农田地面：草地、黄土、锄过的地、浇过水的地、小路、篱笆 */
@@ -73,6 +83,8 @@ export const ASSETS: Record<string, AssetSpec> = {
   debris_fire: { w: 16, h: 16, frames: ['main'], color: 'ink', shape: 'object' },
   /** 门口的收货筐（开通杂货铺上门收货后出现） */
   prop_basket: { w: 16, h: 16, frames: ['main'], color: 'ochre', shape: 'object' },
+  /** 田地篱笆上的门（地图上的 G） */
+  prop_gate: { w: 16, h: 16, frames: ['main'], color: 'brownDark', shape: 'object' },
   /** 农场边缘的林子（不能砍） */
   prop_tree: { w: 16, h: 32, frames: ['main'], color: 'leafDark', shape: 'tree' },
   /** 农场里自己长的树：树苗、小树、大树（能砍，见 src/data/trees.ts） */
@@ -92,7 +104,8 @@ export const ASSETS: Record<string, AssetSpec> = {
   house_tiled_roof: { w: 64, h: 64, frames: ['main'], color: 'paper', shape: 'building' },
   house_courtyard: { w: 64, h: 64, frames: ['main'], color: 'paper', shape: 'building' },
 
-  // ---- 图标（工具栏、背包） ----
+  // ---- 图标（工具栏、背包）：物品表里每样东西都有 icon_物品id；下面单独写了颜色的用写的，其余见 itemIcons() ----
+  ...itemIcons(),
   icon_hoe: { w: 16, h: 16, frames: ['main'], color: 'ochre', shape: 'icon' },
   icon_bucket: { w: 16, h: 16, frames: ['main'], color: 'teal', shape: 'icon' },
   icon_sickle: { w: 16, h: 16, frames: ['main'], color: 'ash', shape: 'icon' },
@@ -114,6 +127,14 @@ export const ASSETS: Record<string, AssetSpec> = {
   // ---- 作物（每种 5 格：种子、幼苗、半大、成熟、枯萎；颜色是成熟时果实的颜色）----
   ...cropSheets(),
 };
+
+/** 物品表里每样东西的图标占位（没单独写颜色的：种子土黄、菜按成熟颜色、其他纸色） */
+function itemIcons(): Record<string, AssetSpec> {
+  const icon = (color: PaletteName): AssetSpec => ({ w: 16, h: 16, frames: ['main'], color, shape: 'icon' });
+  return Object.fromEntries(
+    ITEMS.items.map((it) => [`icon_${it.id}`, icon(it.type === 'seed' ? 'ochreLight' : it.type === 'crop' ? 'leaf' : 'paperDark')]),
+  );
+}
 
 /** 所有作物的图（没有美术图时按 crop 形状画占位） */
 function cropSheets(): Record<string, AssetSpec> {

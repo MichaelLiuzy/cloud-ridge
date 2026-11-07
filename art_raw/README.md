@@ -35,6 +35,15 @@ ChatGPT 每次出完图会告诉你文件名，照着存就行。
 | `crop_radish.png` | 萝卜 | 同上 |
 | `icons_batch1.png` | 第一批图标 | 2 行 5 格：锄头、水桶、镰刀、斧头、馒头；小白菜种子、萝卜种子、小白菜、萝卜、草木灰 |
 | `icons_batch2.png` | 第二批图标 | 1 行 3 格：`pickaxe`（镐）、`notebook`（笔记本）、`burnt_paper`（烧焦的纸页） |
+| `icons_batch3.png` | 第三批图标 | 1 行 4 格：木材、纤维、石块、树种 |
+| `icons_materials.png` | 建材图标 | 1 行 3 格：瓦片、砖、柴火 |
+| `icons_food.png` | 食物图标（可用火光色） | 1 行 4 格：茶、菜粥、萝卜汤、烤红薯 |
+| `icons_crops_1.png` ~ `icons_crops_4.png` | 作物和种子图标 | 第一行是种子，第二行是对应的菜（顺序见 `tools/art_rules.json`）；`icons_crops_2` 可用火光色（南瓜橙） |
+| `icons_ui.png` | 界面小图标 | 1 行 5 格：齿轮、钱袋、体力、锁、背包。有图就换掉代码画的那几个 |
+| `prop_gate.png` | 田地篱笆上的门（16×16） | 1 格。没图时篱笆门就画成小路 |
+| `cg_title.png` | 标题画面背景 | 整张画，上方中间留天空放标题字；没图时是纯色底 |
+| `portrait_store_keeper.png` / `npc_store_keeper_stand.png` | 杂货铺掌柜的头像 / 站立图 | 同主角头像 / 站立图 |
+| `portrait_eric.png` / `npc_eric_stand.png` | Eric 的头像 / 站立图（先登记，暂时不用） | 同上 |
 | `house_old_ruin.png` | 烧毁的老宅（64×64） | 1 格，整栋烧毁的房子。立在宅基地上，四周废墟里的杂草、碎石、焦木（用的是 `debris_` 那几张图）清完、木匠搭好梁架后换成 `house_timber_frame` |
 | `portrait_player.png` | 主角头像 | 1 行 4 格：平常、笑、担忧、惊讶 |
 | `player_walk.png` | 主角走路（以后再画） | 4 行 5 格：每行一个方向（下、左、右、上），每行是站立 + 走路 4 格。有了它游戏会自动改用真的走路动画 |

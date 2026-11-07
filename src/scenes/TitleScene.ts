@@ -4,6 +4,7 @@
  *  - 游戏名在 src/locales/zh.ts 的 game.title 里改。
  */
 import Phaser from 'phaser';
+import { PLACEHOLDERS } from './BootScene';
 import { SETTINGS } from '../config/settings';
 import { VIEW_EVENTS, setupWorldCamera } from '../config/view';
 import { t } from '../locales/i18n';
@@ -40,6 +41,8 @@ export class TitleScene extends Phaser.Scene {
     const rezoom = () => setupWorldCamera(this);
     this.game.events.on(VIEW_EVENTS.changed, rezoom);
     this.events.once('shutdown', () => this.game.events.off(VIEW_EVENTS.changed, rezoom));
+    // 标题背景图（cg_title）：有图就铺在最下面，上方中间的天空放标题字；没图就是纯色底
+    if (!PLACEHOLDERS.has('cg_title')) this.add.image(0, 0, 'cg_title').setOrigin(0).setDisplaySize(W, H);
     // 游戏名：12 像素的字放大 3 倍，保持像素方块
     this.title = pixelText(this, W / 2, 34, t('game.title'), { color: ui.titleText }).setOrigin(0.5).setScale(3);
     this.sub = pixelText(this, W / 2, 60, t('game.subtitle'), { color: ui.titleSubText }).setOrigin(0.5);

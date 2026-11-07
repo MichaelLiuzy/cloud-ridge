@@ -8,7 +8,7 @@ import { TIME } from '../data/time';
 import { gameState } from '../systems/GameState';
 import { localName } from '../locales/i18n';
 import { itemInfo, type Slot } from '../systems/inventory';
-import { pixelText } from './pixelUi';
+import { artIcon, pixelText } from './pixelUi';
 
 /** 在 (x, y) 开始、边长 size 的格子里画 slot 的东西，画出来的东西都放进 into */
 export function drawItemSlot(scene: Phaser.Scene, into: Phaser.GameObjects.Container, x: number, y: number, size: number, slot: Slot | null, alpha = 1) {
@@ -33,13 +33,16 @@ export function drawItemSlot(scene: Phaser.Scene, into: Phaser.GameObjects.Conta
   }
   if (slot.locked) {
     const g = scene.add.graphics().setAlpha(alpha);
-    drawLock(g, x + 2, y + 2);
-    into.add(g);
+    const art = drawLock(g, x + 2, y + 2);
+    into.add(art ? [g, art] : g);
   }
 }
 
 /** 一把 7×9 的小锁，左上角在 (x, y) */
 export function drawLock(g: Phaser.GameObjects.Graphics, x: number, y: number) {
+  // 有锁的图标就用图：返回这张图，调用的地方和 g 放在一起
+  const art = artIcon(g.scene, 'icon_lock', x + 3.5, y + 4.5);
+  if (art) return art.setAlpha(g.alpha);
   const ui = SETTINGS.ui;
   const dark = toColor(ui.border);
   const body = toColor(ui.toolSelected);
@@ -50,4 +53,5 @@ export function drawLock(g: Phaser.GameObjects.Graphics, x: number, y: number) {
   g.fillStyle(body).fillRect(x + 1, y + 4, 5, 4);
   // 锁孔
   g.fillStyle(dark).fillRect(x + 3, y + 5, 1, 2);
+  return null;
 }

@@ -12,7 +12,7 @@ import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
 import { toColor } from '../config/palette';
 import { uiSize } from '../config/view';
-import { pixelText } from '../ui/pixelUi';
+import { pixelText, artIcon } from '../ui/pixelUi';
 
 /** 指令名称。游戏里用 game.events.on(INPUT_EVENTS.xxx, ...) 来接收。 */
 export const INPUT_EVENTS = {
@@ -162,11 +162,12 @@ export class PointerControls {
 }
 
 /** 做一个圆形触屏按钮（手机右下角的「使用」「背包」「菜单」） */
-export function makeRoundButton(scene: Phaser.Scene, label: string, radius: number, onPress: () => void) {
+export function makeRoundButton(scene: Phaser.Scene, label: string, radius: number, onPress: () => void, icon?: string) {
   const alpha = SETTINGS.touch.buttonAlpha;
   const fill = toColor(SETTINGS.ui.panel);
   const circle = scene.add.circle(0, 0, radius, fill, alpha).setStrokeStyle(1, toColor(SETTINGS.ui.border), 0.8);
-  const text = pixelText(scene, 0, 0, label).setOrigin(0.5);
+  // icon：有这张图标就用图代替文字（比如背包按钮）
+  const text = (icon && artIcon(scene, icon, 0, 0, 1)) || pixelText(scene, 0, 0, label).setOrigin(0.5);
   const c = scene.add.container(0, 0, [circle, text]).setDepth(100).setSize(radius * 2, radius * 2);
   // 感应区的坐标从按钮方框的左上角算起，所以圆心在 (radius, radius)（以前写 (0, 0)，只有左上四分之一按得到）
   c.setInteractive(new Phaser.Geom.Circle(radius, radius, radius), Phaser.Geom.Circle.Contains);

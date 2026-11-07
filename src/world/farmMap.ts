@@ -93,7 +93,7 @@ export const TILE_TYPES: Record<string, TileType> = {
   'Y': { kind: 'bigTree', solid: true, hint: 'hint.bigTree', ground: 'grass', object: 'tree_big' },
   '~': { kind: 'water', solid: true, hint: 'hint.water', ground: 'water' },
   '#': { kind: 'fence', solid: true, hint: 'hint.fence', ground: 'fence' },
-  'G': { kind: 'gate', solid: false, hint: 'hint.gate', ground: 'path' },
+  'G': { kind: 'gate', solid: false, hint: 'hint.gate', ground: 'path', object: 'prop_gate' },
   'H': { kind: 'hut', solid: true, hint: 'hint.hut', ground: 'dirt' },
   'r': { kind: 'rock', solid: true, hint: 'hint.rock', ground: 'grass', object: 'debris_rock' },
   'g': { kind: 'weed', solid: true, hint: 'hint.weed', ground: 'grass', object: 'debris_weed' },

@@ -14,7 +14,7 @@ import { PALETTE, toColor } from '../config/palette';
 import { dayTagsText, weatherName, weekdayName } from '../systems/days';
 import { localName, t } from '../locales/i18n';
 import { INPUT_EVENTS, PointerControls, makeRoundButton } from '../input/Controls';
-import { drawFrame, drawPanel, pixelText } from '../ui/pixelUi';
+import { drawFrame, drawPanel, pixelText, artIcon } from '../ui/pixelUi';
 import { drawCoin } from '../ui/tinyDigits';
 import { DialogueBox } from '../ui/DialogueBox';
 import { askName } from '../ui/nameInput';
@@ -77,6 +77,8 @@ export class HudScene extends Phaser.Scene {
   private weatherText!: Phaser.GameObjects.Text;
   private tagsText!: Phaser.GameObjects.Text;
   private staminaLabel!: Phaser.GameObjects.Text;
+  private purseIcon!: Phaser.GameObjects.Image | null;
+  private staminaIcon!: Phaser.GameObjects.Image | null;
   /** 时辰框的底板、铜钱和体力条：内容变了才重画 */
   private infoBg!: Phaser.GameObjects.Graphics;
   private infoMoney!: Phaser.GameObjects.Graphics;
@@ -149,6 +151,10 @@ export class HudScene extends Phaser.Scene {
     this.tagsText = pixelText(this, x0, 0, '', { color: ui.money });
     this.moneyText = pixelText(this, x0 + 9, 0, '', { color: ui.money });
     this.staminaLabel = pixelText(this, 0, 0, t('hud.staminaLabel'));
+    // 有钱袋、体力的图标就用图（没有就是代码画的铜钱和「体力」两个字）
+    this.purseIcon = artIcon(this, 'icon_purse', x0 + 3, 0);
+    this.staminaIcon = artIcon(this, 'icon_stamina', 0, 0);
+    this.staminaLabel.setVisible(!this.staminaIcon);
     this.staminaHit = this.add.zone(0, 0, 1, 1).setOrigin(0).setInteractive();
     this.staminaHit.on('pointerover', () => !this.touch && this.showStaminaTip());
     this.staminaHit.on('pointerout', () => !this.touch && this.hideStaminaTip());
@@ -200,7 +206,7 @@ export class HudScene extends Phaser.Scene {
       const ev = this.game.events;
       const [action, bag] = (this.touchButtons = [
         makeRoundButton(this, t('buttons.action'), cfg.actionButtonRadius, () => ev.emit(INPUT_EVENTS.action, 'smart')),
-        makeRoundButton(this, t('buttons.bag'), cfg.smallButtonRadius, () => ev.emit(INPUT_EVENTS.bag)),
+        makeRoundButton(this, t('buttons.bag'), cfg.smallButtonRadius, () => ev.emit(INPUT_EVENTS.bag), 'icon_backpack'),
       ]);
       const ax = W - cfg.actionButtonRadius - 8;
       const ay = H - cfg.actionButtonRadius - 8;
@@ -352,7 +358,8 @@ export class HudScene extends Phaser.Scene {
       tags ? this.tagsText.width : 0,
     );
     const rowsW = Math.ceil(widest) + box.padding * 2;
-    const moneyW = 9 + Math.ceil(this.moneyText.width) + 10 + Math.ceil(this.staminaLabel.width) + 4 + bar.w + box.padding * 2;
+    const labelW = this.staminaIcon ? 8 : Math.ceil(this.staminaLabel.width);
+    const moneyW = 9 + Math.ceil(this.moneyText.width) + 10 + labelW + 4 + bar.w + box.padding * 2;
     const w = Math.max(box.w, rowsW, moneyW);
     const h = Math.max(box.h, y - box.y - box.textNudgeY + box.padding - 2);
     // 底板
@@ -362,10 +369,12 @@ export class HudScene extends Phaser.Scene {
     drawWeatherIcon(g, box.x + box.padding, row3 + 7, weather);
     const money = toColor(ui.money);
     const midY = rowY + 7; // 字的中线
-    drawCoin(g, box.x + box.padding, midY - 2, money);
+    if (this.purseIcon) this.purseIcon.setY(midY);
+    else drawCoin(g, box.x + box.padding, midY - 2, money);
     const bx = box.x + w - box.padding - bar.w;
     const by = midY - Math.floor(bar.h / 2);
-    this.staminaLabel.setX(bx - 4 - Math.ceil(this.staminaLabel.width));
+    this.staminaLabel.setX(bx - 4 - labelW);
+    this.staminaIcon?.setPosition(bx - 4 - labelW / 2, midY);
     const low = stamina <= bar.w * 0.25;
     g.fillStyle(toColor(ui.border)).fillRect(bx - 1, by - 1, bar.w + 2, bar.h + 2);
     g.fillStyle(toColor(ui.innerBorder)).fillRect(bx, by, bar.w, bar.h);
@@ -631,8 +640,9 @@ export class HudScene extends Phaser.Scene {
       return this.add.container(x, 4, extra ? [g, extra, hit] : [g, hit]).setDepth(45);
     };
     this.gearButton = button(W - size - 4, (g) => {
-      drawGear(g, size / 2, size / 2, toColor(SETTINGS.ui.text));
-      return null;
+      const icon = artIcon(this, 'icon_gear', size / 2, size / 2, 1);
+      if (!icon) drawGear(g, size / 2, size / 2, toColor(SETTINGS.ui.text));
+      return icon;
     }, () => this.openSettings());
     this.notebookIcon = button(W - 2 * size - 8, () => this.add.image(size / 2, size / 2, 'icon_notebook'), () => !this.busy() && this.openGameMenu('notebook'));
     this.refreshNotebookIcon();

@@ -16,6 +16,7 @@ import { PALETTE, toColor } from '../config/palette';
 import { BASKET_CELL, FARM_MAP, HOUSE_SITE, TILE_TYPES, scatterRuins } from '../world/farmMap';
 import { PLAIN_ACTIONS, heldActionFor, rollAmount, type CropState, type HeldAction } from '../world/actions';
 import { KeyboardControls } from '../input/Controls';
+import { PLACEHOLDERS } from './BootScene';
 import { gameState } from '../systems/GameState';
 import { addItem, countItem, heldItem, inventoryCounts, itemInfo, roomFor, takeFromSlot } from '../systems/inventory';
 import { basketPrice } from '../systems/economy/shop';
@@ -1119,9 +1120,10 @@ export class FarmScene extends Phaser.Scene {
     if (view.object) this.lightSpots = this.lightSpots.filter((l) => l.fire !== view.object);
     view.object?.destroy();
     view.object = undefined;
-    if (info.object) {
+    // 不挡路的东西（篱笆门）：没图时不画色块（免得看着像挡路），画的话贴在地面上、人从上面走过
+    if (info.object && (info.solid || !PLACEHOLDERS.has(info.object))) {
       const bottom = (ty + 1) * s;
-      view.object = this.add.image(tx * s + s / 2, bottom, info.object, 0).setOrigin(0.5, 1).setDepth(bottom);
+      view.object = this.add.image(tx * s + s / 2, bottom, info.object, 0).setOrigin(0.5, 1).setDepth(info.solid ? bottom : 0.5);
       if (info.light) {
         this.lightSpots.push({ x: tx * s + s / 2, y: bottom - 22, radius: 30, fire: info.fire ? view.object : undefined });
       }
