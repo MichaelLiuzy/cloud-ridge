@@ -8,6 +8,7 @@
  * 对话框画在界面层，整体再放大 SETTINGS.ui.dialogueScale 倍（比别的界面字大一档）；
  * 里面按「界面大小 ÷ 放大倍数」（大约 320×180）排版。颜色在 src/config/settings.ts 的 ui 里。
  */
+import { noteMet } from '../systems/weekStats';
 import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
 import { VIEW, uiSize } from '../config/view';
@@ -129,6 +130,7 @@ export class DialogueBox {
       return { text: p.text, color: baseColor };
     });
     this.applyTags(line);
+    if (line.speaker) noteMet(line.speaker); // 第一次说话就算认识（每周总结用）
 
     // 框、头像、名字
     this.relayout();

@@ -153,6 +153,9 @@ export const TIME: TimeTable = {
     wateringCanCapacity: 20,  // 水桶装满能浇几格
   },
   sleep: { beforeMidnightRestore: 1.0, afterMidnightRestore: 0.9 },  // 睡觉
+  // 饿肚子：某一天从早上醒来到睡着（或昏倒）一口东西都没吃，第二天醒来体力最多只有这么多（点数）。
+  // 和上面的睡觉、下面的昏倒规则一起算时，取最低的那个。吃东西回复多少体力在 items.ts 每样食物的 stamina
+  hunger: { nextDayStamina: 80 },
   // 昏倒
   faint: {
     // 熬到凌晨两点昏倒
@@ -173,9 +176,9 @@ export const TIME: TimeTable = {
   },
   // 天气
   weather: {
-    firstDayOfSeason: "sunny",  // 每季第一天的天气
-    rainWatersCrops: true,  // 下雨是否自动浇水
-    // 各季节天气概率（加起来是 1）
+    firstDayOfMonth: "sunny",  // 每月 1 日的天气（固定）
+    rainWatersCrops: true,  // 下雨是否自动浇水（下雨天所有锄过的田都算浇过）
+    // 各季节天气概率（加起来是 1）。每天早上 6 点抽一次。sunny 晴、cloudy 阴、rain 雨、snow 雪（只在冬天写大于 0）
     chances: {
       spring: { sunny: 0.5, cloudy: 0.25, rain: 0.25, snow: 0 },
       summer: { sunny: 0.55, cloudy: 0.15, rain: 0.3, snow: 0 },

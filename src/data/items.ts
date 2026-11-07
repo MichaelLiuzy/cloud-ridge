@@ -427,7 +427,8 @@ export const ITEMS: ItemsTable = {
       buyPrice: 15,
       sellPrice: 7,
       soldAt: ["general_store"],
-      stamina: 20,  // 体力
+      stamina: 10,  // 吃一个回复几点体力（不超过体力上限）
+      desc: { zh: "一个白面馒头。吃了能回复 10 点体力。一整天不吃东西，第二天会没力气。", en: "" },  // 在背包里选中时显示的说明
     },
     {
       id: "tea",
@@ -436,7 +437,8 @@ export const ITEMS: ItemsTable = {
       buyPrice: 20,
       sellPrice: 10,
       soldAt: ["teahouse"],
-      stamina: 15,
+      stamina: 8,
+      desc: { zh: "一壶热茶。喝了能回复 8 点体力。一整天不吃东西，第二天会没力气。", en: "" },
     },
     {
       id: "veg_porridge",
@@ -445,7 +447,8 @@ export const ITEMS: ItemsTable = {
       buyPrice: null,
       sellPrice: 10,
       soldAt: [],
-      stamina: 25,
+      stamina: 12,
+      desc: { zh: "一碗菜粥。吃了能回复 12 点体力。一整天不吃东西，第二天会没力气。", en: "" },
       craft: {
         station: "stove",
         inputs: { bok_choy: 1 },
@@ -459,7 +462,8 @@ export const ITEMS: ItemsTable = {
       buyPrice: null,
       sellPrice: 10,
       soldAt: [],
-      stamina: 30,
+      stamina: 15,
+      desc: { zh: "一碗萝卜汤。喝了能回复 15 点体力。一整天不吃东西，第二天会没力气。", en: "" },
       craft: {
         station: "stove",
         inputs: { radish: 1 },
@@ -473,7 +477,8 @@ export const ITEMS: ItemsTable = {
       buyPrice: null,
       sellPrice: 10,
       soldAt: [],
-      stamina: 40,
+      stamina: 20,
+      desc: { zh: "一个烤红薯。吃了能回复 20 点体力。一整天不吃东西，第二天会没力气。", en: "" },
       craft: {
         station: "stove",
         inputs: { sweet_potato: 1 },

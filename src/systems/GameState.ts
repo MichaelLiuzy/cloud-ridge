@@ -11,6 +11,8 @@ import type { SaveData } from './save/saveFormat';
 import type { PlantedCrop } from './farming/crops';
 import { SETTINGS } from '../config/settings';
 import { addItem, isTool, type Slot } from './inventory';
+import { emptyWeek, type WeekStats } from './weekStats';
+import type { Weather } from '../data/types';
 
 export type PrologueStep = 'opening' | 'clinic' | 'tutorial' | 'done';
 
@@ -42,6 +44,14 @@ function freshState() {
     crops: {} as Record<string, PlantedCrop>,
     maxStamina: hut.maxStamina as number,
     stamina: hut.maxStamina as number,
+    /** 今天（从早上醒来起）吃过东西没有。一整天没吃，第二天醒来体力最多 80（src/data/time.ts 的 hunger） */
+    ateToday: false,
+    /** 今天的天气（每天早上 6 点抽，见 src/systems/days.ts）。开局那天是晴天 */
+    weather: 'sunny' as Weather,
+    /** 本周统计（每周总结用，见 src/systems/weekStats.ts） */
+    week: emptyWeek() as WeekStats,
+    /** 认识了哪些人（第一次说话就算认识；names 里的 id） */
+    metNpcs: [] as string[],
     /** 工具栏 + 背包的格子（前 9 格是工具栏），见 src/systems/inventory.ts */
     slots: Array.from({ length: SETTINGS.inventory.toolbarSlots + SETTINGS.inventory.bagSlots }, () => null) as (Slot | null)[],
     /** 手上拿的是工具栏第几格（0 ~ 8） */
@@ -97,6 +107,10 @@ export function resetGameState(slot: number, load: SaveData | null = null) {
       crops: JSON.parse(JSON.stringify(load.crops)),
       maxStamina: load.maxStamina,
       stamina: load.stamina,
+      ateToday: load.ateToday,
+      weather: load.weather,
+      week: JSON.parse(JSON.stringify(load.week)),
+      metNpcs: [...load.metNpcs],
       slots: load.slots.map((x) => (x ? { ...x } : null)),
       selected: load.selected,
       keyItems: { ...load.keyItems },

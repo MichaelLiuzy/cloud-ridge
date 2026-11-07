@@ -33,6 +33,11 @@ import { UI_EVENTS } from './HudScene';
 import type { MenuOption } from '../ui/ListMenu';
 import { TIME as timeData } from '../data/time';
 import { ITEMS as itemsData } from '../data/items';
+import { eatFromSlot, isFood } from '../systems/food';
+import { isLastDayOfWeek, rollWeather } from '../systems/days';
+import { emptyWeek, noteHarvest, noteRuin, noteTilled, spend } from '../systems/weekStats';
+import { buildWeekSummary, type WeekSummary } from '../systems/weekSummary';
+import type { NightData } from './NightScene';
 
 type Facing = 'down' | 'up' | 'left' | 'right';
 
@@ -189,6 +194,7 @@ export class FarmScene extends Phaser.Scene {
     ev.on(UI_EVENTS.worldTap, this.tapScreen, this);
     ev.on(FARM_EVENTS.debugDays, this.debugDays, this);
     ev.on(FARM_EVENTS.debugBuild, this.debugBuild, this);
+    ev.on(FARM_EVENTS.debugToSunday, this.debugToSunday, this);
     ev.on(FARM_EVENTS.basketUnlocked, this.placeBasket, this);
 
     // ---- 时间 ----
@@ -211,6 +217,7 @@ export class FarmScene extends Phaser.Scene {
       ev.off(UI_EVENTS.worldTap, this.tapScreen, this);
       ev.off(FARM_EVENTS.debugDays, this.debugDays, this);
       ev.off(FARM_EVENTS.debugBuild, this.debugBuild, this);
+      ev.off(FARM_EVENTS.debugToSunday, this.debugToSunday, this);
       ev.off(FARM_EVENTS.basketUnlocked, this.placeBasket, this);
       this.zhou = undefined;
       this.events.off('postupdate', this.syncSprite, this);
@@ -397,6 +404,7 @@ export class FarmScene extends Phaser.Scene {
   private useToolFacing() {
     const held = heldItem();
     if (!held) return this.say('msg.noTool');
+    if (isFood(held)) return this.eatHeld();
     const cell = this.facingCell();
     const rule = this.heldRule(cell);
     if (!rule) return this.say('msg.cantUseTool', { tool: this.itemName(held) });
@@ -405,10 +413,17 @@ export class FarmScene extends Phaser.Scene {
 
   /** 手机「使用」键：手上的东西对面前那一格有用就直接用，没用就「交互」（多件事才弹菜单） */
   private smartFacing() {
+    if (isFood(heldItem())) return this.eatHeld();
     const cell = this.facingCell();
     const rule = this.heldRule(cell);
     if (rule) return this.doHeld(rule, cell);
     this.runOptions(this.optionsFor(cell, { tools: false, walk: false }), cell);
+  }
+
+  /** 吃掉手上拿着的一个食物（src/systems/food.ts） */
+  private eatHeld() {
+    const ate = eatFromSlot(gameState.selected);
+    if (ate) this.say('msg.ate', { name: this.itemName(ate.id), n: ate.gain });
   }
 
   /** 点了屏幕上某个位置（鼠标或手指） */
@@ -513,7 +528,11 @@ export class FarmScene extends Phaser.Scene {
     if (rule.item) this.swingTool(rule.item);
     if (rule.turnsInto) this.setTile(cell, rule.turnsInto);
     if (rule.doneHint) this.say(rule.doneHint);
-    if (rule.id === 'clearRuin') this.afterRuinCleared();
+    if (rule.id === 'till') noteTilled();
+    if (rule.id === 'clearRuin') {
+      noteRuin();
+      this.afterRuinCleared();
+    }
     this.spendStamina((timeData.stamina.costs as Record<string, number>)[rule.cost] ?? 0);
   }
 
@@ -545,6 +564,7 @@ export class FarmScene extends Phaser.Scene {
     this.refreshCrop(cellKey(cell));
     if (!got) return;
     addItem(got.item, got.amount);
+    noteHarvest(got.item, got.amount);
     this.say('msg.harvested', { name: this.itemName(got.item), n: got.amount });
     this.spendStamina(timeData.stamina.costs.harvest);
   }
@@ -574,8 +594,11 @@ export class FarmScene extends Phaser.Scene {
     const s = SETTINGS.tileSize;
     const tex = `crop_${p.crop}`;
     const frame = CROP_LOOKS.indexOf(cropLook(p));
-    const img = old ?? this.add.image(x * s + s / 2, (y + 1) * s, tex, frame).setOrigin(0.5, 1).setDepth((y + 1) * s - 1);
+    const img = old ?? this.add.image(0, 0, tex, frame).setDepth((y + 1) * s - 1);
     img.setTexture(tex, frame).setAlpha(p.dormant ? 0.6 : 1);
+    // 刚种下的种子：图案中心放在格子里 SETTINGS.seedCenterY 的高度；长出来以后站在格子底边
+    if (cropLook(p) === 'seed') img.setOrigin(0.5, 0.5).setPosition(x * s + s / 2, Math.round(y * s + s * SETTINGS.seedCenterY));
+    else img.setOrigin(0.5, 1).setPosition(x * s + s / 2, (y + 1) * s);
     this.cropViews.set(key, img);
   }
 
@@ -718,8 +741,16 @@ export class FarmScene extends Phaser.Scene {
   /** 直接过 n 天（每天都按睡了一觉算：作物生长、木匠干活、收货筐结算） */
   private debugDays(n: number) {
     const news: News[] = [];
-    for (let i = 0; i < n; i++) news.push(...this.startNewDay(1));
+    for (let i = 0; i < n; i++) news.push(...this.startNewDay(1).news);
     this.say('msg.debugDays', { n, date: gameState.clock!.dateText() });
+    for (const [k, p] of news) this.say(k, p);
+  }
+
+  /** 一天天过到本周日早上（不跨过周日，所以本周统计不会清空），好测周日晚上的总结 */
+  private debugToSunday() {
+    const news: News[] = [];
+    while (!isLastDayOfWeek(gameState.clock!.day)) news.push(...this.startNewDay(1).news);
+    this.say('msg.debugToSunday', { date: gameState.clock!.dateText() });
     for (const [k, p] of news) this.say(k, p);
   }
 
@@ -772,8 +803,21 @@ export class FarmScene extends Phaser.Scene {
     const clock = gameState.clock!;
     // 半夜前睡觉体力全满，过了半夜只恢复一部分（time.ts 的 sleep）
     const ratio = clock.minutes < 24 * 60 ? timeData.sleep.beforeMidnightRestore : timeData.sleep.afterMidnightRestore;
-    const news = this.startNewDay(ratio);
-    void this.saveNow('msg.sleep').then(() => news.forEach(([k, p]) => this.say(k, p))); // 睡觉 = 自动存档
+    let news: News[] = [];
+    // 先放睡觉过场（src/scenes/NightScene.ts），黑屏时换到第二天，天亮后存档、告诉玩家夜里发生的事
+    this.night(true, () => {
+      const day = this.startNewDay(ratio);
+      news = day.news;
+      return day.summary;
+    }, () => void this.saveNow('msg.sleep').then(() => news.forEach(([k, p]) => this.say(k, p)))); // 睡觉 = 自动存档
+  }
+
+  /** 盖上一层黑屏（睡觉过场 / 周日昏倒时的本周总结），见 NightScene */
+  private night(sleep: boolean, onBlack: () => WeekSummary | null, onDone: () => void) {
+    this.route = [];
+    this.onArrive = undefined;
+    const data: NightData = { sleep, onBlack, onDone };
+    this.scene.launch('Night', data);
   }
 
   private spendStamina(cost: number) {
@@ -783,24 +827,44 @@ export class FarmScene extends Phaser.Scene {
 
   /** 昏倒：late = 熬到凌晨两点，exhausted = 体力用完（数值见 time.ts 的 faint） */
   private faint(reason: 'late' | 'exhausted') {
-    let news: News[];
-    if (reason === 'late') {
-      news = this.startNewDay(timeData.faint.lateNight.nextDayStamina);
-      this.say('msg.lateNightFaint');
-    } else {
-      const f = timeData.faint.exhausted;
-      const fee = Math.min(f.fee, Math.floor(gameState.cash * f.feeMaxFractionOfCash));
-      gameState.cash -= fee;
-      news = this.startNewDay(f.nextDayStamina);
-      this.say('msg.exhaustedFaint', { fee });
+    if (this.scene.isActive('Night')) return;
+    const run = () => {
+      let day: { news: News[]; summary: WeekSummary | null };
+      const told: News[] = [];
+      if (reason === 'late') {
+        day = this.startNewDay(timeData.faint.lateNight.nextDayStamina);
+        told.push(['msg.lateNightFaint']);
+      } else {
+        const f = timeData.faint.exhausted;
+        const fee = Math.min(f.fee, Math.floor(gameState.cash * f.feeMaxFractionOfCash));
+        spend(fee);
+        day = this.startNewDay(f.nextDayStamina);
+        told.push(['msg.exhaustedFaint', { fee }]);
+      }
+      return { told: [...told, ...day.news], summary: day.summary };
+    };
+    // 不是周日：和以前一样，直接到第二天（没有睡觉过场）
+    if (!isLastDayOfWeek(gameState.clock!.day)) {
+      for (const [k, p] of run().told) this.say(k, p);
+      return;
     }
-    for (const [k, p] of news) this.say(k, p);
+    // 周日昏倒：照样看本周总结
+    let told: News[] = [];
+    this.night(false, () => {
+      const r = run();
+      told = r.told;
+      return r.summary;
+    }, () => told.forEach(([k, p]) => this.say(k, p)));
   }
 
-  /** 进入新的一天。返回早上要告诉玩家的事（作物冻死、木匠修好了、收货筐结算……） */
-  private startNewDay(staminaRatio: number): News[] {
+  /**
+   * 进入新的一天。返回早上要告诉玩家的事（作物冻死、木匠修好了、收货筐结算……），
+   * 以及本周总结（刚过完的是周日才有，不然是 null）。
+   */
+  private startNewDay(staminaRatio: number): { news: News[]; summary: WeekSummary | null } {
     const news: News[] = [];
     const clock = gameState.clock!;
+    const ended = { month: clock.month, day: clock.day };
     clock.nextDay();
     // 作物：昨晚浇过水的长一天；霜降、冻土、休眠按节气算
     const grew = growOvernight(clock, (key) => {
@@ -825,16 +889,35 @@ export class FarmScene extends Phaser.Scene {
     // 收货筐
     const sold = settleBasket();
     if (sold > 0) news.push(['msg.basketSold', { total: sold }]);
-    gameState.stamina = Math.round(gameState.maxStamina * staminaRatio);
+    // 体力：睡觉 / 昏倒按比例回；昨天一整天没吃东西，最多只有 hunger.nextDayStamina（取最低的那个）
+    let stamina = Math.round(gameState.maxStamina * staminaRatio);
+    if (!gameState.ateToday && stamina > timeData.hunger.nextDayStamina) {
+      stamina = timeData.hunger.nextDayStamina;
+      news.push(['msg.hungry', { n: stamina }]);
+    }
+    gameState.stamina = stamina;
+    gameState.ateToday = false;
     // 浇过的水第二天就干了
     this.grid.forEach((row, y) => row.forEach((ch, x) => ch === 'O' && this.setTile({ x, y }, 'o')));
+    // 今天的天气；下雨天所有锄过的田都算浇过水
+    gameState.weather = rollWeather(clock.month, clock.day);
+    if (gameState.weather === 'rain' && timeData.weather.rainWatersCrops) {
+      this.grid.forEach((row, y) => row.forEach((ch, x) => ch === 'o' && this.setTile({ x, y }, 'O')));
+      news.push(['msg.rainy']);
+    }
+    // 刚过完周日：做本周总结，统计从零开始
+    let summary: WeekSummary | null = null;
+    if (isLastDayOfWeek(ended.day)) {
+      summary = buildWeekSummary(gameState.week, ended.month, ended.day, clock.month, clock.day);
+      gameState.week = emptyWeek();
+    }
     this.route = [];
     this.onArrive = undefined;
     const door = this.cellFeet(this.doorTile);
     this.setFeet(door.x, door.y);
     this.facing = 'down';
     this.showStanding();
-    return news;
+    return { news, summary };
   }
 
   // =================================================================
@@ -1081,6 +1164,8 @@ export const FARM_EVENTS = {
   debugDays: 'farm:debugDays',
   /** 给够材料，请木匠修下一阶段 */
   debugBuild: 'farm:debugBuild',
+  /** 一天天过到本周日（不清空本周统计） */
+  debugToSunday: 'farm:debugToSunday',
   /** 收货服务开通了：门口放上收货筐 */
   basketUnlocked: 'farm:basketUnlocked',
 } as const;

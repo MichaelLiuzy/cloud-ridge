@@ -9,6 +9,7 @@ import { gameState } from '../GameState';
 import { addItem, countItem, inventoryCounts, removeItem, roomFor } from '../inventory';
 import { heartsOf } from '../affection';
 import { basketPrice } from './shop';
+import { earn, spend } from '../weekStats';
 
 const cfg = SERVICES.pickup;
 
@@ -21,7 +22,7 @@ export function pickupOfferReady() {
 export function unlockPickup(): boolean {
   if (gameState.pickup.unlocked) return true;
   if (gameState.cash < cfg.fee) return false;
-  gameState.cash -= cfg.fee;
+  spend(cfg.fee);
   gameState.pickup.unlocked = true;
   return true;
 }
@@ -56,6 +57,6 @@ export function settleBasket() {
   let total = 0;
   for (const [id, n] of Object.entries(gameState.basket)) total += (basketPrice(id) ?? 0) * n;
   gameState.basket = {};
-  gameState.cash += total;
+  earn(total); // 记进本周收入
   return total;
 }

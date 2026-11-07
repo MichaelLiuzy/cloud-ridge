@@ -5,6 +5,7 @@
  * 每个阶段修好：体力上限变化、学会新本事、找到一片日记。
  * 日记碎片：所属章节还没开始时是「烧焦的纸片」，章节开始后自动变成线索。
  */
+import { noteHouse, spend } from '../weekStats';
 import { HOUSING } from '../../data/housing';
 import { DIARY_PAGES } from '../../data/diary';
 import { CLUES } from '../../data/clues';
@@ -41,7 +42,7 @@ export function requestBuild(): string | null {
   const lacking = Object.entries(next.materials).some(([id, n]) => countItem(id) < (n ?? 0));
   if (lacking || gameState.cash < next.cost) return 'house.notEnough';
   for (const [id, n] of Object.entries(next.materials)) removeItem(id, n ?? 0);
-  gameState.cash -= next.cost;
+  spend(next.cost); // 木匠工钱，记进本周支出
   gameState.build = { stage: next.stage, daysLeft: HOUSING.buildDays };
   return null;
 }
@@ -60,6 +61,7 @@ export function buildOvernight() {
 function completeStage(stage: number) {
   const info = stageInfo(stage)!;
   gameState.houseStage = stage;
+  noteHouse(stage);
   // 搬进老宅后，草棚改成柴房（箱子留着）
   if (stage >= 2) gameState.hutIsShed = true;
   gameState.maxStamina = Math.max(gameState.maxStamina, info.maxStamina);

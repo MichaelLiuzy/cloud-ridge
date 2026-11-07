@@ -5,6 +5,7 @@
  *  - 某章的解锁条件全满足 → 自动开始这一章。
  * 游戏状态（gameState）是唯一的数据来源，剧本（ink）只读。
  */
+import { noteClue } from '../weekStats';
 import Phaser from 'phaser';
 import { CHAPTERS, CLUES, QUESTIONS, type ChapterId, type ClueId, type QuestionId, type StoryEventId } from '../../data/clues';
 import { gameState } from '../GameState';
@@ -47,6 +48,7 @@ export function canGetClue(id: string): id is ClueId {
 export function giveClue(id: string): boolean {
   if (!canGetClue(id)) return false;
   gameState.clues.push(id);
+  noteClue();
   notifyNew(id);
   checkChapters();
   return true;

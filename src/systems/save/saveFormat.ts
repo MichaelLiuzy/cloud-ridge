@@ -9,8 +9,10 @@
 import { FARM_MAP, RUIN_TILES } from '../../world/farmMap';
 import type { PlantedCrop } from '../farming/crops';
 import { slotsFromOld, type Slot } from '../inventory';
+import { emptyWeek, type WeekStats } from '../weekStats';
+import type { Weather } from '../../data/types';
 
-export const SAVE_VERSION = 8;
+export const SAVE_VERSION = 9;
 
 /** 存档里存了什么 */
 export interface SaveData {
@@ -27,6 +29,14 @@ export interface SaveData {
   cash: number;
   stamina: number;
   maxStamina: number;
+  /** 今天吃过东西没有（一整天没吃，第二天体力最多 80） */
+  ateToday: boolean;
+  /** 今天的天气：sunny 晴 / cloudy 阴 / rain 雨 / snow 雪 */
+  weather: Weather;
+  /** 本周统计（每周总结用） */
+  week: WeekStats;
+  /** 认识了哪些人 */
+  metNpcs: string[];
   /** 重建老宅到第几阶段（0 = 住草棚、废墟没清完；1 = 废墟清完；2~4 = 木匠修好的阶段） */
   houseStage: number;
   /** 废墟清了几格 */
@@ -171,6 +181,16 @@ const MIGRATIONS: Record<number, (old: any) => any> = {
     const selected = Math.max(0, slots.slice(0, 9).findIndex((s) => s?.id === held));
     return { ...rest, saveVersion: 8, slots, selected, keyItems };
   },
+  // 8 → 9：吃东西、天气、每周总结。旧存档当作今天吃过了、今天是晴天、这周从零记起；
+  // 看完序章的当作已经认识大夫、老范和周里正（医馆里说过话）
+  8: (old) => ({
+    ...old,
+    saveVersion: 9,
+    ateToday: true,
+    weather: 'sunny',
+    week: emptyWeek(),
+    metNpcs: old.prologue === 'done' || old.prologue === 'tutorial' ? ['doctor', 'fan', 'zhou'] : [],
+  }),
 };
 
 /** 把任意版本的存档升级到最新。认不出来的返回 null。 */

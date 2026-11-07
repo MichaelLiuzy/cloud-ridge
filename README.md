@@ -74,7 +74,7 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
 | 按键（比如把背包改成 B） | `src/config/settings.ts` | `keys` 里的 `bag: ['Q']` 改成 `['B']` |
 | 手机摇杆、按钮大小和透明度 | `src/config/settings.ts` | `touch` |
 | 对话框、物品栏、时辰框的颜色 | `src/config/settings.ts` | `ui` |
-| 左上角时辰框的位置、大小、内边距，体力条的长和粗 | `src/config/settings.ts` | `ui.infoBox`、`ui.staminaBar` |
+| 左上角时辰框（日期星期 / 时辰 / 天气 / 节日 / 钱和体力）的位置、大小、内边距，体力条的长和粗 | `src/config/settings.ts` | `ui.infoBox`、`ui.staminaBar` |
 | 水面波光多久换一次 | `src/config/settings.ts` | `waterShimmerMs` |
 | 没有图时占位色块的颜色和样子 | `src/config/assets.ts` | 每张图的 `color`、`shape` |
 | 27 色调色板 | `src/config/palette.json` | `colors` |
@@ -118,6 +118,14 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
 | 各处字号 | `src/config/settings.ts` | `fontSize`（普通界面字）、`ui.smallFontSize`（最小的提示字）、`ui.dialogueScale`（对话框再放大几倍）、`ui.iconScale`（工具栏、背包图标） |
 | 时辰框、体力条的位置和大小 | `src/config/settings.ts` | `ui.infoBox`、`ui.staminaBar`；钟点格式在 `src/locales/zh.ts` 的 `hud.clock` |
 | 设置菜单里有哪些项目、顺序 | `src/data/settingsMenu.ts` | `SETTINGS_MENU`（文件开头有写法说明；名字在 `src/locales/zh.ts` 的 `settings.items`） |
+| 每样食物吃一个回复多少体力、物品说明 | `src/data/items.ts` | 食物的 `stamina`、`desc` |
+| 一整天没吃东西，第二天醒来体力最多多少 | `src/data/time.ts` | `hunger.nextDayStamina`（现在 80） |
+| 天气概率、每月 1 日的天气、下雨算不算浇水 | `src/data/time.ts` | `weather.chances`、`weather.firstDayOfMonth`、`weather.rainWatersCrops` |
+| 刚种下的种子画在格子的什么高度 | `src/config/settings.ts` | `seedCenterY`（2/3 = 格子下三分之一的中间） |
+| 睡觉过场：变暗、停留、天亮各多久，字的颜色 | `src/config/settings.ts` | `sleepCutscene` |
+| 每周总结显示哪几项、顺序 | `src/data/weekSummary.ts` | `WEEK_SUMMARY_ITEMS`（每句话的写法在 `src/locales/zh.ts` 的 `weekSummary`） |
+| 星期、天气、赶集日在界面上的叫法 | `src/locales/zh.ts` | `calendar.weekdays`、`weather`、`calendar.market` |
+| Q 菜单日历的文字（图例、说明） | `src/locales/zh.ts` | `calendarTab` |
 | 设置项的默认值（文字速度、界面大小、音量……） | `src/config/settings.ts` | `prefsDefaults`；四档文字速度各多快在 `textSpeedMs` |
 
 > 改错了，打包会报错（比如数字写成了文字、物品 id 拼错）。看报错信息里的文件名和行号，或者直接告诉编程窗口。

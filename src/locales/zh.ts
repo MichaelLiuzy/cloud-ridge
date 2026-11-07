@@ -111,6 +111,7 @@ export const zh = {
   menuTabs: {
     bag: "背包",
     notebook: "笔记本",
+    calendar: "日历",
     map: "地图",
   },
   bag: {
@@ -125,7 +126,9 @@ export const zh = {
     unlock: "解锁",
     move: "移动",
     putHere: "放到这里",
-    keyHint: "回车 拿起 / 放下　X 丢弃　L 上锁",
+    keyHint: "回车 拿起 / 放下　X 丢弃　L 上锁　E 吃",
+    eat: "吃一个",
+    cantEat: "这个不能吃。",
     touchHint: "点一样东西拿起来，再点另一格放下",
     picked: "拿起了{name}，选一格放下（Esc 取消）",
     pickedTouch: "拿起了{name}，点一格放下",
@@ -141,6 +144,26 @@ export const zh = {
   },
   map: {
     placeholder: "地图（待做）",
+  },
+
+  // ===== Q 菜单里的日历 =====
+  calendarTab: {
+    /** 顶上：「正月 · 春」 */
+    header: "{month} · {season}",
+    /** 图例 */
+    legendToday: "今天",
+    legendTerm: "节气",
+    legendFestival: "节日",
+    legendMarket: "赶集日",
+    keyHint: "方向键 选日子（翻过头就到别的月）　[ ] 翻月",
+    touchHint: "点一天看说明，点 ◀ ▶ 翻月",
+    /** 选中一天时下面的说明 */
+    dayTitle: "{month}{day} {weekday}",
+    today: "今天",
+    festival: "{name}",
+    term: "节气：{name}",
+    market: "赶集日：镇上买卖价格 +{pct}%",
+    nothing: "平常的一天。",
   },
 
   // ===== 笔记本 =====
@@ -182,11 +205,28 @@ export const zh = {
   // ===== 日历 =====
   calendar: {
     /** 每月 28 天的叫法，用逗号隔开，按顺序 */
+    /** 星期的叫法（每月 1、8、15、22 日是周一），用逗号隔开 */
+    weekdays: "周一,周二,周三,周四,周五,周六,周日",
+    /** 时辰框里「赶集日」的叫法，和几样东西连起来时中间用的符号 */
+    market: "赶集日",
+    joiner: " · ",
     dayNames: "初一,初二,初三,初四,初五,初六,初七,初八,初九,初十,十一,十二,十三,十四,十五,十六,十七,十八,十九,二十,廿一,廿二,廿三,廿四,廿五,廿六,廿七,廿八",
+  },
+
+  // ===== 天气 =====
+  weather: {
+    sunny: "晴",
+    cloudy: "阴",
+    rain: "雨",
+    snow: "雪",
   },
 
   hud: {
     date: "{month}{day} · {term}",
+    /** 时辰框第一行：「正月十六 周二」 */
+    dateWeek: "{date} {weekday}",
+    /** 时辰框第二行：「辰时 · 8:00 am」 */
+    timeRow: "{shichen} · {clock}",
     /** 左上角时辰框里的短日期 */
     shortDate: "{month}{day}",
     time: "{shichen}（{hour}:{minute}）",
@@ -274,6 +314,9 @@ export const zh = {
     cantReach: "走不过去。",
     toolSelected: "拿起了{tool}。",
     sleep: "你躺下睡了。新的一天开始了。（已自动存进存档{slot}）",
+    ate: "吃了一个{name}，体力 +{n}。",
+    hungry: "昨天一整天没吃东西，今天浑身没力气（体力只有 {n}）。记得每天吃点东西。",
+    rainy: "外面下着雨。地里的田都淋透了，今天不用浇水。",
     exhaustedFaint: "你累得眼前一黑……醒来时已经是第二天早上，有人把你送回了草棚，还收了{fee}文辛苦钱。",
     saved: "已存档（存档{slot}）。现在的时间、位置和田地都记下了。",
     saveFailed: "存档没成功……可以再试一次，或者在菜单里先导出一份备份。",
@@ -292,9 +335,38 @@ export const zh = {
     chestFull: "箱子满了，最多只能放 {slots} 种东西。",
     nothingToStore: "身上没有能放进箱子的东西。",
     debugDays: "（测试）过了 {n} 天，今天是{date}。",
+    debugToSunday: "（测试）到本周日了，今天是{date}。今晚睡觉会看到本周总结。",
   },
 
   // ===== 重建老宅 =====
+  // ===== 睡觉过场 =====
+  sleep: {
+    zzz: "Zzz……",
+    line: "{name}睡着了。",
+  },
+
+  // ===== 每周总结（周日晚上睡觉时弹出；显示哪几项在 src/data/weekSummary.ts）=====
+  weekSummary: {
+    title: "本周总结",
+    /** 标题下面一行：「正月 第三周」 */
+    subtitle: "{month} 第{week}周",
+    weekNames: "一,二,三,四",
+    money: "卖东西收入 {income} 文，买东西支出 {spend} 文，净赚 {net} 文。",
+    moneyLoss: "卖东西收入 {income} 文，买东西支出 {spend} 文，倒贴 {net} 文。",
+    harvest: "收获了 {n} 个作物，收得最多的是{name}（{most} 个）。",
+    tilled: "新开垦了 {n} 格田。",
+    ruins: "清了 {n} 格废墟。",
+    house: "老宅：{name}完工了。",
+    people: "新认识了 {n} 位镇民。",
+    clues: "笔记本里新记下了 {n} 条线索。",
+    quiet: "这一周过得很安静。",
+    nextWeek: "下周提要",
+    nextNothing: "下周没有节气和节日。",
+    nextItem: "{date}（{weekday}）{what}",
+    nextMarket: "赶集日：{days}",
+    close: "回车 / 点一下 继续",
+  },
+
   house: {
     ruinsCleared: "老宅四周的破瓦焦木终于清干净了。接下来可以去镇上请木匠来修了。",
     building: "木匠正在修「{name}」，还要 {days} 天。",
@@ -398,6 +470,7 @@ export const zh = {
     debug: "测试……",
     debugDay1: "测试：直接睡到明天",
     debugDay7: "测试：快进 7 天",
+    debugToSunday: "测试：跳到本周日（本周统计不清空）",
     debugBuild: "测试：请木匠修下一阶段（材料不够直接给）",
     debugPickup: "测试：杂货铺掌柜好感加到 200 点（2 颗心）",
     debugChapter: "测试：直接进入下一章",

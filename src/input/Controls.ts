@@ -167,7 +167,8 @@ export function makeRoundButton(scene: Phaser.Scene, label: string, radius: numb
   const circle = scene.add.circle(0, 0, radius, fill, alpha).setStrokeStyle(1, toColor(SETTINGS.ui.border), 0.8);
   const text = pixelText(scene, 0, 0, label).setOrigin(0.5);
   const c = scene.add.container(0, 0, [circle, text]).setDepth(100).setSize(radius * 2, radius * 2);
-  c.setInteractive(new Phaser.Geom.Circle(0, 0, radius), Phaser.Geom.Circle.Contains);
+  // 感应区的坐标从按钮方框的左上角算起，所以圆心在 (radius, radius)（以前写 (0, 0)，只有左上四分之一按得到）
+  c.setInteractive(new Phaser.Geom.Circle(radius, radius, radius), Phaser.Geom.Circle.Contains);
   c.on('pointerdown', () => {
     circle.setFillStyle(toColor(SETTINGS.ui.innerBorder), 0.9);
     onPress();

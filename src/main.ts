@@ -19,6 +19,7 @@ import { HudScene } from './scenes/HudScene';
 import { StoryScene } from './scenes/StoryScene';
 import { GameMenuScene } from './scenes/GameMenuScene';
 import { SettingsScene } from './scenes/SettingsScene';
+import { NightScene } from './scenes/NightScene';
 import { UiOverlayScene } from './scenes/UiOverlayScene';
 
 document.title = t('game.title');
@@ -49,7 +50,7 @@ async function start() {
     scale: { mode: Phaser.Scale.NONE, zoom: cssZoom(), autoCenter: Phaser.Scale.CENTER_BOTH },
     physics: { default: 'arcade', arcade: { debug: false } },
     input: { activePointers: 3 },
-    scene: [BootScene, TitleScene, StoryScene, FarmScene, AtmosphereScene, HudScene, GameMenuScene, SettingsScene, UiOverlayScene],
+    scene: [BootScene, TitleScene, StoryScene, FarmScene, AtmosphereScene, HudScene, GameMenuScene, SettingsScene, UiOverlayScene, NightScene],
   });
 
   // 窗口变大小、手机转方向、设置里改了界面大小时，重新算放大倍数；倍数变了就通知各个场景重新排版

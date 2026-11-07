@@ -10,7 +10,8 @@ import Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
 import { VIEW, VIEW_EVENTS, setupUiCamera, uiSize } from '../config/view';
 import { SETTINGS_EVENTS } from './SettingsScene';
-import { toColor } from '../config/palette';
+import { PALETTE, toColor } from '../config/palette';
+import { dayTagsText, weatherName, weekdayName } from '../systems/days';
 import { localName, t } from '../locales/i18n';
 import { INPUT_EVENTS, PointerControls, makeRoundButton } from '../input/Controls';
 import { drawFrame, drawPanel, pixelText } from '../ui/pixelUi';
@@ -71,6 +72,9 @@ export class HudScene extends Phaser.Scene {
   /** 钟点「6:00 am」（整点才变） */
   private clockText!: Phaser.GameObjects.Text;
   private moneyText!: Phaser.GameObjects.Text;
+  /** 第三行天气、第四行节日 / 节气 / 赶集（没有就不显示这一行） */
+  private weatherText!: Phaser.GameObjects.Text;
+  private tagsText!: Phaser.GameObjects.Text;
   private staminaLabel!: Phaser.GameObjects.Text;
   /** 时辰框的底板、铜钱和体力条：内容变了才重画 */
   private infoBg!: Phaser.GameObjects.Graphics;
@@ -124,18 +128,20 @@ export class HudScene extends Phaser.Scene {
     const { w: W, h: H } = uiSize();
     const ui = SETTINGS.ui;
 
-    // ---- 左上角时辰框：第一行日期、时辰、钟点；第二行钱、体力（大小在 settings.ts 的 ui.infoBox）----
+    // ---- 左上角时辰框（大小在 settings.ts 的 ui.infoBox）----
+    //  日期和星期 / 时辰和钟点 / 天气 /（节日、节气、赶集）/ 钱和体力。每行的 y 在 refreshInfoBox 里排
     const box = ui.infoBox;
     this.infoBg = this.add.graphics();
     this.infoMoney = this.add.graphics();
-    const row1 = box.y + box.padding + box.textNudgeY;
-    const row2 = row1 + box.lineH;
-    this.dateText = pixelText(this, box.x + box.padding, row1, '');
-    // 时辰用褐色字，和日期分开
-    this.timeText = pixelText(this, 0, row1, '', { color: ui.textDim2 });
-    this.clockText = pixelText(this, 0, row1, '');
-    this.moneyText = pixelText(this, box.x + box.padding + 9, row2, '', { color: ui.money });
-    this.staminaLabel = pixelText(this, 0, row2, t('hud.staminaLabel'));
+    const x0 = box.x + box.padding;
+    this.dateText = pixelText(this, x0, 0, '');
+    // 时辰用褐色字，和钟点分开
+    this.timeText = pixelText(this, x0, 0, '', { color: ui.textDim2 });
+    this.clockText = pixelText(this, 0, 0, '');
+    this.weatherText = pixelText(this, x0 + 12, 0, '');
+    this.tagsText = pixelText(this, x0, 0, '', { color: ui.money });
+    this.moneyText = pixelText(this, x0 + 9, 0, '', { color: ui.money });
+    this.staminaLabel = pixelText(this, 0, 0, t('hud.staminaLabel'));
     this.staminaHit = this.add.zone(0, 0, 1, 1).setOrigin(0).setInteractive();
     this.staminaHit.on('pointerover', () => !this.touch && this.showStaminaTip());
     this.staminaHit.on('pointerout', () => !this.touch && this.hideStaminaTip());
@@ -222,7 +228,7 @@ export class HudScene extends Phaser.Scene {
     const clock = gameState.clock;
     if (!clock) return;
     if (this.relayoutPending) this.relayout();
-    this.refreshInfoBox(clock.shortDateText(), clock.shichen, clock.clockText());
+    this.refreshInfoBox(t('hud.dateWeek', { date: clock.shortDateText(), weekday: weekdayName(clock.day) }), clock.shichen, clock.clockText(), dayTagsText(clock.month, clock.day));
     // 工具栏里的东西变了（用掉种子、在背包里挪了位置……）：重画
     const sig = this.toolbarSignature();
     if (sig !== this.toolbarSig) this.buildToolbar(this.layoutW, this.layoutH);
@@ -238,30 +244,55 @@ export class HudScene extends Phaser.Scene {
 
   // ---------------- 左上角时辰框 ----------------
 
-  /** 日期、时辰、钟点、钱、体力有变化时才重画（每帧都会调用） */
-  private refreshInfoBox(date: string, shichen: string, hourText: string) {
+  /** 日期、时辰、钟点、天气、节日、钱、体力有变化时才重画（每帧都会调用） */
+  private refreshInfoBox(date: string, shichen: string, hourText: string, tags: string) {
     const ui = SETTINGS.ui;
     const box = ui.infoBox;
     const bar = ui.staminaBar;
     const stamina = Math.round(Math.max(0, Math.min(1, gameState.stamina / gameState.maxStamina)) * bar.w);
-    const key = [date, shichen, hourText, gameState.cash, stamina].join('|');
+    const weather = gameState.weather;
+    const key = [date, shichen, hourText, tags, weather, gameState.cash, stamina].join('|');
     if (key === this.infoKey) return;
     this.infoKey = key;
-    // 第一行：正月十六　卯时　6:00 am
-    this.dateText.setText(date);
-    this.timeText.setText(shichen).setX(this.dateText.x + Math.ceil(this.dateText.width) + 6);
-    this.clockText.setText(hourText).setX(this.timeText.x + Math.ceil(this.timeText.width) + 6);
-    // 第二行：铜钱 + 钱数（左），「体力」+ 体力条（右）
-    this.moneyText.setText(String(gameState.cash));
-    const row1W = this.clockText.x + Math.ceil(this.clockText.width) - box.x + box.padding;
-    const row2W = 9 + Math.ceil(this.moneyText.width) + 10 + Math.ceil(this.staminaLabel.width) + 4 + bar.w + box.padding * 2;
-    const w = Math.max(box.w, row1W, row2W);
+    // 一行一行往下排；今天没有节日 / 节气 / 赶集，就少一行
+    let y = box.y + box.padding + box.textNudgeY;
+    const nextRow = () => {
+      const at = y;
+      y += box.lineH;
+      return at;
+    };
+    // 第一行：正月十六 周二
+    this.dateText.setText(date).setY(nextRow());
+    // 第二行：辰时 · 8:00 am
+    const row2 = nextRow();
+    this.timeText.setText(`${shichen}${t('calendar.joiner')}`).setY(row2);
+    this.clockText.setText(hourText).setPosition(this.timeText.x + Math.ceil(this.timeText.width), row2);
+    // 第三行：天气图标 + 晴
+    const row3 = nextRow();
+    this.weatherText.setText(weatherName(weather)).setY(row3);
+    // 第四行：元宵 · 立春 · 赶集日
+    this.tagsText.setText(tags).setVisible(!!tags);
+    if (tags) this.tagsText.setY(nextRow());
+    // 最后一行：铜钱 + 钱数（左），「体力」+ 体力条（右）
+    const rowY = nextRow();
+    this.moneyText.setText(String(gameState.cash)).setY(rowY);
+    this.staminaLabel.setY(rowY);
+    const widest = Math.max(
+      this.dateText.width,
+      this.clockText.x - this.timeText.x + this.clockText.width,
+      12 + this.weatherText.width,
+      tags ? this.tagsText.width : 0,
+    );
+    const rowsW = Math.ceil(widest) + box.padding * 2;
+    const moneyW = 9 + Math.ceil(this.moneyText.width) + 10 + Math.ceil(this.staminaLabel.width) + 4 + bar.w + box.padding * 2;
+    const w = Math.max(box.w, rowsW, moneyW);
+    const h = Math.max(box.h, y - box.y - box.textNudgeY + box.padding - 2);
     // 底板
     this.infoBg.clear();
-    drawPanel(this.infoBg, box.x, box.y, w, box.h);
+    drawPanel(this.infoBg, box.x, box.y, w, h);
     const g = this.infoMoney.clear();
+    drawWeatherIcon(g, box.x + box.padding, row3 + 7, weather);
     const money = toColor(ui.money);
-    const rowY = this.moneyText.y;
     const midY = rowY + 7; // 字的中线
     drawCoin(g, box.x + box.padding, midY - 2, money);
     const bx = box.x + w - box.padding - bar.w;
@@ -432,6 +463,7 @@ export class HudScene extends Phaser.Scene {
         { label: t('menu.debugSkipTime'), run: () => gameState.clock && (gameState.clock.minutes += 180) },
         { label: t('menu.debugDay1'), run: () => ev.emit(FARM_EVENTS.debugDays, 1) },
         { label: t('menu.debugDay7'), run: () => ev.emit(FARM_EVENTS.debugDays, 7) },
+        { label: t('menu.debugToSunday'), run: () => ev.emit(FARM_EVENTS.debugToSunday) },
         { label: t('menu.debugBuild'), run: () => ev.emit(FARM_EVENTS.debugBuild) },
         { label: t('menu.debugPickup'), run: () => this.debugPickup() },
         { label: t('menu.debugPoster'), run: () => fireStoryEvent('saw_missing_poster') },
@@ -607,4 +639,35 @@ function drawGear(g: Phaser.GameObjects.Graphics, cx: number, cy: number, color:
   }
   g.fillCircle(cx, cy, 6);
   g.fillStyle(toColor(SETTINGS.ui.panel)).fillCircle(cx, cy, 2.5);
+}
+
+/**
+ * 时辰框里的小天气图标（占位画法，9×9 像素左右），左边在 x、中线在 cy。
+ * 以后有了天气图标的美术图，换成图片就行。
+ */
+function drawWeatherIcon(g: Phaser.GameObjects.Graphics, x: number, cy: number, weather: string) {
+  const sun = toColor(PALETTE.candle);
+  const sunEdge = toColor(PALETTE.orange);
+  const cloud = toColor(PALETTE.ash);
+  const cloudDark = toColor(PALETTE.stone);
+  const drop = toColor(PALETTE.indigo);
+  const snow = toColor(PALETTE.mist);
+  const y = cy - 4;
+  const drawCloud = (oy: number) => {
+    g.fillStyle(cloudDark).fillRect(x, y + oy + 2, 9, 3).fillRect(x + 2, y + oy, 4, 2);
+    g.fillStyle(cloud).fillRect(x + 1, y + oy + 2, 7, 2).fillRect(x + 3, y + oy + 1, 2, 1);
+  };
+  if (weather === 'sunny') {
+    g.fillStyle(sunEdge).fillRect(x + 4, y, 1, 9).fillRect(x, y + 4, 9, 1);
+    g.fillStyle(sunEdge).fillRect(x + 2, y + 2, 5, 5);
+    g.fillStyle(sun).fillRect(x + 3, y + 2, 3, 5).fillRect(x + 2, y + 3, 5, 3);
+  } else if (weather === 'cloudy') {
+    drawCloud(2);
+  } else if (weather === 'rain') {
+    drawCloud(0);
+    g.fillStyle(drop).fillRect(x + 1, y + 6, 1, 2).fillRect(x + 4, y + 7, 1, 2).fillRect(x + 7, y + 6, 1, 2);
+  } else if (weather === 'snow') {
+    drawCloud(0);
+    g.fillStyle(snow).fillRect(x + 1, y + 6, 2, 2).fillRect(x + 5, y + 7, 2, 2);
+  }
 }

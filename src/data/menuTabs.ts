@@ -2,11 +2,12 @@
  * Q 总菜单的栏目，从左到右排。
  * 以后加「人物」等栏目时，在这里加一行（label 是语言文件里的名字），再让编程窗口写这一栏的内容。
  */
-export type MenuTabId = 'bag' | 'notebook' | 'map';
+export type MenuTabId = 'bag' | 'notebook' | 'calendar' | 'map';
 
 export const MENU_TABS: { id: MenuTabId; label: string }[] = [
   { id: 'bag', label: 'menuTabs.bag' },
   { id: 'notebook', label: 'menuTabs.notebook' },
+  { id: 'calendar', label: 'menuTabs.calendar' },
   { id: 'map', label: 'menuTabs.map' },
 ];
 

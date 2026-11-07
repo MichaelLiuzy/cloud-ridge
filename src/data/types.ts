@@ -66,7 +66,7 @@ export type StaminaAction = 'hoe' | 'water' | 'plant' | 'harvest' | 'cut_grass' 
 /** 重建老宅的阶段 id */
 export type HouseStageId = 'clear_ruins' | 'timber_frame' | 'tiled_roof' | 'courtyard';
 
-type Weather = 'sunny' | 'cloudy' | 'rain' | 'snow';
+export type Weather = 'sunny' | 'cloudy' | 'rain' | 'snow';
 
 // ---------------- time.ts：时间、体力、昏倒、天气 ----------------
 
@@ -127,8 +127,11 @@ export interface TimeTable {
     lateNight: { hour: number; nextDayStamina: number; fee: number; wakeAt: string; event: string };
     exhausted: { nextDayStamina: number; fee: number; feeMaxFractionOfCash: number; wakeAt: string };
   };
+  /** 饿肚子：前一天一整天没吃东西，第二天醒来体力最多是 nextDayStamina（点数，不是比例） */
+  hunger: { nextDayStamina: number };
   weather: {
-    firstDayOfSeason: Weather;
+    /** 每月 1 日固定是什么天气 */
+    firstDayOfMonth: Weather;
     rainWatersCrops: boolean;
     /** 各季节天气概率（加起来是 1） */
     chances: Record<SeasonId, Record<Weather, number>>;

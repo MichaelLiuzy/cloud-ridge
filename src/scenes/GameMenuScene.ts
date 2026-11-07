@@ -1,6 +1,6 @@
 /**
  * Q 总菜单：一个叠在游戏上面的全屏面板。
- *  - 顶部一排栏目（背包 / 笔记本 / 地图，栏目表在 src/data/menuTabs.ts）。
+ *  - 顶部一排栏目（背包 / 笔记本 / 日历 / 地图，栏目表在 src/data/menuTabs.ts）。
  *    Tab 切到下一栏，Shift+Tab 切回上一栏；手机上直接点栏目名。
  *  - Q 或 Esc 关闭；右上角的 ✕ 也能关。
  *  - 打开时游戏时间暂停（gameState.menuOpen = true，农场场景看到它就停）。
@@ -24,6 +24,10 @@ import { QuantityPicker } from '../ui/QuantityPicker';
 import { chaptersInOrder, chapterStarted, questionState } from '../systems/story/notebook';
 import { drawFrame, drawPanel, pixelText } from '../ui/pixelUi';
 import { wrapText } from '../ui/richText';
+import { PALETTE } from '../config/palette';
+import { TIME } from '../data/time';
+import { eatFromSlot, isFood } from '../systems/food';
+import { dayEvents, dayName, monthName, seasonOf, weekdayIndex, weekdayName } from '../systems/days';
 
 /** 面板大小 = 界面层大小（大约 640×360，打开时按当前界面大小算） */
 let W = 640;
@@ -58,6 +62,9 @@ export class GameMenuScene extends Phaser.Scene {
   private maxScroll = 0;
   private scrollLayer?: Phaser.GameObjects.Container;
   private touch = false;
+  /** 日历：正在看几月、选中了哪一天 */
+  private calMonth = 1;
+  private calDay = 1;
 
   constructor() {
     super('GameMenu');
@@ -73,6 +80,8 @@ export class GameMenuScene extends Phaser.Scene {
     this.press = null;
     this.scroll = 0;
     this.touch = isTouchDevice();
+    this.calMonth = gameState.clock?.month ?? 1;
+    this.calDay = gameState.clock?.day ?? 1;
     this.openedAt = this.time.now;
     gameState.menuOpen = true;
     setupUiCamera(this);
@@ -147,7 +156,9 @@ export class GameMenuScene extends Phaser.Scene {
         if (is(keys.action, e)) return this.bagPick(this.slot);
         if (e.key === 'x' || e.key === 'X') return this.discard();
         if (e.key === 'l' || e.key === 'L') return this.lock();
+        if (e.key === 'e' || e.key === 'E') return this.eat();
       }
+      if (this.tab === 'calendar' && (e.key === '[' || e.key === ']')) return this.flipMonth(e.key === ']' ? 1 : -1);
       const dir = is(keys.up, e) ? 'up' : is(keys.down, e) ? 'down' : is(keys.left, e) ? 'left' : is(keys.right, e) ? 'right' : null;
       if (dir) this.nav(dir);
     };
@@ -172,6 +183,23 @@ export class GameMenuScene extends Phaser.Scene {
     } else if (this.tab === 'notebook') {
       if (dir === 'up' || dir === 'down') this.scrollBy(dir === 'down' ? LINE_H : -LINE_H);
       else this.switchSection(dir === 'right' ? 1 : -1);
+    } else if (this.tab === 'calendar') {
+      // 选日子：左右一天、上下一周；翻过这个月的头尾就到上个月 / 下个月
+      const step = { up: -7, down: 7, left: -1, right: 1 }[dir];
+      const n = TIME.calendar.daysPerMonth;
+      let d = this.calDay + step;
+      let m = this.calMonth;
+      const months = TIME.calendar.months.length;
+      if (d < 1) {
+        d += n;
+        m = m === 1 ? months : m - 1;
+      } else if (d > n) {
+        d -= n;
+        m = m === months ? 1 : m + 1;
+      }
+      this.calMonth = m;
+      this.calDay = d;
+      this.redraw();
     }
   }
 
@@ -204,6 +232,7 @@ export class GameMenuScene extends Phaser.Scene {
     this.scrollLayer = undefined;
     if (this.tab === 'bag') this.drawBag();
     else if (this.tab === 'notebook') this.drawNotebook();
+    else if (this.tab === 'calendar') this.drawCalendar();
     else this.content.add(pixelText(this, W / 2, H / 2, t('map.placeholder'), { color: SETTINGS.ui.textDim }).setOrigin(0.5));
   }
 
@@ -333,6 +362,7 @@ export class GameMenuScene extends Phaser.Scene {
     const keys = !this.touch;
     button(t('bag.discard') + (keys ? ' X' : ''), !!sel && !why, () => this.discard());
     button((sel?.locked ? t('bag.unlock') : t('bag.lock')) + (keys ? ' L' : ''), !!sel, () => this.lock());
+    if (sel && isFood(sel.id)) button(t('bag.eat') + (keys ? ' E' : ''), true, () => this.eat());
     // 操作提示 / 拿起来了
     const held = this.held !== null ? gameState.slots[this.held] : null;
     const hint = held
@@ -415,6 +445,16 @@ export class GameMenuScene extends Phaser.Scene {
     });
     this.picker = picker;
     this.modal = { destroy: () => (picker.destroy(), block.destroy()) };
+  }
+
+  /** 吃掉选中那格的一个（只有食物能吃，src/systems/food.ts） */
+  private eat() {
+    const s = gameState.slots[this.slot];
+    if (!s) return;
+    const ate = eatFromSlot(this.slot);
+    this.note = ate ? t('msg.ate', { name: localName(itemInfo(ate.id)?.name), n: ate.gain }) : t('bag.cantEat');
+    if (this.held === this.slot && !gameState.slots[this.slot]) this.held = null;
+    this.redraw();
   }
 
   /** 上锁 / 解锁 */
@@ -558,6 +598,121 @@ export class GameMenuScene extends Phaser.Scene {
     }
     if (!wrote) write(t('notebook.none'), { color: ui.textDim });
     return y;
+  }
+
+  // ---------------- 日历 ----------------
+
+  private flipMonth(delta: number) {
+    const months = TIME.calendar.months.length;
+    this.calMonth = ((this.calMonth - 1 + delta + months) % months) + 1;
+    this.redraw();
+  }
+
+  /**
+   * 一个月一页：顶上「◀ 正月 · 春 ▶」，下面 4 行 × 7 列（周一到周日），
+   * 格子里写日子、节气、节日，赶集日右上角有个小橘块；今天涂黄底，选中的那天加橘框。
+   * 最底下是图例和选中那天的说明。
+   */
+  private drawCalendar() {
+    const ui = SETTINGS.ui;
+    const cal = TIME.calendar;
+    const clock = gameState.clock;
+    const colors = {
+      today: toColor(PALETTE.candle),
+      term: PALETTE.indigo,
+      festival: PALETTE.vermilion,
+      market: toColor(PALETTE.orange),
+    };
+    // 顶上：月份 + 季节，两边箭头
+    const head = pixelText(this, W / 2, AREA.y + 2, t('calendarTab.header', { month: monthName(this.calMonth), season: localName(seasonOf(this.calMonth).name) }), { color: ui.money }).setOrigin(0.5, 0);
+    this.content.add(head);
+    const arrow = (label: string, x: number, delta: number) => {
+      const a = pixelText(this, x, AREA.y + 2, label).setOrigin(0.5, 0);
+      const hit = this.add.zone(x - 14, AREA.y - 2, 28, 22).setOrigin(0).setInteractive();
+      hit.on('pointerdown', () => this.flipMonth(delta));
+      this.content.add([a, hit]);
+    };
+    arrow('◀', W / 2 - head.width / 2 - 18, -1);
+    arrow('▶', W / 2 + head.width / 2 + 18, 1);
+
+    // 格子大小：按面板大小算（手机上会小一点）
+    const cols = cal.daysPerWeek;
+    const rows = Math.ceil(cal.daysPerMonth / cols);
+    const top = AREA.y + 22;
+    const bottomSpace = 52; // 图例 + 说明两行
+    const cellW = Math.min(84, Math.floor((AREA.w - 8) / cols));
+    const cellH = Math.max(30, Math.min(56, Math.floor((AREA.y + AREA.h - top - 14 - bottomSpace) / rows)));
+    const x0 = Math.round((W - cellW * cols) / 2);
+    const weekdays = t('calendar.weekdays').split(',');
+    weekdays.forEach((w, i) => this.content.add(pixelText(this, x0 + i * cellW + cellW / 2, top, w, { color: ui.textDim2 }).setOrigin(0.5, 0)));
+    const gy = top + 14;
+    const g = this.add.graphics();
+    this.content.add(g);
+    for (let d = 1; d <= cal.daysPerMonth; d++) {
+      const col = weekdayIndex(d);
+      const row = Math.floor((d - 1) / cols);
+      const x = x0 + col * cellW;
+      const y = gy + row * cellH;
+      const isToday = !!clock && clock.month === this.calMonth && clock.day === d;
+      g.fillStyle(isToday ? colors.today : toColor(ui.panel), isToday ? 0.85 : 1).fillRect(x + 1, y + 1, cellW - 2, cellH - 2);
+      drawFrame(g, x, y, cellW, cellH, toColor(ui.innerBorder));
+      const e = dayEvents(this.calMonth, d);
+      if (e.market) g.fillStyle(colors.market).fillRect(x + cellW - 8, y + 3, 5, 5);
+      this.content.add(pixelText(this, x + 4, y + 2, dayName(d), { color: isToday ? ui.text : ui.textDim2 }));
+      let ty = y + 2 + LINE_H;
+      const tag = (text: string, color: string) => {
+        if (ty + 12 > y + cellH) return;
+        this.content.add(pixelText(this, x + 4, ty, text, { color }));
+        ty += LINE_H - 1;
+      };
+      if (e.festival) tag(localName(e.festival.name), colors.festival);
+      if (e.term) tag(localName(e.term.name), colors.term);
+      const hit = this.add.zone(x, y, cellW, cellH).setOrigin(0).setInteractive();
+      hit.on('pointerdown', () => {
+        this.calDay = d;
+        this.redraw();
+      });
+      this.content.add(hit);
+    }
+    // 选中的那天：橘色粗框
+    {
+      const col = weekdayIndex(this.calDay);
+      const row = Math.floor((this.calDay - 1) / cols);
+      const sx = x0 + col * cellW;
+      const sy = gy + row * cellH;
+      drawFrame(g, sx, sy, cellW, cellH, toColor(ui.toolSelected));
+      drawFrame(g, sx + 1, sy + 1, cellW - 2, cellH - 2, toColor(ui.toolSelected));
+    }
+
+    // 图例
+    let ly = gy + rows * cellH + 5;
+    let lx = x0;
+    const legend = (draw: (gx: number, gy: number) => void, label: string, color: string = ui.textDim2) => {
+      draw(lx, ly + 3);
+      const tx = pixelText(this, lx + 12, ly, label, { color });
+      this.content.add(tx);
+      lx += 12 + Math.ceil(tx.width) + 14;
+    };
+    legend((a, b) => g.fillStyle(colors.today).fillRect(a, b, 8, 8), t('calendarTab.legendToday'));
+    legend((a, b) => g.fillStyle(toColor(colors.term)).fillRect(a, b + 2, 8, 3), t('calendarTab.legendTerm'), colors.term);
+    legend((a, b) => g.fillStyle(toColor(colors.festival)).fillRect(a, b + 2, 8, 3), t('calendarTab.legendFestival'), colors.festival);
+    legend((a, b) => g.fillStyle(colors.market).fillRect(a + 1, b + 1, 5, 5), t('calendarTab.legendMarket'));
+    const hint = pixelText(this, x0 + cellW * cols, ly, t(this.touch ? 'calendarTab.touchHint' : 'calendarTab.keyHint'), { color: ui.textDim }).setOrigin(1, 0);
+    if (hint.x - hint.width > lx) this.content.add(hint);
+    else hint.destroy();
+
+    // 选中那天的说明
+    ly += LINE_H + 4;
+    const e = dayEvents(this.calMonth, this.calDay);
+    const isToday = !!clock && clock.month === this.calMonth && clock.day === this.calDay;
+    let title = t('calendarTab.dayTitle', { month: monthName(this.calMonth), day: dayName(this.calDay), weekday: weekdayName(this.calDay) });
+    if (isToday) title += `（${t('calendarTab.today')}）`;
+    const parts: string[] = [];
+    if (e.festival) parts.push(t('calendarTab.festival', { name: localName(e.festival.name) }));
+    if (e.term) parts.push(t('calendarTab.term', { name: localName(e.term.name) }));
+    if (e.market) parts.push(t('calendarTab.market', { pct: Math.round(cal.marketPriceBonus * 100) }));
+    if (!parts.length) parts.push(t('calendarTab.nothing'));
+    this.content.add(pixelText(this, x0, ly, `${title}　${parts.join('　')}`, { wrap: cellW * cols }));
   }
 
   private scrollBy(dy: number) {
