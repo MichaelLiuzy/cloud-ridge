@@ -114,7 +114,9 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
 | 工具栏几格、背包几格、同一种东西一格最多叠几个 | `src/config/settings.ts` | `inventory` 里的 `toolbarSlots`、`bagSlots`、`stackMax`（默认 99；工具不叠） |
 | 对话框里旁白、黄字的颜色 | `src/config/settings.ts` | `ui` 里的 `textDim2`、`clueText`、`clueMark` |
 | 界面层放大倍数（小 / 中 / 大三档各是多少） | `src/config/settings.ts` | `ui.scale`（数字越大界面越小；中档 2 = 按 640×360 排版） |
-| 各处字号 | `src/config/settings.ts` | `fontSize`（普通界面字）、`ui.smallFontSize`（最小的提示字）、`ui.dialogueScale`（对话框再放大几倍）、`ui.iconScale`（工具栏、背包图标） |
+| 各处字号（三档） | `src/config/settings.ts` | `fontSize`（正文：对话、菜单、字幕、物品名）、`titleFontSize`（标题：人名、栏目名、章节名；游戏名是它的 3 倍）、`ui.smallFontSize`（小字提示）；`ui.dialogueScale`（对话框再放大几倍）、`ui.iconScale`（工具栏、背包图标） |
+| 字体文件、换字体 | `public/assets/fonts/`、`tools/fonts.mjs`、`src/locales/i18n.ts`、`src/main.ts` | 现在用霞鹜文楷（LXGW WenKai，SIL OFL 1.1，https://github.com/lxgw/LxgwWenKai ，许可证 `OFL-WenKai.txt`）：正文常规体，标题粗体。打包时 `npm run fonts` 自动只留用得到的字（src 里出现的字 + 常用汉字 3755 个），做成两个 woff2；完整字体放 `fonts_raw/`（不提交，没有会自动下载）。换字体：把新字体的 ttf 放进 `fonts_raw/`，改 `tools/fonts.mjs` 里的文件名；`i18n.ts` 里 `font` / `titleFont` 是字体名单（后面的系统字体是生僻字的后备） |
+| 门口灯笼 | `src/scenes/FarmScene.ts`（`toggleLantern`）、`src/config/settings.ts`（`lanternOffTint`） | 点一下或面对它按回车：亮 ↔ 灭；灭了没有光圈，用灯笼图的第 2 格（off） |
 | 时辰框、体力条的位置和大小 | `src/config/settings.ts` | `ui.infoBox`、`ui.staminaBar`；钟点格式在 `src/locales/zh.ts` 的 `hud.clock` |
 | 设置菜单里有哪些项目、顺序 | `src/data/settingsMenu.ts` | `SETTINGS_MENU`（文件开头有写法说明；名字在 `src/locales/zh.ts` 的 `settings.items`） |
 | 每样食物吃一个回复多少体力、物品说明 | `src/data/items.ts` | 食物的 `stamina`、`desc` |
@@ -187,7 +189,7 @@ src/
     fileTransfer.ts    导出 / 导入存档文件
   input/Controls.ts    键盘、鼠标、手机摇杆和点击，统一成同一套指令
 public/icons/          主屏幕图标
-public/assets/fonts/   像素字体 Fusion Pixel 12px（开源字体，许可证在同一个文件夹）
+public/assets/fonts/   霞鹜文楷子集（npm run fonts 生成，许可证 OFL-WenKai.txt 在同一个文件夹）
 public/assets/         整理好的美术图（npm run art 自动生成，不提交）
 art_raw/               ★ ChatGPT 生成的美术原图放这里（命名规则见 art_raw/README.md）
 tools/art.mjs          美术整理脚本（npm run art）

@@ -123,8 +123,8 @@ export const SETTINGS = {
     dialogueScale: 2,
     /** 背包、工具栏里的物品图标放大几倍（整数；图标原图 16×16） */
     iconScale: 2,
-    /** 界面上最小的字（翻页提示、体力数字提示）的字号，像素字体只有 12 的倍数最清楚 */
-    smallFontSize: 12,
+    /** 小字（翻页提示、体力数字提示）的字号 */
+    smallFontSize: 8,
     /** 框的底色（米白） */
     panel: '#EFE4C8',
     /** 框的 1 像素外边 */
@@ -186,8 +186,17 @@ export const SETTINGS = {
     titleText: '#EFE4C8',
     titleSubText: '#B89A64',
   },
-  /** 字体：像素字体 Fusion Pixel（文件在 public/assets/fonts/），12 像素 */
-  fontSize: 12,
+  /** 门口灯笼灭了、又没有熄灭的图时，把灯笼的图调成这个颜色（越深越暗） */
+  lanternOffTint: '#7A7068',
+
+  /**
+   * 字号（界面像素，界面大约 640×360；对话框再放大 ui.dialogueScale 倍）。
+   * 字体是霞鹜文楷，文件在 public/assets/fonts/，怎么换见 README。
+   */
+  /** 正文：对话、菜单选项、信息框、字幕、物品名、数字 */
+  fontSize: 10,
+  /** 标题：说话人名字、菜单栏目名、章节名、列表菜单标题、周总结标题（游戏名是它的 3 倍） */
+  titleFontSize: 11,
 
   // ---------------- 对话 ----------------
   /** 对话逐字出现：每个字间隔多少毫秒（设置里的「文字速度」四档；0 = 一下子全出来） */

@@ -44,7 +44,7 @@ export class TitleScene extends Phaser.Scene {
     // 标题背景图（cg_title）：有图就铺在最下面，上方中间的天空放标题字；没图就是纯色底
     if (!PLACEHOLDERS.has('cg_title')) this.add.image(0, 0, 'cg_title').setOrigin(0).setDisplaySize(W, H);
     // 游戏名：12 像素的字放大 3 倍，保持像素方块
-    this.title = pixelText(this, W / 2, 34, t('game.title'), { color: ui.titleText }).setOrigin(0.5).setScale(3);
+    this.title = pixelText(this, W / 2, 34, t('game.title'), { color: ui.titleText, title: true, size: SETTINGS.titleFontSize * 3 }).setOrigin(0.5);
     this.sub = pixelText(this, W / 2, 60, t('game.subtitle'), { color: ui.titleSubText }).setOrigin(0.5);
     this.status = pixelText(this, W / 2, 76, '', { color: SETTINGS.ui.toolSelected, align: 'center' }).setOrigin(0.5);
     const press = pixelText(this, W / 2, needsAddToHomeTip() ? 104 : 124, t('game.pressToStart'), { color: ui.titleSubText }).setOrigin(0.5);

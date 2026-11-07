@@ -9,11 +9,13 @@ import { zh } from './zh';
 type Dict = { [key: string]: string | Dict };
 
 /** 每种语言：文字表 + 用什么字体 */
-const LANGUAGES: Record<string, { dict: Dict; font: string }> = {
+const LANGUAGES: Record<string, { dict: Dict; font: string; titleFont: string }> = {
   zh: {
     dict: zh as unknown as Dict,
-    // 中文用像素字体 Fusion Pixel 12px（文件在 public/assets/fonts/，离线也能用）；万一没加载上，退回系统字体
-    font: '"FusionPixel", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
+    // 正文：霞鹜文楷（文件在 public/assets/fonts/，只留了用得到的字）；标题：霞鹜文楷粗体。
+    // 后面跟系统中文字体：子集里没有的字（玩家起的生僻名字）、或字体没加载上时用它们，不会变成方块
+    font: '"CloudRidgeKai", "Kaiti SC", "STKaiti", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", serif',
+    titleFont: '"CloudRidgeKaiBold", "CloudRidgeKai", "Kaiti SC", "STKaiti", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", serif',
   },
   // en: { dict: en as unknown as Dict, font: '"Georgia", serif' },
 };
@@ -31,6 +33,10 @@ export function getLanguage() {
 /** 当前语言用的字体 */
 export function font() {
   return LANGUAGES[current].font;
+}
+/** 当前语言标题用的字体（游戏名、人名、栏目标题） */
+export function titleFont() {
+  return LANGUAGES[current].titleFont;
 }
 
 /**

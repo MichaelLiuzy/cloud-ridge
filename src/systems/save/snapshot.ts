@@ -28,6 +28,7 @@ export function stateFields(): Omit<SaveData, 'farm' | 'player'> {
     debrisDay: gameState.debrisDay,
     mail: JSON.parse(JSON.stringify(gameState.mail)),
     mailSent: [...gameState.mailSent],
+    lanternOff: gameState.lanternOff,
     houseStage: gameState.houseStage,
     ruinsCleared: gameState.ruinsCleared,
     build: gameState.build ? { ...gameState.build } : null,

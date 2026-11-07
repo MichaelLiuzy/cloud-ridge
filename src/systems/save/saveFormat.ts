@@ -15,7 +15,7 @@ import { chestFromOld } from '../home/storage';
 import type { Weather } from '../../data/types';
 import { TIME } from '../../data/time';
 
-export const SAVE_VERSION = 13;
+export const SAVE_VERSION = 14;
 
 /** 存档里存了什么 */
 export interface SaveData {
@@ -52,6 +52,8 @@ export interface SaveData {
   mail: MailEntry[];
   /** 已经寄出过的信 id */
   mailSent: string[];
+  /** 门口灯笼灭了没有 */
+  lanternOff: boolean;
   /** 重建老宅到第几阶段（0 = 住草棚、废墟没清完；1 = 废墟清完；2~4 = 木匠修好的阶段） */
   houseStage: number;
   /** 废墟清了几格 */
@@ -226,6 +228,8 @@ const MIGRATIONS: Record<number, (old: any) => any> = {
     farm[y] = farm[y].slice(0, x) + 'M' + farm[y].slice(x + 1);
     return { ...old, saveVersion: 13, farm, mail: [], mailSent: [] };
   },
+  // 13 → 14：门口灯笼可以开关，旧存档是亮着的
+  13: (old) => ({ ...old, saveVersion: 14, lanternOff: false }),
 };
 
 /** 把任意版本的存档升级到最新。认不出来的返回 null。 */

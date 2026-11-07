@@ -152,7 +152,7 @@ export class DialogueBox {
         nameX = PORTRAIT.x + PORTRAIT.size + 6;
       }
       const name = line.speaker === 'player' ? gameState.playerName || t('names.playerUnknown') : t(`names.${line.speaker}`);
-      const label = pixelText(this.scene, nameX + 5, BOX.y - 14, name);
+      const label = pixelText(this.scene, nameX + 5, BOX.y - 14, name, { title: true });
       const ng = this.scene.add.graphics();
       drawPanel(ng, nameX, BOX.y - 17, Math.ceil(label.width) + 10, 18);
       this.container.add([ng, label]);

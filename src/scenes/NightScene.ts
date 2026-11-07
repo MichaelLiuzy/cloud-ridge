@@ -142,12 +142,12 @@ export class NightScene extends Phaser.Scene {
     const inner = pw - pad * 2;
     const items: Phaser.GameObjects.GameObject[] = [];
     let y = pad;
-    const write = (text: string, color: string = ui.text, gap = 4, x = pad) => {
-      const tx = pixelText(this, x, y, text, { color, wrap: inner - (x - pad) });
+    const write = (text: string, color: string = ui.text, gap = 4, x = pad, title = false) => {
+      const tx = pixelText(this, x, y, text, { color, wrap: inner - (x - pad), title });
       items.push(tx);
       y += Math.ceil(tx.height) + gap;
     };
-    write(s.title, ui.money, 0);
+    write(s.title, ui.money, 0, pad, true);
     write(s.subtitle, ui.textDim2, 8);
     const body = s.lines.length ? s.lines : [t('weekSummary.quiet')];
     for (const l of body) write(`· ${l}`, s.lines.length ? ui.text : ui.textDim2, 3);

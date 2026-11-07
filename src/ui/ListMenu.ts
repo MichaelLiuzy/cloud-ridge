@@ -45,7 +45,7 @@ export class ListMenu {
     let widest = Math.max(0, ...labels.map((l) => l.width));
     if (opts.title) {
       // 标题尽量一行放下（太长了才换行）
-      const probe = pixelText(scene, 0, 0, opts.title);
+      const probe = pixelText(scene, 0, 0, opts.title, { title: true });
       widest = Math.max(widest, probe.width - 4);
       probe.destroy();
     }
@@ -56,7 +56,7 @@ export class ListMenu {
     items.push(bg);
     let titleText: Phaser.GameObjects.Text | undefined;
     if (opts.title) {
-      titleText = pixelText(scene, w / 2, top, opts.title, { wrap: w - PAD * 2 - 4, align: 'center' }).setOrigin(0.5, 0);
+      titleText = pixelText(scene, w / 2, top, opts.title, { wrap: w - PAD * 2 - 4, align: 'center', title: true }).setOrigin(0.5, 0);
       top += Math.ceil(titleText.height) + 3;
     }
     options.forEach((opt, i) => {

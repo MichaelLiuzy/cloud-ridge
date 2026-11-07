@@ -276,7 +276,7 @@ export class GameMenuScene extends Phaser.Scene {
     let x = 8;
     const tabs = this.chest ? [{ id: 'bag' as const, label: 'chest.tab' }] : this.mail ? [{ id: 'mail' as const, label: 'mail.tab' }] : MENU_TABS;
     for (const tab of tabs) {
-      const label = pixelText(this, 0, 0, t(tab.label));
+      const label = pixelText(this, 0, 0, t(tab.label), { title: true });
       const w = Math.ceil(label.width) + 12;
       const g = this.add.graphics();
       if (tab.id === this.tab) g.fillStyle(toColor(ui.highlight)).fillRect(x, 6, w, 18);
@@ -625,7 +625,7 @@ export class GameMenuScene extends Phaser.Scene {
       const y = AREA.y + 2 + i * 20;
       const g = this.add.graphics();
       if (s.id === this.section) g.fillStyle(toColor(ui.highlight)).fillRect(AREA.x, y, colW, 18);
-      const label = pixelText(this, AREA.x + 6, y + 3, t(s.label));
+      const label = pixelText(this, AREA.x + 6, y + 3, t(s.label), { title: true });
       const hit = this.add.zone(AREA.x, y, colW, 18).setOrigin(0).setInteractive();
       hit.on('pointerdown', () => {
         this.section = s.id;
@@ -654,14 +654,14 @@ export class GameMenuScene extends Phaser.Scene {
   private writeSection(layer: Phaser.GameObjects.Container, w: number): number {
     const ui = SETTINGS.ui;
     let y = 0;
-    const write = (text: string, opts: { color?: string; indent?: number; strike?: boolean; gapAfter?: number; bullet?: string } = {}) => {
+    const write = (text: string, opts: { color?: string; indent?: number; strike?: boolean; gapAfter?: number; bullet?: string; title?: boolean } = {}) => {
       const indent = opts.indent ?? 0;
       // 行首的小记号（· 或 ？）单独放在左边，文字整段往右缩
       if (opts.bullet) layer.add(pixelText(this, indent - 9, y, opts.bullet, { color: opts.color }));
       // 先折好行，再一行一行写（划掉线要按每行的长度画）
       const lines = wrapText(text, w - indent);
       for (const line of lines) {
-        const tx = pixelText(this, indent, y, line, { color: opts.color });
+        const tx = pixelText(this, indent, y, line, { color: opts.color, title: opts.title });
         layer.add(tx);
         if (opts.strike && tx.width > 0) {
           layer.add(this.add.graphics().fillStyle(toColor(opts.color ?? ui.text)).fillRect(indent, y + 7, Math.ceil(tx.width), 1));
@@ -695,7 +695,7 @@ export class GameMenuScene extends Phaser.Scene {
       const questions = (Object.keys(QUESTIONS) as QuestionId[]).filter(
         (q) => CLUES[QUESTIONS[q].raisedBy].chapter === ch && questionState(q) !== 'hidden',
       );
-      write(fillNames(localName(CHAPTERS[ch].name)), { color: ui.money, gapAfter: 2 });
+      write(fillNames(localName(CHAPTERS[ch].name)), { color: ui.money, gapAfter: 2, title: true });
       wrote = true;
       // 这一章的去处提示（序章：周里正教完以后才有）
       const goalKey = `notebook.goals.${ch}`;
@@ -889,7 +889,7 @@ export class GameMenuScene extends Phaser.Scene {
     const x = box.x + pad;
     const w = box.w - pad * 2;
     let y = box.y + pad;
-    c.add(pixelText(this, x, y, t(`letters.${m.id}.title`), { color: ui.money }));
+    c.add(pixelText(this, x, y, t(`letters.${m.id}.title`), { color: ui.money, title: true }));
     y += LINE_H + 6;
     const runs: Run[] = parseClueMarks(fillNames(t(`letters.${m.id}.body`))).map((p) => {
       if (p.clue && canGetClue(p.clue)) {

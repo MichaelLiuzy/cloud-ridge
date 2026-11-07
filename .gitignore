@@ -5,3 +5,4 @@ dist
 public/assets/*
 !public/assets/fonts/
 public/art_preview/
+fonts_raw/

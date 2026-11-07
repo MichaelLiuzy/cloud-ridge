@@ -26,14 +26,17 @@ document.title = t('game.title');
 const rotate = document.getElementById('rotate');
 if (rotate) rotate.textContent = t('game.rotateDevice');
 
-/** 先把像素字体读进来（不然第一屏的字会用系统字体） */
+/** 先把字体（霞鹜文楷常规、粗体）读进来（不然第一屏的字会用系统字体） */
 async function loadFont() {
-  try {
-    const face = new FontFace('FusionPixel', `url(${import.meta.env.BASE_URL}assets/fonts/fusion-pixel-12px.woff2)`);
-    (document.fonts as unknown as Set<FontFace>).add(await Promise.race([face.load(), new Promise<never>((_, no) => setTimeout(() => no(new Error('timeout')), 8000))]));
-  } catch {
-    // 字体没读到也能玩，只是字不是像素风
-  }
+  const load = async (name: string, file: string) => {
+    try {
+      const face = new FontFace(name, `url(${import.meta.env.BASE_URL}assets/fonts/${file})`);
+      (document.fonts as unknown as Set<FontFace>).add(await Promise.race([face.load(), new Promise<never>((_, no) => setTimeout(() => no(new Error('timeout')), 8000))]));
+    } catch {
+      // 字体没读到也能玩，只是用系统字体
+    }
+  };
+  await Promise.all([load('CloudRidgeKai', 'wenkai-regular.woff2'), load('CloudRidgeKaiBold', 'wenkai-bold.woff2')]);
 }
 
 async function start() {

@@ -453,6 +453,7 @@ export class FarmScene extends Phaser.Scene {
     if (kind === 'tilled' || kind === 'watered') return t('hint.sowHow');
     if (kind === 'hut' && gameState.hutIsShed) return t('hint.shed');
     if (kind === 'mailbox' && hasUnreadMail()) return t('hint.mailboxNew');
+    if (kind === 'lantern') return t(gameState.lanternOff ? 'hint.lanternOff' : 'hint.lantern');
     const hint = GROUND_KINDS.includes(kind) ? undefined : TILE_TYPES[ch]?.hint;
     return hint ? t(hint) : null;
   }
@@ -521,6 +522,7 @@ export class FarmScene extends Phaser.Scene {
       list.push({ label: t('action.houseStatus'), run: () => this.sayHouseStatus(), needReach: false });
     }
     if (kind === 'hut') list.push({ label: t('action.chest'), run: () => this.scene.launch('GameMenu', { chest: true }), needReach: true });
+    if (kind === 'lantern') list.push({ label: '', run: () => this.toggleLantern(cell), needReach: true });
     if (kind === 'mailbox') list.push({ label: t('action.mailbox'), run: () => this.scene.launch('GameMenu', { mail: true }), needReach: true });
     for (const plain of PLAIN_ACTIONS) {
       // 草棚改成柴房以后不能睡、不能存档（去老宅）
@@ -1119,6 +1121,12 @@ export class FarmScene extends Phaser.Scene {
     this.refreshTile(c.x, c.y);
   }
 
+  /** 门口灯笼：亮 ↔ 灭（不弹菜单，直接换） */
+  private toggleLantern(cell: Cell) {
+    gameState.lanternOff = !gameState.lanternOff;
+    this.refreshTile(cell.x, cell.y);
+  }
+
   /** 按地图字符重画一格：地面 + 上面的东西 + 碰撞块 + 灯光 */
   private refreshTile(tx: number, ty: number) {
     const s = SETTINGS.tileSize;
@@ -1135,10 +1143,13 @@ export class FarmScene extends Phaser.Scene {
     // 不挡路的东西（篱笆门）：没图时不画色块（免得看着像挡路），画的话贴在地面上、人从上面走过
     if (info.object && (info.solid || !PLACEHOLDERS.has(info.object))) {
       const bottom = (ty + 1) * s;
-      // 信箱：有没读的信时用第 1 格（小旗竖起来）
-      const frame = info.kind === 'mailbox' && hasUnreadMail() ? 1 : 0;
+      // 信箱：有没读的信时用第 1 格（小旗竖起来）；灯笼灭了用第 1 格（off），图只有一格时调暗
+      const off = info.kind === 'lantern' && gameState.lanternOff;
+      const two = this.textures.get(info.object).has('1');
+      const frame = two && ((info.kind === 'mailbox' && hasUnreadMail()) || off) ? 1 : 0;
       view.object = this.add.image(tx * s + s / 2, bottom, info.object, frame).setOrigin(0.5, 1).setDepth(info.solid ? bottom : 0.5);
-      if (info.light) {
+      if (off && !two) view.object.setTint(toColor(SETTINGS.lanternOffTint));
+      if (info.light && !off) {
         this.lightSpots.push({ x: tx * s + s / 2, y: bottom - 22, radius: 30, fire: info.fire ? view.object : undefined });
       }
     }

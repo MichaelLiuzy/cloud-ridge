@@ -5,7 +5,7 @@
  */
 import type Phaser from 'phaser';
 import { SETTINGS } from '../config/settings';
-import { t } from '../locales/i18n';
+import { font, t } from '../locales/i18n';
 import { checkName } from '../systems/playerName';
 
 interface Options {
@@ -26,7 +26,7 @@ export function askName(game: Phaser.Game, opts: Options): Promise<string | null
 
   const wrap = document.createElement('div');
   wrap.style.cssText = `position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;
-    background:rgba(30,26,31,.55);font-family:FusionPixel,"PingFang SC",sans-serif;touch-action:auto;`;
+    background:rgba(30,26,31,.55);font-family:${font()};touch-action:auto;`;
   const box = document.createElement('form');
   box.style.cssText = `background:${ui.panel};border:2px solid ${ui.border};box-shadow:inset 0 0 0 2px ${ui.innerBorder};
     color:${ui.text};padding:16px 18px;width:min(86vw,340px);box-sizing:border-box;`;
@@ -41,7 +41,7 @@ export function askName(game: Phaser.Game, opts: Options): Promise<string | null
   input.spellcheck = false;
   input.setAttribute('autocapitalize', 'off');
   // 字号至少 16px，iPhone 才不会自动把网页放大
-  input.style.cssText = `width:100%;box-sizing:border-box;font:16px FusionPixel,"PingFang SC",sans-serif;padding:8px;
+  input.style.cssText = `width:100%;box-sizing:border-box;font:16px ${font()};padding:8px;
     border:2px solid ${ui.border};background:#fff;color:${ui.text};border-radius:0;outline:none;
     -webkit-user-select:text;user-select:text;touch-action:auto;`;
   const error = document.createElement('div');
@@ -52,7 +52,7 @@ export function askName(game: Phaser.Game, opts: Options): Promise<string | null
     const b = document.createElement('button');
     b.type = primary ? 'submit' : 'button';
     b.textContent = label;
-    b.style.cssText = `font:16px FusionPixel,"PingFang SC",sans-serif;padding:6px 16px;border:2px solid ${ui.border};
+    b.style.cssText = `font:16px ${font()};padding:6px 16px;border:2px solid ${ui.border};
       background:${primary ? ui.innerBorder : ui.panel};color:${ui.text};border-radius:0;`;
     return b;
   };

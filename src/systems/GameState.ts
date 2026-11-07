@@ -67,6 +67,8 @@ function freshState() {
     mail: [] as MailEntry[],
     /** 已经寄出过的信 id（同一封不寄两次） */
     mailSent: [] as string[],
+    /** 门口灯笼灭了没有（点一下开关；新档是亮着的） */
+    lanternOff: false,
     /** 工具栏 + 背包的格子（前 9 格是工具栏），见 src/systems/inventory.ts */
     slots: Array.from({ length: SETTINGS.inventory.toolbarSlots + SETTINGS.inventory.bagSlots }, () => null) as (Slot | null)[],
     /** 手上拿的是工具栏第几格（0 ~ 8） */
@@ -132,6 +134,7 @@ export function resetGameState(slot: number, load: SaveData | null = null) {
       debrisDay: load.debrisDay,
       mail: JSON.parse(JSON.stringify(load.mail)),
       mailSent: [...load.mailSent],
+      lanternOff: load.lanternOff,
       slots: load.slots.map((x) => (x ? { ...x } : null)),
       selected: load.selected,
       keyItems: { ...load.keyItems },
