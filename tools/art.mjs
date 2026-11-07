@@ -126,7 +126,7 @@ function warnUnregistered(keys) {
   if (!fs.existsSync(assetsFile)) return;
   const text = fs.readFileSync(assetsFile, 'utf8');
   for (const key of keys) {
-    if (key.startsWith('crop_') || key.startsWith('icon_')) continue; // 作物图、物品图标按数据表自动登记；界面小图标有图才用，不用登记
+    if (key.startsWith('crop_') || key.startsWith('icon_') || key.startsWith('bld_')) continue; // 作物图、物品图标按数据表自动登记，小镇建筑按 art_rules.json 的尺寸表自动登记；界面小图标有图才用，不用登记
     if (new RegExp(`\\b${key}\\s*:`).test(text)) continue;
     console.log(`⚠ ${key} 整理好了，但 src/config/assets.ts 里没有登记，游戏里可能用不上。请在 ASSETS 里加一行。`);
   }
@@ -171,6 +171,8 @@ function processFile(file, rule, id) {
   const shared = rule.uniformScale
     ? Math.min(...boxes.filter(Boolean).map((b) => Math.min(cw / b.w, ch / b.h)))
     : null;
+  const drawn = boxes.filter(Boolean);
+  const layout = rule.keepLayout && drawn.length ? { y0: Math.min(...drawn.map((b) => b.y)), y1: Math.max(...drawn.map((b) => b.y + b.h)) } : null;
   const frames = cells.map((c, ci) => {
     const box = boxes[ci];
     if (!box) return blank(cw, ch);
@@ -185,6 +187,16 @@ function processFile(file, rule, id) {
       const iy = Math.round(box.h * TUNING.tileInset);
       const inner = { x: box.x + ix, y: box.y + iy, w: Math.max(1, box.w - 2 * ix), h: Math.max(1, box.h - 2 * iy) };
       return quantize(hardEdge(resize(img, inner, cw, ch, false), true), q);
+    }
+    // keepLayout（栅栏零件）：竖向用所有格子合起来的范围（共用地面线），按高度撑满格子；横向超出的从两边裁掉
+    if (layout) {
+      const scale = ch / (layout.y1 - layout.y0);
+      const keepW = Math.min(box.w, Math.floor(cw / scale));
+      const area = { x: box.x + Math.floor((box.w - keepW) / 2), y: layout.y0, w: keepW, h: layout.y1 - layout.y0 };
+      const w = Math.max(1, Math.min(cw, Math.round(keepW * scale)));
+      const out = blank(cw, ch);
+      blit(quantize(hardEdge(resize(img, area, w, ch, true), false), q), out, Math.floor((cw - w) / 2), 0);
+      return out;
     }
     const scale = shared ?? Math.min(cw / box.w, ch / box.h);
     const w = Math.max(1, Math.min(cw, Math.round(box.w * scale)));
