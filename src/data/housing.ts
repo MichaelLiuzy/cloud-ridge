@@ -16,7 +16,7 @@ import type { HousingTable } from './types';
 export const HOUSING: HousingTable = {
   schemaVersion: 2,  // 数据格式版本号（程序用，不用改）
   buildDays: 2,  // 木匠动工要几天
-  builder: "carpenter",  // 谁来修
+  builder: "du",  // 谁来修（杜木匠）
   // 开局住的草棚
   hut: {
     maxStamina: 100,  // 体力上限

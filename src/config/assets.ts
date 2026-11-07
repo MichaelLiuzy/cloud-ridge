@@ -42,7 +42,7 @@ export const ASSETS: Record<string, AssetSpec> = {
   npc_doctor_stand: { w: 16, h: 32, frames: DIRS, color: 'vermilion', shape: 'char' },
   npc_fan_stand: { w: 16, h: 32, frames: DIRS, color: 'ochre', shape: 'char' },
   /** 杂货铺掌柜（上门收货的剧情里说话） */
-  npc_store_keeper_stand: { w: 16, h: 32, frames: DIRS, color: 'ochreLight', shape: 'char' },
+  npc_qian_stand: { w: 16, h: 32, frames: DIRS, color: 'ochreLight', shape: 'char' },
   /** Eric（先登记，暂时不用） */
   npc_eric_stand: { w: 16, h: 32, frames: DIRS, color: 'indigo', shape: 'char' },
 
@@ -51,7 +51,7 @@ export const ASSETS: Record<string, AssetSpec> = {
   portrait_zhou: { w: 64, h: 64, frames: MOODS, color: 'indigo', shape: 'portrait' },
   portrait_doctor: { w: 64, h: 64, frames: MOODS, color: 'mist', shape: 'portrait' },
   portrait_fan: { w: 64, h: 64, frames: MOODS, color: 'ochre', shape: 'portrait' },
-  portrait_store_keeper: { w: 64, h: 64, frames: MOODS, color: 'ochreLight', shape: 'portrait' },
+  portrait_qian: { w: 64, h: 64, frames: MOODS, color: 'ochreLight', shape: 'portrait' },
   /** Eric 的头像（先登记，暂时不用） */
   portrait_eric: { w: 64, h: 64, frames: MOODS, color: 'indigo', shape: 'portrait' },
 

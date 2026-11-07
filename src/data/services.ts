@@ -14,7 +14,7 @@ export const SERVICES: ServicesTable = {
   schemaVersion: 1,  // 数据格式版本号（程序用，不用改）
   pickup: {
     shop: "general_store",  // 哪家店收（按这家店的收购价）
-    npc: "store_keeper",  // 谁来提
+    npc: "qian",  // 谁来提
     unlockHearts: 2,  // 好感度几颗心
     fee: 1000,  // 开通要付多少文
   },

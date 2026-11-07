@@ -103,6 +103,7 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
 | 杂货铺上门收货：几颗心解锁、开通要多少钱 | `src/data/services.ts` | `pickup.unlockHearts`、`pickup.fee`（掌柜的台词在 `prologue.ink` 的 `pickup_offer`） |
 | 周里正交给你的开局物资 | `src/data/start.ts` | `cash`、`inventory` |
 | 好感度：每颗心多少点、最多几颗心 | `src/data/affection.ts` | `pointsPerHeart`、`maxHearts` |
+| 镇上的人叫什么（显示的名字） | `src/locales/zh.ts` | `names`（代码、剧本、好感度、打工表一律用左边的人名 id，比如 `zhou`、`qian`；改名只改右边的字） |
 | 开场过场：有几格、顺序、每格用哪张图和什么效果 | `src/data/cutscenes.ts` | `CUTSCENES.opening`（每格的字在 `src/locales/zh.ts` 的 `cutscene`） |
 | 医馆对话、周里正教学、所有剧情台词 | `src/story/zh/prologue.ink` | 文件开头有写法说明：`#speaker:` 谁说、`<<clue:id=字>>` 标黄字、`@fan` 写人名 |
 | 人物名字（周里正、老范……） | `src/locales/zh.ts` | `names` |

@@ -42,7 +42,7 @@ ChatGPT 每次出完图会告诉你文件名，照着存就行。
 | `icons_ui.png` | 界面小图标 | 1 行 5 格：齿轮、钱袋、体力、锁、背包。有图就换掉代码画的那几个 |
 | `prop_gate.png` | 田地篱笆上的门（16×16） | 1 格。没图时篱笆门就画成小路 |
 | `cg_title.png` | 标题画面背景 | 整张画，上方中间留天空放标题字；没图时是纯色底 |
-| `portrait_store_keeper.png` / `npc_store_keeper_stand.png` | 杂货铺掌柜的头像 / 站立图 | 同主角头像 / 站立图 |
+| `portrait_qian.png` / `npc_qian_stand.png` | 钱掌柜（杂货铺）的头像 / 站立图 | 同主角头像 / 站立图 |
 | `portrait_eric.png` / `npc_eric_stand.png` | Eric 的头像 / 站立图（先登记，暂时不用） | 同上 |
 | `house_old_ruin.png` | 烧毁的老宅（64×64） | 1 格，整栋烧毁的房子。立在宅基地上，四周废墟里的杂草、碎石、焦木（用的是 `debris_` 那几张图）清完、木匠搭好梁架后换成 `house_timber_frame` |
 | `portrait_player.png` | 主角头像 | 1 行 4 格：平常、笑、担忧、惊讶 |
@@ -59,7 +59,7 @@ ChatGPT 每次出完图会告诉你文件名，照着存就行。
 以后的同类图照这个格式起名：
 
 - 其他作物：`crop_` + 作物 id，例如 `crop_potato.png`（作物 id 见 `src/data/crops.ts`）
-- 镇上的人：`npc_` + 人物 id + `_stand`，例如 `npc_clinic_doctor_stand.png`；头像是 `portrait_` + 人物 id
+- 镇上的人：`npc_` + 人物 id + `_stand`，例如 `npc_doctor_stand.png`（人物 id 用人名，见 `src/locales/zh.ts` 的 names）；头像是 `portrait_` + 人物 id
 - 其他房子：`house_` + 房子 id，例如 `house_thatched_cottage.png`（房子 id 见 `src/data/housing.ts`）。
   默认缩成 48×48；其他大小要在 `tools/art_rules.json` 的 `sizes` 里写一行（烧毁的老宅 `house_old_ruin` 和重建各阶段已写好 64×64）
 - 其他地面：`tiles_` + 名字，2 行 3 格

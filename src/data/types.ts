@@ -55,10 +55,13 @@ export type ShopId = 'general_store' | 'carpenter' | 'blacksmith' | 'kiln' | 'te
 /** 营业的地方（店铺 + 医馆） */
 export type PlaceId = 'general_store' | 'carpenter' | 'blacksmith' | 'kiln' | 'teahouse' | 'clinic';
 
-/** 镇上的人（先用职位当 id，等剧情窗口起了名字再换） */
+/**
+ * 镇上的人（人名 id，显示的名字在 src/locales/zh.ts 的 names；职位见 names 的注释）。
+ * Eric 已失踪，不在这里（没有好感度）。
+ */
 export type NpcId =
-  | 'clinic_doctor' | 'village_head' | 'store_keeper' | 'teahouse_keeper' | 'restaurant_owner'
-  | 'dock_manager' | 'tutor' | 'carpenter' | 'blacksmith' | 'night_watchman';
+  | 'zhou' | 'doctor' | 'qian' | 'liu' | 'ma' | 'he' | 'wen' | 'du' | 'shi' | 'zhao'
+  | 'fan' | 'que' | 'shen' | 'daoist' | 'soldier';
 
 /** 会花体力的动作 */
 export type StaminaAction = 'hoe' | 'water' | 'plant' | 'harvest' | 'cut_grass' | 'chop_wood' | 'chop_small_tree' | 'chop_tree' | 'mine_rock';
