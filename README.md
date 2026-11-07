@@ -120,7 +120,7 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
 | 每样食物吃一个回复多少体力、物品说明 | `src/data/items.ts` | 食物的 `stamina`、`desc` |
 | 一整天没吃东西，第二天醒来体力最多多少 | `src/data/time.ts` | `hunger.nextDayStamina`（现在 80） |
 | 天气概率、每月 1 日的天气、下雨算不算浇水 | `src/data/time.ts` | `weather.chances`、`weather.firstDayOfMonth`、`weather.rainWatersCrops` |
-| 刚种下的种子画在格子的什么高度 | `src/config/settings.ts` | `seedCenterY`（2/3 = 格子下三分之一的中间） |
+| 刚种下的种子画在格子的什么高度 | `src/config/settings.ts` | `seedOffsetY`（从格子底边往上挪几像素，0 = 贴底） |
 | 睡觉过场：变暗、停留、天亮各多久，字的颜色 | `src/config/settings.ts` | `sleepCutscene` |
 | 每周总结显示哪几项、顺序 | `src/data/weekSummary.ts` | `WEEK_SUMMARY_ITEMS`（每句话的写法在 `src/locales/zh.ts` 的 `weekSummary`） |
 | 星期、天气、赶集日在界面上的叫法 | `src/locales/zh.ts` | `calendar.weekdays`、`weather`、`calendar.market` |
@@ -132,6 +132,8 @@ Mac 上也可以按 F8 开关回忆模式。正式给朋友玩之前，把 `src/
 | 点一下就做的事（拿着什么点什么、熟了的菜点一下就收） | `src/world/actions.ts` | `HELD_ACTIONS` |
 | 割草、砍树、敲石头掉几个材料、几成概率 | `src/world/actions.ts` | 每条规则的 `drop`（`amount` 最少 / 最多，`extra` 另外掉什么）；概率在 `DROP_CHANCES`（现在 20% / 60% / 20%） |
 | 农场里自己长树：每天几成概率长新树、新树是树苗 / 小树 / 大树的概率、长大的概率、最多几棵 | `src/data/trees.ts` | `spawnChance`、`spawnStage`、`grow`、`maxWild`（自己种的不算） |
+| 田里的杂草、石头、木头每周哪天重新摆、要不要回到开局的数量 | `src/data/trees.ts` | `FIELD_DEBRIS` 的 `weekday`（0 = 周一）、`keepCount`；开局数量就是 `src/world/farmMap.ts` 地图里篱笆里面画的 `g r s x` |
+| 右下角提示字幕：停几秒、多久淡出、最多几行、多宽、颜色 | `src/config/settings.ts` | `ui.subtitle` |
 | 下雨、下雪的画面：变暗变亮多少、雨丝雪花多少、多快、手机上少多少 | `src/config/settings.ts` | `weatherFx` |
 | 水桶装多少水、浇一次用多少 | `src/data/time.ts` | `stamina.bucket` 的 `capacity`、`perWater`（拿水桶点池塘打满，不花体力） |
 | 设置项的默认值（文字速度、界面大小、音量……） | `src/config/settings.ts` | `prefsDefaults`；四档文字速度各多快在 `textSpeedMs` |

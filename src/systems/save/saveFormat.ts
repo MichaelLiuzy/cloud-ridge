@@ -14,7 +14,7 @@ import { chestFromOld } from '../home/storage';
 import type { Weather } from '../../data/types';
 import { TIME } from '../../data/time';
 
-export const SAVE_VERSION = 11;
+export const SAVE_VERSION = 12;
 
 /** 存档里存了什么 */
 export interface SaveData {
@@ -45,6 +45,8 @@ export interface SaveData {
   plantedTrees: string[];
   /** 背包满了掉在地上的东西：「x,y」→ { 物品 id: 数量 } */
   drops: Record<string, Record<string, number>>;
+  /** 田里的杂物上次是哪天重新摆的（「月-日」） */
+  debrisDay: string;
   /** 重建老宅到第几阶段（0 = 住草棚、废墟没清完；1 = 废墟清完；2~4 = 木匠修好的阶段） */
   houseStage: number;
   /** 废墟清了几格 */
@@ -210,6 +212,8 @@ const MIGRATIONS: Record<number, (old: any) => any> = {
     if (!hasPick && old.flags?.startKitGiven && empty >= 0) slots[empty] = { id: 'pickaxe', n: 1 };
     return { ...old, saveVersion: 11, slots, water: TIME.stamina.bucket.capacity, plantedTrees: [], drops: {} };
   },
+  // 11 → 12：田里的杂物每周一重新摆，记下上次摆的是哪天（旧存档还没摆过）
+  11: (old) => ({ ...old, saveVersion: 12, debrisDay: '' }),
 };
 
 /** 把任意版本的存档升级到最新。认不出来的返回 null。 */

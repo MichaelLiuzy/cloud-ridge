@@ -37,6 +37,7 @@ import { QuantityPicker } from '../ui/QuantityPicker';
 import { downloadText } from '../ui/fileTransfer';
 import { exportText } from '../systems/save/saveManager';
 import { ITEMS as itemsData } from '../data/items';
+import { eatFromSlot, isFood } from '../systems/food';
 
 /** 界面和地图之间互相传的消息 */
 export const UI_EVENTS = {
@@ -65,7 +66,6 @@ export const UI_EVENTS = {
 const SLOT = () => 16 * SETTINGS.ui.iconScale + 2;
 const SLOT_GAP = 2;
 const BAR_PAD = 3;
-const DIALOG = { w: 240, h: 46 };
 
 export class HudScene extends Phaser.Scene {
   private dateText!: Phaser.GameObjects.Text;
@@ -90,8 +90,8 @@ export class HudScene extends Phaser.Scene {
   /** 界面大小变了但正忙着（对话、菜单），等空下来再重新排版 */
   private relayoutPending = false;
 
-  private dialog!: Phaser.GameObjects.Container;
-  private dialogText!: Phaser.GameObjects.Text;
+  /** 右下角的提示字幕（最新的在最下面） */
+  private subtitles: Phaser.GameObjects.Text[] = [];
 
   private menu?: ListMenu;
   /** 剧情对话框（ink 剧本） */
@@ -165,19 +165,9 @@ export class HudScene extends Phaser.Scene {
     // ---- 底部工具栏 ----
     this.buildToolbar(W, H);
 
-    // ---- 提示框（工具栏上面；和剧情对话框一样再放大 dialogueScale 倍，好读） ----
-    // 按屏幕真实像素取整数倍（字清楚），太窄就一档档减小，但不小于界面倍数
-    let px = VIEW.ui * Math.max(1, ui.dialogueScale);
-    while (px > VIEW.ui && VIEW.canvasW / px < DIALOG.w + 8) px -= 1;
-    const ds = px / VIEW.ui;
-    const dx = Math.round((W - DIALOG.w * ds) / 2);
-    const dy = H - 2 - (SLOT() + BAR_PAD * 2) - 2 - DIALOG.h * ds;
-    const dialogBg = this.add.graphics();
-    drawPanel(dialogBg, 0, 0, DIALOG.w, DIALOG.h);
-    this.dialogText = pixelText(this, 6, 4, '', { wrap: DIALOG.w - 12 });
-    const hit = this.add.zone(0, 0, DIALOG.w, DIALOG.h).setOrigin(0).setInteractive();
-    hit.on('pointerdown', () => this.closeDialog());
-    this.dialog = this.add.container(dx, dy, [dialogBg, this.dialogText, hit]).setScale(ds).setVisible(false).setDepth(50);
+    // ---- 提示字幕（右下角，见 say()）----
+    this.subtitles = [];
+    this.sayQueue = [];
 
     // ---- 一格的说明（悬停、长按、面前那一格）----
     this.tip = this.add.container(0, 0).setDepth(55).setVisible(false);
@@ -218,7 +208,7 @@ export class HudScene extends Phaser.Scene {
     const ev = this.game.events;
     const handlers: [string, (...a: any[]) => void][] = [
       [INPUT_EVENTS.action, (mode?: string) => this.onAction(mode)],
-      [INPUT_EVENTS.useTool, () => (this.story.active ? this.story.advance() : !this.busy() && ev.emit(UI_EVENTS.worldUseTool))],
+      [INPUT_EVENTS.useTool, () => (this.story.active ? this.story.advance() : !this.busy() && (this.offerEat() || ev.emit(UI_EVENTS.worldUseTool)))],
       // Esc：先关掉正开着的东西；什么都没开就打开设置
       [INPUT_EVENTS.cancel, () => this.onCancel()],
       [INPUT_EVENTS.bag, () => !this.busy() && this.openGameMenu('bag')],
@@ -420,7 +410,7 @@ export class HudScene extends Phaser.Scene {
   // ---------------- 操作分配 ----------------
 
   private busy() {
-    return this.dialog.visible || !!this.menu || !!this.picker || this.story.active || this.naming || gameState.menuOpen;
+    return !!this.menu || !!this.picker || this.story.active || this.naming || gameState.menuOpen;
   }
 
   /** 回车 / 「使用」键 */
@@ -429,7 +419,7 @@ export class HudScene extends Phaser.Scene {
     if (this.picker) return this.picker.confirm();
     if (this.story.active) return this.story.advance();
     if (this.menu) return this.menu.choose();
-    if (this.dialog.visible) return this.closeDialog();
+    if (mode === 'smart' && this.offerEat()) return;
     this.game.events.emit(mode === 'smart' ? UI_EVENTS.worldSmart : UI_EVENTS.worldAction);
   }
 
@@ -438,29 +428,54 @@ export class HudScene extends Phaser.Scene {
     if (gameState.menuOpen || this.naming || this.picker) return;
     if (this.story.active) return this.story.advance();
     if (this.menu) return this.closeMenu(); // 点菜单外面 = 取消
-    if (this.dialog.visible) return this.closeDialog();
     this.game.events.emit(UI_EVENTS.worldTap, x, y);
   }
 
-  // ---------------- 对话框 ----------------
+  // ---------------- 提示字幕 ----------------
 
+  /**
+   * 系统提示（得到东西、背包满了……）：右下角一行字，不挡操作、不用点。
+   * 停 ui.subtitle.holdMs 后渐隐；新提示从下面出来，旧的往上推，最多 maxLines 条，再多的排队等前面的消失。
+   * 人物对话、剧情还是用对话框（DialogueBox）。
+   */
   say(key: string, params?: Record<string, string | number>) {
-    // 上一句还没看完：排在后面，关掉上一句时再显示
-    if (this.dialog.visible) {
+    const cfg = SETTINGS.ui.subtitle;
+    if (this.subtitles.length >= cfg.maxLines) {
       this.sayQueue.push([key, params]);
       return;
     }
-    this.closeMenu();
-    this.dialogText.setText(t(key, params));
-    this.dialog.setVisible(true);
-    this.syncBusy();
+    const line = pixelText(this, 0, 0, t(key, params), { color: cfg.color, wrap: cfg.maxW, align: 'right' })
+      .setOrigin(1, 1)
+      .setStroke(cfg.stroke, 3)
+      .setDepth(50);
+    this.subtitles.push(line);
+    this.layoutSubtitles();
+    this.tweens.add({
+      targets: line,
+      alpha: 0,
+      delay: cfg.holdMs,
+      duration: cfg.fadeMs,
+      onComplete: () => {
+        line.destroy();
+        this.subtitles = this.subtitles.filter((l) => l !== line);
+        this.layoutSubtitles();
+        const next = this.sayQueue.shift();
+        if (next) this.say(next[0], next[1]);
+      },
+    });
   }
 
-  closeDialog() {
-    this.dialog.setVisible(false);
-    const next = this.sayQueue.shift();
-    if (next) return this.say(next[0], next[1]);
-    this.syncBusy();
+  /** 字幕从下往上排：最新的贴着工具栏上方（手机上在「使用」键上方）的右边 */
+  private layoutSubtitles() {
+    const { w: W, h: H } = uiSize();
+    const cfg = SETTINGS.ui.subtitle;
+    const touch = SETTINGS.touch;
+    let y = this.touch ? H - touch.actionButtonRadius * 2 - 8 - cfg.gap : H - SLOT() - BAR_PAD * 2 - 2 - cfg.gap;
+    for (let i = this.subtitles.length - 1; i >= 0; i--) {
+      const l = this.subtitles[i];
+      l.setPosition(W - cfg.right, y);
+      y -= Math.ceil(l.height) + cfg.gap;
+    }
   }
 
   // ---------------- 选数量 ----------------
@@ -506,7 +521,6 @@ export class HudScene extends Phaser.Scene {
     if (gameState.menuOpen || this.naming) return;
     if (this.picker) return this.picker.cancel();
     if (this.menu) return this.closeMenu();
-    if (this.dialog.visible) return this.closeDialog();
     if (this.story.active) return;
     this.openSettings();
   }
@@ -588,7 +602,6 @@ export class HudScene extends Phaser.Scene {
   /** 播一段剧本对话（比如和周里正说话） */
   private playStory(knot: string, onDone?: () => void) {
     this.closeMenu();
-    this.closeDialog();
     this.story.play(knot, () => {
       this.syncBusy();
       this.refreshNotebookIcon();
@@ -689,7 +702,12 @@ export class HudScene extends Phaser.Scene {
       g.fillStyle(toColor(SETTINGS.ui.innerBorder)).fillRect(x, y, SL, SL);
       const slot = this.add.zone(x, y, SL, SL).setOrigin(0).setInteractive();
       this.toolbar.add(slot);
-      slot.on('pointerdown', () => !this.busy() && this.selectTool(i));
+      // 点一下换到这一格；是食物的话顺便问「吃一个」
+      slot.on('pointerdown', () => {
+        if (this.busy()) return;
+        this.selectTool(i);
+        this.offerEat();
+      });
       drawItemSlot(this, this.toolbar, x, y, SL, gameState.slots[i]);
     }
     // 当前那格的框：画在 (0,0)，每帧挪到选中的那格
@@ -704,6 +722,20 @@ export class HudScene extends Phaser.Scene {
 
   private selectTool(i: number) {
     if (i >= 0 && i < TOOLBAR_SLOTS) gameState.selected = i;
+  }
+
+  /** 手上拿的是食物：弹出「吃一个 / 算了」（体力满着时再问一次）。不是食物返回 false */
+  private offerEat() {
+    const s = gameState.slots[gameState.selected];
+    if (!s || !isFood(s.id)) return false;
+    const name = this.itemName(s.id);
+    const eat = () => {
+      const ate = eatFromSlot(gameState.selected);
+      if (ate) this.say('msg.ate', { name, n: ate.gain });
+    };
+    const full = () => gameState.stamina >= gameState.maxStamina;
+    this.openMenu([{ label: t('bag.eat'), run: () => (full() ? this.openMenu([{ label: t('bag.eatAnyway'), run: eat }], t('bag.staminaFull')) : eat()) }], name);
+    return true;
   }
 }
 

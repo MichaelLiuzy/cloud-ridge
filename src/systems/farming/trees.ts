@@ -1,16 +1,19 @@
 /**
- * 农场里自己长的树（数值在 src/data/trees.ts）：每天早上先让已有的树长大，再看要不要长出一棵新的。
- * 树记在农场地图上：y 树苗、u 小树、Y 大树。玩家自己种的记在 gameState.plantedTrees（不算进自然树的上限）。
+ * 农场里自己长的东西（数值在 src/data/trees.ts）：
+ *  - 树：每天早上先让已有的树长大，再看要不要长出一棵新的（篱笆里外的空地都行）。
+ *    树记在农场地图上：y 树苗、u 小树、Y 大树。玩家自己种的记在 gameState.plantedTrees（不算进自然树的上限）。
+ *  - 田里的杂物：每周一早上整体重新摆一次（reshuffleDebris）。
  */
-import { TREES } from '../../data/trees';
+import { FIELD_DEBRIS, TREES } from '../../data/trees';
+import { FARM_MAP } from '../../world/farmMap';
 import { gameState } from '../GameState';
 
 export const TREE_CHARS = { sapling: 'y', small: 'u', big: 'Y' } as const;
 const TREE_SET = new Set<string>(Object.values(TREE_CHARS));
 
-/** 能长新树的空地：草地，而且四周没有路、门、田、房子（不挡路） */
+/** 能长新树的空地：草地、没种东西，而且四周没有路、门、田、房子、废墟（不挡路） */
 function isOpenGround(grid: string[][], x: number, y: number) {
-  if (grid[y]?.[x] !== '.' && grid[y]?.[x] !== ',') return false;
+  if ((grid[y]?.[x] !== '.' && grid[y]?.[x] !== ',') || gameState.crops[`${x},${y}`]) return false;
   const near = [grid[y - 1]?.[x], grid[y + 1]?.[x], grid[y]?.[x - 1], grid[y]?.[x + 1]];
   return near.every((c) => c !== undefined && '.,TyuYrgsx#~'.includes(c));
 }
@@ -39,5 +42,45 @@ export function treesOvernight(grid: string[][], frozen: boolean, avoid: { x: nu
   const s = TREES.spawnStage;
   const r = rand();
   changes.push({ ...at, ch: r < s.sapling ? TREE_CHARS.sapling : r < s.sapling + s.small ? TREE_CHARS.small : TREE_CHARS.big });
+  return changes;
+}
+
+/** 田里的杂物：杂草 g、石头 r、树桩 s、焦木 x */
+const DEBRIS = ['g', 'r', 's', 'x'];
+/** 篱笆围起来的田（不含篱笆本身）的范围 */
+const FIELD = (() => {
+  const xs: number[] = [];
+  const ys: number[] = [];
+  FARM_MAP.forEach((row, y) => [...row].forEach((ch, x) => ch === '#' && (xs.push(x), ys.push(y))));
+  return { x0: Math.min(...xs) + 1, x1: Math.max(...xs) - 1, y0: Math.min(...ys) + 1, y1: Math.max(...ys) - 1 };
+})();
+const inField = (x: number, y: number) => x >= FIELD.x0 && x <= FIELD.x1 && y >= FIELD.y0 && y <= FIELD.y1;
+const countIn = (rows: ArrayLike<string>[], ch: string) =>
+  rows.reduce((n, row, y) => n + Array.from(row).filter((c, x) => c === ch && inField(x, y)).length, 0);
+
+/**
+ * 每周一早上：田里的杂物全部拿掉，再按开新档时每种的数量（FIELD_DEBRIS.keepCount）随机摆到田里的空地上。
+ * 空地 = 草地、没种东西、不是主角站的格子、不挨着门；放不下就能放多少放多少。返回要改的格子。
+ */
+export function reshuffleDebris(grid: string[][], avoid: { x: number; y: number }, rand = Math.random) {
+  const want = DEBRIS.map((ch) => [ch, countIn(FIELD_DEBRIS.keepCount ? FARM_MAP : grid, ch)] as const);
+  const changes: { x: number; y: number; ch: string }[] = [];
+  const spots: { x: number; y: number }[] = [];
+  grid.forEach((row, y) =>
+    row.forEach((ch, x) => {
+      if (!inField(x, y)) return;
+      const was = DEBRIS.includes(ch);
+      if (was) changes.push({ x, y, ch: '.' });
+      const ground = was || ch === '.' || ch === ',';
+      const nearGate = [grid[y - 1]?.[x], grid[y + 1]?.[x], grid[y]?.[x - 1], grid[y]?.[x + 1]].includes('G');
+      if (ground && !nearGate && !gameState.crops[`${x},${y}`] && !(x === avoid.x && y === avoid.y)) spots.push({ x, y });
+    }),
+  );
+  for (const [ch, n] of want) {
+    for (let i = 0; i < n && spots.length; i++) {
+      const at = spots.splice(Math.floor(rand() * spots.length), 1)[0];
+      changes.push({ ...at, ch });
+    }
+  }
   return changes;
 }

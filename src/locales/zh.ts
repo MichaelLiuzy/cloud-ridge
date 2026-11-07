@@ -127,6 +127,8 @@ export const zh = {
     keyHint: "方向键 选格子（按住 Shift 带着走）　鼠标拖动 换位置",
     eat: "吃一个",
     cantEat: "这个不能吃。",
+    staminaFull: "体力是满的，还要吃吗？",
+    eatAnyway: "还是吃一个",
     touchHint: "点一下看看，按住拖动换位置",
     sort: "整理",
     /** 能卖的东西：今天在镇上卖一个能得多少（赶集日涨价也算上） */
@@ -341,6 +343,7 @@ export const zh = {
     pickedUp: "捡起了 {items}。",
     bucketEmpty: "水桶空了，去池塘打水吧",
     refilled: "水桶打满了水。",
+    weeklyDebris: "新的一周，田里又长出了杂草。",
     noTreeOnField: "田里不能种树。",
     frost: "霜降了。地里 {n} 棵怕冷的菜一夜之间冻死了。",
     dormant: "韭菜的叶子枯了，根还活着，要过冬了。",

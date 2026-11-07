@@ -21,7 +21,8 @@ import { gameState } from '../systems/GameState';
 import { addItem, countItem, heldItem, inventoryCounts, itemInfo, roomFor, takeFromSlot } from '../systems/inventory';
 import { basketPrice } from '../systems/economy/shop';
 import { CROP_LOOKS, cropFromSeed, cropInfo, cropLook, growOvernight, harvest, inSowWindow, isFrozen, isRipe, nextSowTerm, plant } from '../systems/farming/crops';
-import { treesOvernight } from '../systems/farming/trees';
+import { reshuffleDebris, treesOvernight } from '../systems/farming/trees';
+import { FIELD_DEBRIS } from '../data/trees';
 import { buildOvernight, dwelling, requestBuild, ruinCleared, stageInfo } from '../systems/home/house';
 import { putInBasket, sellableInBag, settleBasket, takeFromBasket } from '../systems/economy/pickup';
 import { HOUSING } from '../data/housing';
@@ -34,8 +35,7 @@ import { UI_EVENTS } from './HudScene';
 import type { MenuOption } from '../ui/ListMenu';
 import { TIME as timeData } from '../data/time';
 import { ITEMS as itemsData } from '../data/items';
-import { eatFromSlot, isFood } from '../systems/food';
-import { isLastDayOfWeek, rollWeather } from '../systems/days';
+import { isLastDayOfWeek, rollWeather, weekdayIndex } from '../systems/days';
 import { emptyWeek, noteHarvest, noteRuin, noteTilled, spend } from '../systems/weekStats';
 import { buildWeekSummary, type WeekSummary } from '../systems/weekSummary';
 import type { NightData } from './NightScene';
@@ -410,7 +410,6 @@ export class FarmScene extends Phaser.Scene {
   /** 空格：用手上的东西对着面前那一格（规则在 src/world/actions.ts） */
   private useToolFacing() {
     const held = heldItem();
-    if (isFood(held)) return this.eatHeld();
     const cell = this.facingCell();
     const rule = this.heldRule(cell);
     if (!rule) return this.say(held ? 'msg.cantUseTool' : 'msg.noTool', { tool: held ? this.itemName(held) : '' });
@@ -419,7 +418,6 @@ export class FarmScene extends Phaser.Scene {
 
   /** 手机「使用」键：手上的东西对面前那一格有用就直接用，没用就「交互」（多件事才弹菜单） */
   private smartFacing() {
-    if (isFood(heldItem())) return this.eatHeld();
     const cell = this.facingCell();
     const rule = this.heldRule(cell);
     if (rule) return this.doHeld(rule, cell);
@@ -427,11 +425,6 @@ export class FarmScene extends Phaser.Scene {
   }
 
   /** 吃掉手上拿着的一个食物（src/systems/food.ts） */
-  private eatHeld() {
-    const ate = eatFromSlot(gameState.selected);
-    if (ate) this.say('msg.ate', { name: this.itemName(ate.id), n: ate.gain });
-  }
-
   /** 界面坐标 (sx, sy) 落在地图的哪一格（点的位置先换成画布坐标，再换成地图坐标） */
   private cellAtScreen(sx: number, sy: number): Cell {
     const p = this.cameras.main.getWorldPoint(sx * VIEW.ui, sy * VIEW.ui);
@@ -687,9 +680,9 @@ export class FarmScene extends Phaser.Scene {
     const frame = CROP_LOOKS.indexOf(cropLook(p));
     const img = old ?? this.add.image(0, 0, tex, frame).setDepth((y + 1) * s - 1);
     img.setTexture(tex, frame).setAlpha(p.dormant ? 0.6 : 1);
-    // 刚种下的种子：图案中心放在格子里 SETTINGS.seedCenterY 的高度；长出来以后站在格子底边
-    if (cropLook(p) === 'seed') img.setOrigin(0.5, 0.5).setPosition(x * s + s / 2, Math.round(y * s + s * SETTINGS.seedCenterY));
-    else img.setOrigin(0.5, 1).setPosition(x * s + s / 2, (y + 1) * s);
+    // 图都贴着格子底边（整理脚本把种子画在图的最下面）；刚种下的种子再往上挪 SETTINGS.seedOffsetY 像素
+    const lift = cropLook(p) === 'seed' ? SETTINGS.seedOffsetY : 0;
+    img.setOrigin(0.5, 1).setPosition(x * s + s / 2, (y + 1) * s - lift);
     this.cropViews.set(key, img);
   }
 
@@ -934,6 +927,13 @@ export class FarmScene extends Phaser.Scene {
     if (grew.dormant) news.push(['msg.dormant']);
     if (grew.woke) news.push(['msg.woke']);
     for (const key of Object.keys(gameState.crops)) this.refreshCrop(key);
+    // 每周一：田里的杂草、石头、木头整体重新摆（数量回到开局时，见 src/data/trees.ts 的 FIELD_DEBRIS）
+    const today = `${clock.month}-${clock.day}`;
+    if (weekdayIndex(clock.day) === FIELD_DEBRIS.weekday && gameState.debrisDay !== today) {
+      gameState.debrisDay = today;
+      for (const c of reshuffleDebris(this.grid, this.doorTile)) this.setTile(c, c.ch);
+      news.push(['msg.weeklyDebris']);
+    }
     // 树：长大一点，或者在空地上长出新的（冻土期不长）
     for (const c of treesOvernight(this.grid, isFrozen(clock), this.doorTile)) this.setTile(c, c.ch);
     // 木匠

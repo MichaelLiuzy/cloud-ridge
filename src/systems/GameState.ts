@@ -60,6 +60,8 @@ function freshState() {
     plantedTrees: [] as string[],
     /** 背包满了掉在地上的东西：「x,y」→ { 物品 id: 数量 }，走过去就捡起来 */
     drops: {} as Record<string, Record<string, number>>,
+    /** 田里的杂物上次是哪天重新摆的（「月-日」），同一天不会摆两次 */
+    debrisDay: '',
     /** 工具栏 + 背包的格子（前 9 格是工具栏），见 src/systems/inventory.ts */
     slots: Array.from({ length: SETTINGS.inventory.toolbarSlots + SETTINGS.inventory.bagSlots }, () => null) as (Slot | null)[],
     /** 手上拿的是工具栏第几格（0 ~ 8） */
@@ -122,6 +124,7 @@ export function resetGameState(slot: number, load: SaveData | null = null) {
       water: load.water,
       plantedTrees: [...load.plantedTrees],
       drops: JSON.parse(JSON.stringify(load.drops)),
+      debrisDay: load.debrisDay,
       slots: load.slots.map((x) => (x ? { ...x } : null)),
       selected: load.selected,
       keyItems: { ...load.keyItems },

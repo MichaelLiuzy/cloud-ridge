@@ -500,7 +500,14 @@ export class GameMenuScene extends Phaser.Scene {
       sortSlots(gameState.storage);
       normalizeChest();
       this.page = 0;
-    } else sortSlots(gameState.slots, TOOLBAR_SLOTS);
+    } else {
+      // 工具栏和背包各排各的（东西不会在两边之间挪）；手上拿的东西整理完还拿着
+      const held = gameState.slots[gameState.selected]?.id;
+      sortSlots(gameState.slots, 0, TOOLBAR_SLOTS);
+      sortSlots(gameState.slots, TOOLBAR_SLOTS);
+      const at = gameState.slots.slice(0, TOOLBAR_SLOTS).findIndex((s) => s?.id === held);
+      if (at >= 0) gameState.selected = at;
+    }
     this.note = '';
     this.redraw();
   }

@@ -217,10 +217,10 @@ export function moveSlot(from: number, to: number) {
 }
 
 /**
- * 整理：list 里从 from 格起，按类别（settings.ts 的 inventory.sortOrder）、再按名字排好，
+ * 整理：list 里从 from 格到 to 格之前（不含 to），按类别（settings.ts 的 inventory.sortOrder）、再按名字排好，
  * 同一种东西叠到一起（上锁的和没上锁的分开叠，锁跟着东西走），前面不留空格。
  */
-export function sortSlots(list: (Slot | null)[], from = 0) {
+export function sortSlots(list: (Slot | null)[], from = 0, to = list.length) {
   const order = SETTINGS.inventory.sortOrder as readonly string[];
   const rank = (id: string) => {
     const i = order.indexOf(itemInfo(id)?.type ?? '');
@@ -228,7 +228,7 @@ export function sortSlots(list: (Slot | null)[], from = 0) {
   };
   // 先把同一种（锁的状态也一样）的数量加起来
   const total = new Map<string, Slot>();
-  for (const s of list.slice(from)) {
+  for (const s of list.slice(from, to)) {
     if (!s) continue;
     const key = `${s.id}|${s.locked ? 1 : 0}`;
     const t = total.get(key);
@@ -245,7 +245,7 @@ export function sortSlots(list: (Slot | null)[], from = 0) {
       left -= k;
     }
   }
-  while (i < list.length) list[i++] = null;
+  while (i < to) list[i++] = null;
 }
 
 /** 能不能丢：空格、工具、上锁的都不能。返回不能丢的原因（语言文件的 key），能丢返回 null */
