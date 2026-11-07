@@ -62,6 +62,15 @@ const TUNING = {
     desaturate: 0.3,
     colors: ['skinHighlight', 'skin', 'skinMid', 'skinDark', 'skinDeep', 'ink', 'outline'],
   },
+  /**
+   * 火光色锁：烛黄（candle F2C46B）、橘火（orange D97B3A）只留给会发光的东西。
+   * 只有规则里写了 "fire": true（整条规则）或 "fire": ["lantern"]（只对这几个 id）的图才能用这两色：
+   * 现在是灯笼 prop_lantern、过场 CG；以后的烛台、火堆也加上。
+   * 其他图里本来会落到这两色的像素，改在剩下的颜色里找最近的（土墙一般落到旧纸或黄土），不会看着像还在烧。
+   */
+  fire: {
+    colors: ['candle', 'orange'],
+  },
   /** 生成精灵表的输出文件夹（每次运行先清空，fonts 等别的文件夹不动） */
   outFolders: ['chars', 'tiles', 'objects', 'buildings', 'crops', 'icons', 'portraits', 'cg'],
 };
@@ -144,6 +153,8 @@ function processFile(file, rule, id) {
   const isFull = !!rule.full;
   const isTile = !!rule.tile || isFull;
   const [cw, ch] = rule.sizes?.[id] ?? rule.cell;
+  // 能不能用火光色（见 TUNING.fire）
+  const q = { skin: !!rule.skin, fire: rule.fire === true || (Array.isArray(rule.fire) && rule.fire.includes(id)) };
 
   // 1. 哪些像素是背景（不是品红底时，自动认出白底、黑底这类纯色底）
   const plain = isTile ? null : plainBackground(img);
@@ -167,18 +178,18 @@ function processFile(file, rule, id) {
       const scale = Math.min(box.w / cw, box.h / ch);
       const w = Math.round(cw * scale), h = Math.round(ch * scale);
       const inner = { x: box.x + Math.floor((box.w - w) / 2), y: box.y + Math.floor((box.h - h) / 2), w, h };
-      return quantize(hardEdge(resize(img, inner, cw, ch, false), true), rule.skin);
+      return quantize(hardEdge(resize(img, inner, cw, ch, false), true), q);
     }
     if (isTile) {
       const ix = Math.round(box.w * TUNING.tileInset);
       const iy = Math.round(box.h * TUNING.tileInset);
       const inner = { x: box.x + ix, y: box.y + iy, w: Math.max(1, box.w - 2 * ix), h: Math.max(1, box.h - 2 * iy) };
-      return quantize(hardEdge(resize(img, inner, cw, ch, false), true), rule.skin);
+      return quantize(hardEdge(resize(img, inner, cw, ch, false), true), q);
     }
     const scale = shared ?? Math.min(cw / box.w, ch / box.h);
     const w = Math.max(1, Math.min(cw, Math.round(box.w * scale)));
     const h = Math.max(1, Math.min(ch, Math.round(box.h * scale)));
-    const small = quantize(hardEdge(resize(img, box, w, h, true), false), rule.skin);
+    const small = quantize(hardEdge(resize(img, box, w, h, true), false), q);
     // 底部居中放进格子
     const out = blank(cw, ch);
     blit(small, out, Math.floor((cw - w) / 2), ch - h);
@@ -431,8 +442,8 @@ function hardEdge(img, opaque) {
   return img;
 }
 
-/** 每个像素换成调色板里最近的颜色（按人眼感觉的距离），不抖动。skin = 开肤色保护（见 TUNING.skin） */
-function quantize(img, skin = false) {
+/** 每个像素换成调色板里最近的颜色（按人眼感觉的距离），不抖动。skin = 开肤色保护（见 TUNING.skin），fire = 能用火光色（见 TUNING.fire） */
+function quantize(img, { skin = false, fire = false } = {}) {
   for (let i = 0; i < img.w * img.h; i++) {
     const o = i * 4;
     if (img.data[o + 3] === 0) {
@@ -440,7 +451,7 @@ function quantize(img, skin = false) {
       continue;
     }
     const r0 = img.data[o], g0 = img.data[o + 1], b0 = img.data[o + 2];
-    const [r, g, b] = (skin && skinTone(r0, g0, b0)) || nearest(r0, g0, b0);
+    const [r, g, b] = (skin && skinTone(r0, g0, b0)) || nearest(r0, g0, b0, fire);
     img.data[o] = r;
     img.data[o + 1] = g;
     img.data[o + 2] = b;
@@ -482,15 +493,18 @@ function skinTone(r, g, b) {
 /** 颜色差的权重（1 = 和明暗一样重要；小一点 = 更看重明暗，颜色更统一）。觉得图套色后发灰就调大 */
 const CHROMA_WEIGHT = 1;
 const PALETTE_LAB = PALETTE.map((p) => toLab(p[0], p[1], p[2]));
-const nearestCache = new Map();
-function nearest(r, g, b) {
+const FIRE_INDEX = new Set(TUNING.fire.colors.map((n) => Object.keys(PALETTE_NAMED).indexOf(n)));
+const nearestCache = [new Map(), new Map()];
+function nearest(r, g, b, fire = false) {
   const key = (r << 16) | (g << 8) | b;
-  const hit = nearestCache.get(key);
+  const cache = nearestCache[fire ? 1 : 0];
+  const hit = cache.get(key);
   if (hit) return hit;
   const [L, A, B] = toLab(r, g, b);
   let best = PALETTE[0];
   let bestD = Infinity;
   PALETTE_LAB.forEach(([l2, a2, b2], i) => {
+    if (!fire && FIRE_INDEX.has(i)) return;
     // 明暗差算足，颜色深浅（饱和度）差打折：原图偏艳的肤色会落到 skin / skinDark，而不是橙色
     const d = (L - l2) ** 2 + CHROMA_WEIGHT * ((A - a2) ** 2 + (B - b2) ** 2);
     if (d < bestD) {
@@ -498,7 +512,7 @@ function nearest(r, g, b) {
       best = PALETTE[i];
     }
   });
-  nearestCache.set(key, best);
+  cache.set(key, best);
   return best;
 }
 

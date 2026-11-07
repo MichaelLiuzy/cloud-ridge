@@ -11,6 +11,7 @@
     "tile：true 表示是地面纹理：不抠背景，只用品红空隙分格，每格拉满。",
     "full：true 表示是整张画（过场 CG）：不抠背景，从正中裁成目标比例（320×180 = 16:9）再缩小。",
     "skin：true 表示图里有人的皮肤：套色时皮肤只用调色板里的 5 个肤色（见 tools/art.mjs 的 TUNING.skin），脸不会发橙。",
+    "fire：烛黄、橘火两种火光色默认不用；写 true（整条规则）或 [\"lantern\"]（只对这几张）才能用。会发光的东西（灯笼、烛台、火堆）和过场 CG 要写（见 tools/art.mjs 的 TUNING.fire）。",
     "uniformScale：true 表示整张图只用一个缩放比例：按最大的那一格算，所有格子用同一个比例缩小，再贴着格子底部居中。不写的话每一格会各自放大到撑满格子（种子会被放得和成熟的菜一样大）。作物、人物各个朝向、头像都要开。",
     "上面的规则从上往下找，用第一条匹配上的。"
   ],
@@ -91,6 +92,7 @@
       "name": "prop_{id}",
       "rows": 1, "cols": 1, "cell": [16, 32],
       "sizes": { "tree": [16, 32], "lantern": [16, 32], "basket": [16, 16] },
+      "fire": ["lantern"],
       "frames": ["main"],
       "out": "objects/prop_{id}.png"
     },
@@ -131,6 +133,7 @@
     {
       "name": "cg_{id}",
       "full": true,
+      "fire": true,
       "rows": 1, "cols": 1, "cell": [320, 180],
       "out": "cg/cg_{id}.png"
     }
